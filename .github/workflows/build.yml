@@ -31,7 +31,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease renameReleaseApk
         env:
           JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -48,5 +48,5 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Release ${{ steps.version.outputs.tag }}
-          files: app/build/outputs/apk/release/*.apk
+          files: app/build/outputs/apk/release/renamed/*.apk
           generate_release_notes: true
