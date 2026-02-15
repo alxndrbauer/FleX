@@ -32,6 +32,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -157,8 +158,11 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         (state.officeMinutes.toFloat() / state.requiredOfficeMinutes).coerceIn(0f, 1f)
                     else 0f
                     LinearProgressIndicator(
-                        progress = hoursProgress,
-                        modifier = Modifier.fillMaxWidth().height(8.dp),
+                    progress = { hoursProgress },
+                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    color = ProgressIndicatorDefaults.linearColor,
+                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
+                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -168,8 +172,11 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         style = MaterialTheme.typography.bodyMedium
                     )
                     LinearProgressIndicator(
-                        progress = pctProgress,
-                        modifier = Modifier.fillMaxWidth().height(8.dp),
+                    progress = { pctProgress },
+                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    color = ProgressIndicatorDefaults.linearColor,
+                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
+                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -179,8 +186,11 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         style = MaterialTheme.typography.bodyMedium
                     )
                     LinearProgressIndicator(
-                        progress = dayProgress.coerceIn(0f, 1f),
-                        modifier = Modifier.fillMaxWidth().height(8.dp),
+                    progress = { dayProgress.coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    color = ProgressIndicatorDefaults.linearColor,
+                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
+                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 

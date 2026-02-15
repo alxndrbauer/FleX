@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +26,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -35,12 +36,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -93,7 +92,12 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                 Icon(Icons.Default.ChevronLeft, contentDescription = "Vorheriger Monat")
             }
             Text(
-                text = state.yearMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN)),
+                text = state.yearMonth.format(
+                    DateTimeFormatter.ofPattern(
+                        "MMMM yyyy",
+                        Locale.GERMAN
+                    )
+                ),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -107,7 +111,11 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
         // Prognosis card
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(12.dp)) {
-                Text("Prognose", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(
+                    "Prognose",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(modifier = Modifier.height(4.dp))
 
                 val q = state.prognosisQuota
@@ -128,35 +136,58 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                     (state.officeMinutes.toFloat() / state.requiredOfficeMinutes).coerceIn(0f, 1f)
                 else 0f
                 LinearProgressIndicator(
-                    progress = hoursProgress,
-                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    progress = { hoursProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp),
+                    color = ProgressIndicatorDefaults.linearColor,
+                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
+                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
 
-                val pctProg = (q.officePercent / state.effectiveQuotaPercent.toDouble()).toFloat().coerceIn(0f, 1f)
+                val pctProg = (q.officePercent / state.effectiveQuotaPercent.toDouble()).toFloat()
+                    .coerceIn(0f, 1f)
                 val dayProg = q.officeDays.toFloat() / state.effectiveQuotaMinDays.toFloat()
 
-                Text("${"%.1f".format(q.officePercent)}% Büro (Ziel: ${state.effectiveQuotaPercent}%) | ${q.officeDays}/${state.effectiveQuotaMinDays} Tage",
-                    style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "${"%.1f".format(q.officePercent)}% Büro (Ziel: ${state.effectiveQuotaPercent}%) | ${q.officeDays}/${state.effectiveQuotaMinDays} Tage",
+                    style = MaterialTheme.typography.bodySmall
+                )
                 LinearProgressIndicator(
-                    progress = pctProg,
-                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    progress = { pctProg },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp),
+                    color = ProgressIndicatorDefaults.linearColor,
+                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
+                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 LinearProgressIndicator(
-                    progress = dayProg.coerceIn(0f, 1f),
-                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    progress = { dayProg.coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp),
+                    color = ProgressIndicatorDefaults.linearColor,
+                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
+                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
                 )
                 Spacer(modifier = Modifier.height(2.dp))
 
                 val statusText = if (q.quotaMet) "Quote erfüllt" else "Quote nicht erfüllt"
-                val statusColor = if (q.quotaMet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                Text(statusText, color = statusColor, fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodySmall)
+                val statusColor =
+                    if (q.quotaMet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                Text(
+                    statusText, color = statusColor, fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodySmall
+                )
 
-                Text("Gleitzeit: ${state.prognosisFlextime.formatDisplay()} (Soll: ${state.prognosisFlextime.formatTarget()})",
+                Text(
+                    "Gleitzeit: ${state.prognosisFlextime.formatDisplay()} (Soll: ${state.prognosisFlextime.formatTarget()})",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
 
@@ -261,7 +292,9 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             onSave = { location, dayType, note, timeBlocks, isDuration ->
                 viewModel.saveDay(editDay.date, location, dayType, note, timeBlocks, isDuration)
             },
-            onDelete = if (editDay.id != 0L) {{ viewModel.deleteDay(editDay) }} else null
+            onDelete = if (editDay.id != 0L) {
+                { viewModel.deleteDay(editDay) }
+            } else null
         )
     }
 }
@@ -305,8 +338,8 @@ fun DayCell(
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
                 color = if (isToday) MaterialTheme.colorScheme.primary
-                    else if (holidayName != null) PublicHolidayColor
-                    else MaterialTheme.colorScheme.onSurface
+                else if (holidayName != null) PublicHolidayColor
+                else MaterialTheme.colorScheme.onSurface
             )
             if (isToday) {
                 Box(
@@ -428,24 +461,35 @@ fun EditDayDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    FilterChip(selected = dayType == DayType.WORK, onClick = { dayType = DayType.WORK },
+                    FilterChip(
+                        selected = dayType == DayType.WORK, onClick = { dayType = DayType.WORK },
                         label = { Text("Arbeitstag") })
-                    FilterChip(selected = dayType == DayType.VACATION, onClick = { dayType = DayType.VACATION },
+                    FilterChip(
+                        selected = dayType == DayType.VACATION,
+                        onClick = { dayType = DayType.VACATION },
                         label = { Text("Urlaub") })
-                    FilterChip(selected = dayType == DayType.SPECIAL_VACATION, onClick = { dayType = DayType.SPECIAL_VACATION },
+                    FilterChip(
+                        selected = dayType == DayType.SPECIAL_VACATION,
+                        onClick = { dayType = DayType.SPECIAL_VACATION },
                         label = { Text("Sonderurlaub") })
-                    FilterChip(selected = dayType == DayType.FLEX_DAY, onClick = { dayType = DayType.FLEX_DAY },
+                    FilterChip(
+                        selected = dayType == DayType.FLEX_DAY,
+                        onClick = { dayType = DayType.FLEX_DAY },
                         label = { Text("Gleittag") })
-                    FilterChip(selected = dayType == DayType.SATURDAY_BONUS, onClick = { dayType = DayType.SATURDAY_BONUS },
+                    FilterChip(
+                        selected = dayType == DayType.SATURDAY_BONUS,
+                        onClick = { dayType = DayType.SATURDAY_BONUS },
                         label = { Text("Samstag+") })
                 }
 
                 // Time entry with tabs
                 if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)) {
                     TabRow(selectedTabIndex = selectedTab) {
-                        Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 },
+                        Tab(
+                            selected = selectedTab == 0, onClick = { selectedTab = 0 },
                             text = { Text("Start / Ende") })
-                        Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 },
+                        Tab(
+                            selected = selectedTab == 1, onClick = { selectedTab = 1 },
                             text = { Text("Gesamtzeit") })
                     }
                     Spacer(modifier = Modifier.height(8.dp))
@@ -453,23 +497,35 @@ fun EditDayDialog(
                     if (selectedTab == 0) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
-                                value = startText, onValueChange = { startText = it },
-                                label = { Text("Start") }, modifier = Modifier.weight(1f), singleLine = true
+                                value = startText,
+                                onValueChange = { startText = it },
+                                label = { Text("Start") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
                             )
                             OutlinedTextField(
-                                value = endText, onValueChange = { endText = it },
-                                label = { Text("Ende") }, modifier = Modifier.weight(1f), singleLine = true
+                                value = endText,
+                                onValueChange = { endText = it },
+                                label = { Text("Ende") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
                             )
                         }
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
-                                value = durationHours, onValueChange = { durationHours = it },
-                                label = { Text("Stunden") }, modifier = Modifier.weight(1f), singleLine = true
+                                value = durationHours,
+                                onValueChange = { durationHours = it },
+                                label = { Text("Stunden") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
                             )
                             OutlinedTextField(
-                                value = durationMinutes, onValueChange = { durationMinutes = it },
-                                label = { Text("Minuten") }, modifier = Modifier.weight(1f), singleLine = true
+                                value = durationMinutes,
+                                onValueChange = { durationMinutes = it },
+                                label = { Text("Minuten") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
                             )
                         }
                     }
@@ -486,10 +542,13 @@ fun EditDayDialog(
                 val timeBlocks = if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)) {
                     if (selectedTab == 0) {
                         try {
-                            val start = LocalTime.parse(startText, DateTimeFormatter.ofPattern("HH:mm"))
+                            val start =
+                                LocalTime.parse(startText, DateTimeFormatter.ofPattern("HH:mm"))
                             val end = LocalTime.parse(endText, DateTimeFormatter.ofPattern("HH:mm"))
                             listOf(start to end)
-                        } catch (_: Exception) { emptyList() }
+                        } catch (_: Exception) {
+                            emptyList()
+                        }
                     } else {
                         val h = durationHours.toIntOrNull() ?: 0
                         val m = durationMinutes.toIntOrNull() ?: 0
@@ -500,7 +559,8 @@ fun EditDayDialog(
                         } else emptyList()
                     }
                 } else emptyList()
-                val isDuration = selectedTab == 1 || dayType !in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
+                val isDuration =
+                    selectedTab == 1 || dayType !in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
                 onSave(location, dayType, note.ifBlank { null }, timeBlocks, isDuration)
             }) {
                 Text("Speichern")

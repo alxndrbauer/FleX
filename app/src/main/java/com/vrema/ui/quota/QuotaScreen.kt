@@ -13,6 +13,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -74,7 +75,11 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
         // Office quota (hours)
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Büro-Quote (Stunden)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "Büro-Quote (Stunden)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val quota = state.quotaStatus
@@ -103,8 +108,16 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
 
                 Text("Büro-Anteil: ${"%.1f".format(quota.officePercent)}% (Ziel: ${state.effectiveQuotaPercent}%)")
                 LinearProgressIndicator(
-                    progress = (quota.officePercent / state.effectiveQuotaPercent.toDouble()).toFloat().coerceIn(0f, 1f),
-                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    progress = {
+                        (quota.officePercent / state.effectiveQuotaPercent.toDouble()).toFloat()
+                            .coerceIn(0f, 1f)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp),
+                    color = ProgressIndicatorDefaults.linearColor,
+                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
+                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -120,7 +133,11 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
         // Office quota (days)
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Büro-Quote (Tage)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "Büro-Quote (Tage)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val quota = state.quotaStatus
@@ -128,12 +145,18 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
 
                 val progress = quota.officeDays.toFloat() / state.effectiveQuotaMinDays.toFloat()
                 LinearProgressIndicator(
-                    progress = progress.coerceIn(0f, 1f),
-                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    progress = { progress.coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp),
+                    color = ProgressIndicatorDefaults.linearColor,
+                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
+                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
-                val dayStatus = if (quota.daysQuotaMet) "Erfüllt" else "Noch ${quota.requiredOfficeDaysForQuota} Tage benötigt"
+                val dayStatus =
+                    if (quota.daysQuotaMet) "Erfüllt" else "Noch ${quota.requiredOfficeDaysForQuota} Tage benötigt"
                 Text(
                     dayStatus,
                     color = if (quota.daysQuotaMet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
@@ -153,7 +176,11 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
         // Flextime
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Gleitzeit-Saldo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "Gleitzeit-Saldo",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = state.flextimeBalance.formatDisplay(),
@@ -168,7 +195,11 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
         // Overtime
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Überstunden-Saldo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "Überstunden-Saldo",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = state.flextimeBalance.formatOvertime(),
@@ -189,7 +220,11 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
 
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Jahresurlaub", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "Jahresurlaub",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val v = state.vacationInfo
@@ -211,17 +246,27 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
 
                 val totalUsedAndPlanned = v.usedVacationDays + v.plannedVacationDays
                 val totalAvailable = v.annualDays + v.carryOverDays
-                val progress = if (totalAvailable > 0) totalUsedAndPlanned.toFloat() / totalAvailable.toFloat() else 0f
+                val progress =
+                    if (totalAvailable > 0) totalUsedAndPlanned.toFloat() / totalAvailable.toFloat() else 0f
                 LinearProgressIndicator(
-                    progress = progress.coerceIn(0f, 1f),
-                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    progress = { progress.coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp),
+                    color = ProgressIndicatorDefaults.linearColor,
+                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
+                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
                 )
             }
         }
 
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Sonderurlaub", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "Sonderurlaub",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val v = state.vacationInfo
