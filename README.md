@@ -1,5 +1,9 @@
 # Vrema – Time Tracking App
 
+<div align="center">
+  <img src="vrema-logo.png" alt="Vrema Logo" width="200" height="200">
+</div>
+
 Eine Android-App zur Erfassung von Arbeitszeiten mit Fokus auf Büro/Home-Office-Quoten, Gleitzeit und Überstundenverwaltung.
 
 ## Features
