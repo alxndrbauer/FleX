@@ -33,3 +33,5 @@ jobs:
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
+        env:
+          JAVA_TOOL_OPTIONS: -Djava.awt.headless=true

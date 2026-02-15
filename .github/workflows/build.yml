@@ -40,6 +40,7 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease renameReleaseApk
         env:
+          JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
