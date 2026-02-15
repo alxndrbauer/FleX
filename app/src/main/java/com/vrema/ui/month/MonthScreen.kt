@@ -426,12 +426,15 @@ fun EditDayDialog(
     var location by remember { mutableStateOf(workDay.location) }
     var dayType by remember { mutableStateOf(workDay.dayType) }
     var note by remember { mutableStateOf(workDay.note ?: "") }
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val defaultEnd = LocalTime.of(8, 0).plusMinutes(dailyWorkMinutes.toLong())
-    var startText by remember { mutableStateOf("08:00") }
-    var endText by remember { mutableStateOf(defaultEnd.format(DateTimeFormatter.ofPattern("HH:mm"))) }
-    var durationHours by remember { mutableStateOf((dailyWorkMinutes / 60).toString()) }
-    var durationMinutes by remember { mutableStateOf((dailyWorkMinutes % 60).toString()) }
+
+    // Calculate initial state based on existing WorkDay
+    val dialogState = calculateEditDayDialogState(workDay, dailyWorkMinutes)
+
+    var selectedTab by remember { mutableIntStateOf(dialogState.selectedTab) }
+    var startText by remember { mutableStateOf(dialogState.startText) }
+    var endText by remember { mutableStateOf(dialogState.endText) }
+    var durationHours by remember { mutableStateOf(dialogState.durationHours) }
+    var durationMinutes by remember { mutableStateOf(dialogState.durationMinutes) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
