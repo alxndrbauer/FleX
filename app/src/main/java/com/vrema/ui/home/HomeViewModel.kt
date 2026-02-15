@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
@@ -45,6 +46,7 @@ data class HomeUiState(
     val requiredOfficeMinutes: Long = 0
 )
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val workDayRepository: WorkDayRepository,
@@ -59,6 +61,8 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private val _refreshTrigger = MutableStateFlow(Unit)
+
     init {
         loadTodayData()
     }
@@ -68,73 +72,77 @@ class HomeViewModel @Inject constructor(
         val yearMonth = YearMonth.from(today)
 
         viewModelScope.launch {
-            combine(
-                workDayRepository.getWorkDay(today),
-                getSettings(),
-                getMonthWorkDays(yearMonth),
-                settingsRepository.getQuotaRules(),
-                workDayRepository.getWorkDaysForYear(today.year)
-            ) { arr ->
-                val workDay = arr[0] as WorkDay?
-                val settings = arr[1] as Settings
-                @Suppress("UNCHECKED_CAST")
-                val monthDays = arr[2] as List<WorkDay>
-                @Suppress("UNCHECKED_CAST")
-                val rules = arr[3] as List<com.vrema.domain.model.QuotaRule>
-                @Suppress("UNCHECKED_CAST")
-                val yearDays = arr[4] as List<WorkDay>
+            _refreshTrigger
+                .flatMapLatest {
+                    combine(
+                        workDayRepository.getWorkDay(today),
+                        getSettings(),
+                        getMonthWorkDays(yearMonth),
+                        settingsRepository.getQuotaRules(),
+                        workDayRepository.getWorkDaysForYear(today.year)
+                    ) { arr ->
+                        val workDay = arr[0] as WorkDay?
+                        val settings = arr[1] as Settings
+                        @Suppress("UNCHECKED_CAST")
+                        val monthDays = arr[2] as List<WorkDay>
+                        @Suppress("UNCHECKED_CAST")
+                        val rules = arr[3] as List<com.vrema.domain.model.QuotaRule>
+                        @Suppress("UNCHECKED_CAST")
+                        val yearDays = arr[4] as List<WorkDay>
 
-                val rule = settingsRepository.getQuotaRuleForMonth(yearMonth, rules)
-                val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
-                val qDays = rule?.officeQuotaMinDays ?: settings.officeQuotaMinDays
+                        val rule = settingsRepository.getQuotaRuleForMonth(yearMonth, rules)
+                        val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
+                        val qDays = rule?.officeQuotaMinDays ?: settings.officeQuotaMinDays
 
-                val timeBlocks = workDay?.timeBlocks ?: emptyList()
-                val isRunning = timeBlocks.any { it.endTime == null }
-                val dayResult = calculateDayWorkTime(timeBlocks)
-                // Exclude planned days from calculations in current month
-                val actualMonthDays = monthDays.filter { !it.isPlanned }.map { day ->
-                    if (day.date == today && workDay != null) workDay else day
+                        val timeBlocks = workDay?.timeBlocks ?: emptyList()
+                        val isRunning = timeBlocks.any { it.endTime == null }
+                        val dayResult = calculateDayWorkTime(timeBlocks)
+                        // Exclude planned days from calculations in current month
+                        val actualMonthDays = monthDays.filter { !it.isPlanned }.map { day ->
+                            if (day.date == today && workDay != null) workDay else day
+                        }
+
+                        // Cumulative flextime: all year's actual days (not planned), with today replaced
+                        val actualYearDays = yearDays.filter { !it.isPlanned }.map { day ->
+                            if (day.date == today && workDay != null) workDay else day
+                        }
+                        val flextime = calculateFlextime(actualYearDays, settings, yearMonth)
+                        val quota = calculateQuota(actualMonthDays, settings, yearMonth, qPercent, qDays)
+
+                        // Fixed monthly target, reduced by neutral days
+                        val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY)
+                        val neutralDayCount = actualMonthDays.count { it.dayType in neutralTypes }
+                        val totalMin = (settings.monthlyWorkMinutes - neutralDayCount.toLong() * settings.dailyWorkMinutes).coerceAtLeast(0)
+                        val requiredMin = (totalMin * qPercent / 100.0).toLong()
+
+                        val workingDays = actualMonthDays.filter { it.dayType !in neutralTypes }
+                        var officeMin = 0L
+                        for (day in workingDays) {
+                            val r = calculateDayWorkTime(day.timeBlocks)
+                            if (day.location == WorkLocation.OFFICE) officeMin += r.netMinutes
+                        }
+
+                        HomeUiState(
+                            today = today,
+                            workDay = workDay,
+                            timeBlocks = timeBlocks,
+                            isClockRunning = isRunning,
+                            selectedLocation = workDay?.location ?: WorkLocation.OFFICE,
+                            selectedDayType = workDay?.dayType ?: DayType.WORK,
+                            dayWorkTime = dayResult,
+                            flextimeBalance = flextime,
+                            quotaStatus = quota,
+                            settings = settings,
+                            effectiveQuotaPercent = qPercent,
+                            effectiveQuotaMinDays = qDays,
+                            officeMinutes = officeMin,
+                            requiredOfficeMinutes = requiredMin
+                        )
+                    }
                 }
-
-                // Cumulative flextime: all year's actual days (not planned), with today replaced
-                val actualYearDays = yearDays.filter { !it.isPlanned }.map { day ->
-                    if (day.date == today && workDay != null) workDay else day
+                .collect { state ->
+                    _uiState.value = state
                 }
-                val flextime = calculateFlextime(actualYearDays, settings, yearMonth)
-                val quota = calculateQuota(actualMonthDays, settings, yearMonth, qPercent, qDays)
-
-                // Fixed monthly target, reduced by neutral days
-                val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY)
-                val neutralDayCount = actualMonthDays.count { it.dayType in neutralTypes }
-                val totalMin = (settings.monthlyWorkMinutes - neutralDayCount.toLong() * settings.dailyWorkMinutes).coerceAtLeast(0)
-                val requiredMin = (totalMin * qPercent / 100.0).toLong()
-
-                val workingDays = actualMonthDays.filter { it.dayType !in neutralTypes }
-                var officeMin = 0L
-                for (day in workingDays) {
-                    val r = calculateDayWorkTime(day.timeBlocks)
-                    if (day.location == WorkLocation.OFFICE) officeMin += r.netMinutes
-                }
-
-                HomeUiState(
-                    today = today,
-                    workDay = workDay,
-                    timeBlocks = timeBlocks,
-                    isClockRunning = isRunning,
-                    selectedLocation = workDay?.location ?: WorkLocation.OFFICE,
-                    selectedDayType = workDay?.dayType ?: DayType.WORK,
-                    dayWorkTime = dayResult,
-                    flextimeBalance = flextime,
-                    quotaStatus = quota,
-                    settings = settings,
-                    effectiveQuotaPercent = qPercent,
-                    effectiveQuotaMinDays = qDays,
-                    officeMinutes = officeMin,
-                    requiredOfficeMinutes = requiredMin
-                )
-            }.collect { state ->
-                _uiState.value = state
-            }
         }
     }
 
@@ -267,5 +275,9 @@ class HomeViewModel @Inject constructor(
                 )
             )
         }
+    }
+
+    fun refreshFlextimeData() {
+        _refreshTrigger.value = Unit
     }
 }
