@@ -32,9 +32,9 @@ class WorkDayRepositoryImpl @Inject constructor(
         val end = yearMonth.atEndOfMonth().toString()
         return workDayDao.getWorkDaysBetween(start, end).flatMapLatest { entities ->
             if (entities.isEmpty()) return@flatMapLatest flowOf(emptyList<WorkDay>())
-            val ids = entities.map { it.id }
-            timeBlockDao.getTimeBlocksForDaysFlow(ids).map { allBlocks ->
-                val blocksByDayId = allBlocks.groupBy { it.workDayId }
+            val ids = entities.map { it.id }.toSet()
+            timeBlockDao.getAllTimeBlocksFlow().map { allBlocks ->
+                val blocksByDayId = allBlocks.filter { it.workDayId in ids }.groupBy { it.workDayId }
                 entities.map { entity ->
                     entity.toDomain().copy(
                         timeBlocks = blocksByDayId[entity.id]?.map { it.toDomain() } ?: emptyList()
@@ -82,9 +82,9 @@ class WorkDayRepositoryImpl @Inject constructor(
         val end = LocalDate.of(year, 12, 31).toString()
         return workDayDao.getWorkDaysBetween(start, end).flatMapLatest { entities ->
             if (entities.isEmpty()) return@flatMapLatest flowOf(emptyList<WorkDay>())
-            val ids = entities.map { it.id }
-            timeBlockDao.getTimeBlocksForDaysFlow(ids).map { allBlocks ->
-                val blocksByDayId = allBlocks.groupBy { it.workDayId }
+            val ids = entities.map { it.id }.toSet()
+            timeBlockDao.getAllTimeBlocksFlow().map { allBlocks ->
+                val blocksByDayId = allBlocks.filter { it.workDayId in ids }.groupBy { it.workDayId }
                 entities.map { entity ->
                     entity.toDomain().copy(
                         timeBlocks = blocksByDayId[entity.id]?.map { it.toDomain() } ?: emptyList()

@@ -21,6 +21,9 @@ interface TimeBlockDao {
     @Query("SELECT * FROM time_blocks WHERE workDayId IN (:workDayIds) ORDER BY startTime")
     fun getTimeBlocksForDaysFlow(workDayIds: List<Long>): Flow<List<TimeBlockEntity>>
 
+    @Query("SELECT * FROM time_blocks ORDER BY startTime")
+    fun getAllTimeBlocksFlow(): Flow<List<TimeBlockEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(timeBlock: TimeBlockEntity): Long
 
