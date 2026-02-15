@@ -3,6 +3,13 @@ name: Build & Release APK
 on:
   push:
     branches: [main]
+    paths:
+      - 'app/src/**'
+      - 'app/build.gradle.kts'
+      - 'build.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/wrapper/**'
+      - '.github/workflows/build.yml'
 
 concurrency:
   group: build
