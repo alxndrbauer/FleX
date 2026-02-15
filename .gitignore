@@ -1,11 +1,38 @@
+# IDE
 *.iml
-.gradle
-/local.properties
 /.idea
-.DS_Store
+.vscode
+*.swp
+*.swo
+*~
+
+# Build
 /build
+/app/build
+/app/release
+.gradle
+.m2
+
+# Local files
+/local.properties
+local.properties
+keystore.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android
 /captures
 .externalNativeBuild
 .cxx
-local.properties
-/app/build
+*.apk
+*.aab
+
+# Logs
+*.log
+
+# Misc
+.env
+*.jks
+/.claude
