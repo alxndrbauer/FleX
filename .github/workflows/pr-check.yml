@@ -32,11 +32,11 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Run Unit Tests
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testDebugUnitTest --no-daemon
         env:
           JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --no-daemon
         env:
           JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
