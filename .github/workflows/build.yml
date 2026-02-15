@@ -43,7 +43,7 @@ jobs:
           JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease renameReleaseApk
+        run: ./gradlew assembleRelease renameReleaseApk --no-daemon
         env:
           JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
