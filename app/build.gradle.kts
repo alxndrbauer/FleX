@@ -75,7 +75,7 @@ tasks.register<Sync>("renameReleaseApk") {
 dependencies {
     // Core
     implementation("androidx.core:core-ktx:1.16.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     implementation("androidx.activity:activity-compose:1.10.1")
 
     // Compose
@@ -100,8 +100,8 @@ dependencies {
     ksp("com.google.dagger:hilt-android-compiler:2.56.2")
 
     // Lifecycle
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
 
     // Gson
     implementation("com.google.code.gson:gson:2.11.0")
