@@ -22,7 +22,16 @@ class CalculateFlextimeUseCase @Inject constructor(
             when (day.dayType) {
                 DayType.WORK -> {
                     val result = calculateDayWorkTime(day.timeBlocks)
-                    earnedMinutes += result.netMinutes - settings.dailyWorkMinutes
+                    // Check if this is a weekend day (Saturday or Sunday)
+                    val isWeekend = day.date.dayOfWeek == DayOfWeek.SATURDAY || day.date.dayOfWeek == DayOfWeek.SUNDAY
+
+                    if (isWeekend) {
+                        // Weekend work: count FULL time as flextime (it's extra over normal Mon-Fri work)
+                        earnedMinutes += result.netMinutes
+                    } else {
+                        // Weekday work: count only extra hours over daily target
+                        earnedMinutes += result.netMinutes - settings.dailyWorkMinutes
+                    }
                 }
                 DayType.SATURDAY_BONUS -> {
                     val result = calculateDayWorkTime(day.timeBlocks)

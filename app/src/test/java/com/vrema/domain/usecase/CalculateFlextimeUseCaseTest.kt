@@ -324,6 +324,128 @@ class CalculateFlextimeUseCaseTest {
         assertThat(result.targetMinutes).isEqualTo(0)
     }
 
+    // Weekend work day type tests (Saturday/Sunday WORK days count full time as flextime)
+
+    @Test
+    fun testSaturdayWorkDay_shouldCountFullTimeAsFlextime() {
+        // Saturday work day with exactly daily work minutes
+        val saturdayWorkDay = createWorkDay(
+            date = LocalDate.of(2026, 2, 14),  // Saturday
+            dayType = DayType.WORK
+        )
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(
+                grossMinutes = 426,
+                netMinutes = 426,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
+        )
+
+        val balance = useCase(listOf(saturdayWorkDay), settings)
+
+        // Saturday work should count FULL time as flextime (not 426 - 426 = 0)
+        assertThat(balance.earnedMinutes).isEqualTo(426)  // Full time counts!
+        assertThat(balance.totalMinutes).isEqualTo(426)
+    }
+
+    @Test
+    fun testSaturdayWorkDay_withExtraHours_shouldCountFullTimeAsFlextime() {
+        // Saturday work day with extra hours
+        val saturdayWorkDay = createWorkDay(
+            date = LocalDate.of(2026, 2, 14),  // Saturday
+            dayType = DayType.WORK
+        )
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(
+                grossMinutes = 540,
+                netMinutes = 540,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
+        )
+
+        val balance = useCase(listOf(saturdayWorkDay), settings)
+
+        // Saturday work should count FULL 9 hours as flextime
+        assertThat(balance.earnedMinutes).isEqualTo(540)
+        assertThat(balance.totalMinutes).isEqualTo(540)
+    }
+
+    @Test
+    fun testMondayWorkDay_stillCountsOnlyExtraAsFlextime() {
+        // Monday work day - should use old logic (only extra over 426 min)
+        val mondayWorkDay = createWorkDay(
+            date = LocalDate.of(2026, 2, 10),  // Monday
+            dayType = DayType.WORK
+        )
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(
+                grossMinutes = 426,
+                netMinutes = 426,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
+        )
+
+        val balance = useCase(listOf(mondayWorkDay), settings)
+
+        // Monday work with exactly 426 min should be 0 flextime
+        assertThat(balance.earnedMinutes).isEqualTo(0)
+        assertThat(balance.totalMinutes).isEqualTo(0)
+    }
+
+    @Test
+    fun testSundayWorkDay_shouldCountFullTimeAsFlextime() {
+        // Sunday is also a weekend day - should count full time
+        val sundayWorkDay = createWorkDay(
+            date = LocalDate.of(2026, 2, 15),  // Sunday
+            dayType = DayType.WORK
+        )
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(
+                grossMinutes = 426,
+                netMinutes = 426,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
+        )
+
+        val balance = useCase(listOf(sundayWorkDay), settings)
+
+        // Sunday work should count FULL time as flextime
+        assertThat(balance.earnedMinutes).isEqualTo(426)
+        assertThat(balance.totalMinutes).isEqualTo(426)
+    }
+
+    @Test
+    fun testSaturdayBonusDay_stillUses50Split() {
+        // SATURDAY_BONUS should still use 50/50 split (not change behavior)
+        val saturdayBonus = createWorkDay(
+            date = LocalDate.of(2026, 2, 14),  // Saturday
+            dayType = DayType.SATURDAY_BONUS
+        )
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(
+                grossMinutes = 426,
+                netMinutes = 426,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
+        )
+
+        val balance = useCase(listOf(saturdayBonus), settings)
+
+        // SATURDAY_BONUS: 100% to flextime, 50% to overtime
+        assertThat(balance.earnedMinutes).isEqualTo(426)  // Full to flextime
+        assertThat(balance.overtimeMinutes).isEqualTo(213)  // 50% to overtime (426 * 0.5 = 213)
+    }
+
     // Edge cases
 
     @Test
