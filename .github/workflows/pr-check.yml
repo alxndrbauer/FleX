@@ -32,6 +32,6 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --info
+        run: ./gradlew assembleDebug
         env:
           JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
