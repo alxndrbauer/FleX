@@ -2,6 +2,8 @@ package com.vrema.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vrema.domain.events.DataChangeEvent
+import com.vrema.domain.events.DataChangeEventBus
 import com.vrema.domain.model.DayType
 import com.vrema.domain.model.FlextimeBalance
 import com.vrema.domain.model.QuotaStatus
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
@@ -55,7 +58,8 @@ class HomeViewModel @Inject constructor(
     private val getSettings: GetSettingsUseCase,
     private val calculateDayWorkTime: CalculateDayWorkTimeUseCase,
     private val calculateFlextime: CalculateFlextimeUseCase,
-    private val calculateQuota: CalculateQuotaUseCase
+    private val calculateQuota: CalculateQuotaUseCase,
+    private val dataChangeEventBus: DataChangeEventBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -72,7 +76,10 @@ class HomeViewModel @Inject constructor(
         val yearMonth = YearMonth.from(today)
 
         viewModelScope.launch {
-            _refreshTrigger
+            combine(
+                dataChangeEventBus.events.onStart { emit(DataChangeEvent.WorkDayChanged) },
+                _refreshTrigger
+            ) { _, _ -> Unit }
                 .flatMapLatest {
                     combine(
                         workDayRepository.getWorkDay(today),

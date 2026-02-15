@@ -2,6 +2,8 @@ package com.vrema.ui.month
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vrema.domain.events.DataChangeEvent
+import com.vrema.domain.events.DataChangeEventBus
 import com.vrema.domain.model.DayType
 import com.vrema.domain.model.FlextimeBalance
 import com.vrema.domain.model.QuotaStatus
@@ -57,7 +59,8 @@ class MonthViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val calculateDayWorkTime: CalculateDayWorkTimeUseCase,
     private val calculateQuota: CalculateQuotaUseCase,
-    private val calculateFlextime: CalculateFlextimeUseCase
+    private val calculateFlextime: CalculateFlextimeUseCase,
+    private val dataChangeEventBus: DataChangeEventBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MonthUiState())
@@ -258,6 +261,8 @@ class MonthViewModel @Inject constructor(
             }
 
             clearEditing()
+
+            dataChangeEventBus.emit(DataChangeEvent.WorkDayChanged)
         }
     }
 }

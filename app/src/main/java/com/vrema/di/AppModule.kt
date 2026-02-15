@@ -11,6 +11,7 @@ import com.vrema.data.local.dao.TimeBlockDao
 import com.vrema.data.local.dao.WorkDayDao
 import com.vrema.data.repository.SettingsRepositoryImpl
 import com.vrema.data.repository.WorkDayRepositoryImpl
+import com.vrema.domain.events.DataChangeEventBus
 import com.vrema.domain.repository.SettingsRepository
 import com.vrema.domain.repository.WorkDayRepository
 import dagger.Module
@@ -90,4 +91,8 @@ object AppModule {
         settingsDao: SettingsDao,
         quotaRuleDao: QuotaRuleDao
     ): SettingsRepository = SettingsRepositoryImpl(settingsDao, quotaRuleDao)
+
+    @Provides
+    @Singleton
+    fun provideDataChangeEventBus(): DataChangeEventBus = DataChangeEventBus()
 }
