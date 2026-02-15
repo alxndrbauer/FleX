@@ -2,15 +2,15 @@ package com.vrema.domain.usecase
 
 import com.google.common.truth.Truth.assertThat
 import com.vrema.domain.model.TimeBlock
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import java.time.LocalTime
 
 class CalculateDayWorkTimeUseCaseTest {
 
     private lateinit var useCase: CalculateDayWorkTimeUseCase
 
-    @Before
+    @BeforeEach
     fun setUp() {
         useCase = CalculateDayWorkTimeUseCase()
     }

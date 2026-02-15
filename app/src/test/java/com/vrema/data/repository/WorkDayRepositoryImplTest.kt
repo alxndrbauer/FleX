@@ -14,8 +14,8 @@ import com.vrema.domain.model.WorkLocation
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.Rule
 import org.junit.Test
+import org.junit.Rule
 import org.mockito.Mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever

@@ -23,6 +23,13 @@ android {
         }
     }
 
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+            isIncludeAndroidResources = true
+        }
+    }
+
     signingConfigs {
         create("release") {
             storeFile = file("../android.jks")
@@ -60,8 +67,14 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/LICENSE.md"
+            excludes += "/META-INF/LICENSE-notice.md"
         }
     }
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }
 
 tasks.register<Sync>("renameReleaseApk") {
@@ -96,7 +109,8 @@ dependencies {
     ksp("androidx.room:room-compiler:2.7.1")
 
     // Hilt
-    implementation("com.google.dagger:hilt-android:2.56.2")
+    implementation("com.google.dagger:hilt-android:2.52")
+    ksp("com.google.dagger:hilt-android-compiler:2.52")
     ksp("com.google.dagger:hilt-android-compiler:2.56.2")
 
     // Lifecycle
@@ -114,14 +128,18 @@ dependencies {
     // Java 8+ API desugaring (for LocalDate/LocalTime on older APIs)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
-    // Testing
-    testImplementation("junit:junit:4.13.2")
+    // Unit Testing (JUnit 5 is okay here)
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.12.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.12.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.12.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.0")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.1.0")
     testImplementation("org.mockito:mockito-core:5.1.1")
     testImplementation("com.google.truth:truth:1.1.5")
     testImplementation("androidx.arch.core:core-testing:2.2.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1")
 
+    // Instrumented Testing (Switched to JUnit 4)
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.room:room-testing:2.7.1")

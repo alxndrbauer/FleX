@@ -6,8 +6,8 @@ import com.vrema.domain.model.Settings
 import com.vrema.domain.model.TimeBlock
 import com.vrema.domain.model.WorkDay
 import com.vrema.domain.model.WorkLocation
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
@@ -21,7 +21,7 @@ class CalculateQuotaUseCaseTest {
     private lateinit var useCase: CalculateQuotaUseCase
     private lateinit var settings: Settings
 
-    @Before
+    @BeforeEach
     fun setUp() {
         calculateDayWorkTime = mock()
         useCase = CalculateQuotaUseCase(calculateDayWorkTime)

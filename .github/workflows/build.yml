@@ -37,6 +37,11 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
 
+      - name: Run Unit Tests
+        run: ./gradlew testDebugUnitTest
+        env:
+          JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
+
       - name: Build Release APK
         run: ./gradlew assembleRelease renameReleaseApk
         env:

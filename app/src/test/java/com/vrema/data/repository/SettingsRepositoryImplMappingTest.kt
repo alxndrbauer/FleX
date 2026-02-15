@@ -3,7 +3,7 @@ package com.vrema.data.repository
 import com.google.common.truth.Truth.assertThat
 import com.vrema.data.local.entity.SettingsEntity
 import com.vrema.domain.model.Settings
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 /**
  * Tests for SettingsEntity ↔ Settings mapping functions.
