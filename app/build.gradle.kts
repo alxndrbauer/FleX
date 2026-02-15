@@ -140,7 +140,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1")
 
     // Instrumented Testing (Switched to JUnit 4)
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.room:room-testing:2.7.1")
     androidTestImplementation("androidx.test:runner:1.5.2")
