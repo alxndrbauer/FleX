@@ -6,6 +6,7 @@ import com.vrema.domain.events.DataChangeEvent
 import com.vrema.domain.events.DataChangeEventBus
 import com.vrema.domain.model.DayType
 import com.vrema.domain.model.FlextimeBalance
+import com.vrema.domain.model.PublicHolidays
 import com.vrema.domain.model.QuotaStatus
 import com.vrema.domain.model.Settings
 import com.vrema.domain.model.TimeBlock
@@ -25,9 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import com.vrema.domain.model.PublicHolidays
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -48,7 +47,10 @@ data class MonthUiState(
     val requiredOfficeMinutes: Long = 0,
     val totalWorkMinutes: Long = 0,
     val netMinutesByDate: Map<LocalDate, Long> = emptyMap(),
-    val hasPlannedDays: Boolean = false
+    val hasPlannedDays: Boolean = false,
+    val workedMinutesMonth: Long = 0,
+    val targetMinutesMonth: Long = 0,
+    val differenceMinutesMonth: Long = 0
 )
 
 @HiltViewModel
@@ -133,6 +135,30 @@ class MonthViewModel @Inject constructor(
                     day.date to calculateDayWorkTime(day.timeBlocks).netMinutes
                 }
 
+                // Calculate monthly worked hours (sum of WORK and SATURDAY_BONUS days only, excluding planned days)
+                val workingDaysMonth = daysForCalc.filter {
+                    it.dayType in listOf(
+                        DayType.WORK,
+                        DayType.SATURDAY_BONUS
+                    )
+                }
+                val totalWorkMinutesMonth = workingDaysMonth.sumOf { day ->
+                    calculateDayWorkTime(day.timeBlocks).netMinutes
+                }
+
+                // Calculate target work days for the month (Mon-Fri excluding holidays)
+                var targetWorkDaysMonth = 0
+                for (day in 1..month.lengthOfMonth()) {
+                    val date = month.atDay(day)
+                    if (date.dayOfWeek !in listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
+                        && !PublicHolidays.isHoliday(date)
+                    ) {
+                        targetWorkDaysMonth++
+                    }
+                }
+                val targetMinutesMonth = targetWorkDaysMonth.toLong() * settings.dailyWorkMinutes
+                val differenceMinutesMonth = totalWorkMinutesMonth - targetMinutesMonth
+
                 _uiState.value = _uiState.value.copy(
                     yearMonth = month,
                     workDays = days,
@@ -145,7 +171,10 @@ class MonthViewModel @Inject constructor(
                     requiredOfficeMinutes = requiredMin,
                     totalWorkMinutes = totalMin,
                     netMinutesByDate = netByDate,
-                    hasPlannedDays = hasPlanned
+                    hasPlannedDays = hasPlanned,
+                    workedMinutesMonth = totalWorkMinutesMonth,
+                    targetMinutesMonth = targetMinutesMonth,
+                    differenceMinutesMonth = differenceMinutesMonth
                 )
             }
         }

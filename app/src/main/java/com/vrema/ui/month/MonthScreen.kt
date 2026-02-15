@@ -183,8 +183,15 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                     style = MaterialTheme.typography.bodySmall
                 )
 
+                val workedHours = state.workedMinutesMonth / 60
+                val workedMinutes = state.workedMinutesMonth % 60
+                val targetHours = state.targetMinutesMonth / 60
+                val targetMinutes = state.targetMinutesMonth % 60
+                val sign = if (state.differenceMinutesMonth >= 0) "+" else ""
+                val diffHours = kotlin.math.abs(state.differenceMinutesMonth) / 60
+                val diffMinutes = kotlin.math.abs(state.differenceMinutesMonth) % 60
                 Text(
-                    "Gleitzeit: ${state.prognosisFlextime.formatDisplay()} (Soll: ${state.prognosisFlextime.formatTarget()})",
+                    "Erbrachte Stunden: ${workedHours}h ${workedMinutes}min (Soll: ${targetHours}h ${targetMinutes}min) | Differenz: $sign${diffHours}h ${diffMinutes}min",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
