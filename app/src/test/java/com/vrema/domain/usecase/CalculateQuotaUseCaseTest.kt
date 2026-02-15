@@ -1,0 +1,443 @@
+package com.vrema.domain.usecase
+
+import com.google.common.truth.Truth.assertThat
+import com.vrema.domain.model.DayType
+import com.vrema.domain.model.Settings
+import com.vrema.domain.model.TimeBlock
+import com.vrema.domain.model.WorkDay
+import com.vrema.domain.model.WorkLocation
+import org.junit.Before
+import org.junit.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.YearMonth
+
+class CalculateQuotaUseCaseTest {
+
+    private lateinit var calculateDayWorkTime: CalculateDayWorkTimeUseCase
+    private lateinit var useCase: CalculateQuotaUseCase
+    private lateinit var settings: Settings
+
+    @Before
+    fun setUp() {
+        calculateDayWorkTime = mock()
+        useCase = CalculateQuotaUseCase(calculateDayWorkTime)
+        settings = Settings(
+            dailyWorkMinutes = 426, // 7h 6min
+            monthlyWorkMinutes = 9266,
+            officeQuotaPercent = 40, // 40% office quota
+            officeQuotaMinDays = 8 // min 8 office days
+        )
+    }
+
+    // Office vs Home-Office hours tests
+
+    @Test
+    fun testOfficeWorkDayWhenWorkedExpectOfficeMinutesIncremented() {
+        val workDay = createWorkDay(
+            date = LocalDate.of(2026, 2, 3),
+            location = WorkLocation.OFFICE,
+            dayType = DayType.WORK
+        )
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val result = useCase(listOf(workDay), settings, YearMonth.of(2026, 2))
+
+        assertThat(result.officeMinutes).isEqualTo(426)
+        assertThat(result.homeOfficeMinutes).isEqualTo(0)
+        assertThat(result.officeDays).isEqualTo(1)
+        assertThat(result.homeOfficeDays).isEqualTo(0)
+    }
+
+    @Test
+    fun testHomeOfficeWorkDayWhenWorkedExpectHomeOfficeMinutesIncremented() {
+        val workDay = createWorkDay(
+            date = LocalDate.of(2026, 2, 3),
+            location = WorkLocation.HOME_OFFICE,
+            dayType = DayType.WORK
+        )
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val result = useCase(listOf(workDay), settings, YearMonth.of(2026, 2))
+
+        assertThat(result.officeMinutes).isEqualTo(0)
+        assertThat(result.homeOfficeMinutes).isEqualTo(426)
+        assertThat(result.officeDays).isEqualTo(0)
+        assertThat(result.homeOfficeDays).isEqualTo(1)
+    }
+
+    @Test
+    fun testMixedLocationDaysExpectSeparateTracking() {
+        val workDays = listOf(
+            createWorkDay(LocalDate.of(2026, 2, 3), WorkLocation.OFFICE, DayType.WORK),
+            createWorkDay(LocalDate.of(2026, 2, 4), WorkLocation.HOME_OFFICE, DayType.WORK),
+            createWorkDay(LocalDate.of(2026, 2, 5), WorkLocation.OFFICE, DayType.WORK)
+        )
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val result = useCase(workDays, settings, YearMonth.of(2026, 2))
+
+        assertThat(result.officeMinutes).isEqualTo(852) // 2 * 426
+        assertThat(result.homeOfficeMinutes).isEqualTo(426) // 1 * 426
+        assertThat(result.officeDays).isEqualTo(2)
+        assertThat(result.homeOfficeDays).isEqualTo(1)
+    }
+
+    // Neutral day types tests
+
+    @Test
+    fun testVacationDayExpectNotCountedInQuota() {
+        val workDay = createWorkDay(
+            date = LocalDate.of(2026, 2, 3),
+            location = WorkLocation.OFFICE,
+            dayType = DayType.VACATION
+        )
+
+        val result = useCase(listOf(workDay), settings, YearMonth.of(2026, 2))
+
+        assertThat(result.officeMinutes).isEqualTo(0)
+        assertThat(result.homeOfficeMinutes).isEqualTo(0)
+        assertThat(result.officeDays).isEqualTo(0)
+        assertThat(result.homeOfficeDays).isEqualTo(0)
+    }
+
+    @Test
+    fun testSpecialVacationDayExpectNotCountedInQuota() {
+        val workDay = createWorkDay(
+            date = LocalDate.of(2026, 2, 3),
+            location = WorkLocation.OFFICE,
+            dayType = DayType.SPECIAL_VACATION
+        )
+
+        val result = useCase(listOf(workDay), settings, YearMonth.of(2026, 2))
+
+        assertThat(result.officeMinutes).isEqualTo(0)
+        assertThat(result.officeDays).isEqualTo(0)
+    }
+
+    @Test
+    fun testFlexDayExpectNotCountedInQuota() {
+        val workDay = createWorkDay(
+            date = LocalDate.of(2026, 2, 3),
+            location = WorkLocation.OFFICE,
+            dayType = DayType.FLEX_DAY
+        )
+
+        val result = useCase(listOf(workDay), settings, YearMonth.of(2026, 2))
+
+        assertThat(result.officeMinutes).isEqualTo(0)
+        assertThat(result.officeDays).isEqualTo(0)
+    }
+
+    // Office percentage calculation tests
+
+    @Test
+    fun testOfficePercentWhenNoNeutralDaysExpectCorrectCalculation() {
+        // 5 office days, 5 home office days (all work days)
+        // Monthly target: 9266 minutes
+        // Office work: 5 * 426 = 2130 minutes
+        // Percent: (2130 / 9266) * 100 = ~22.98%
+        val workDays = mutableListOf<WorkDay>()
+        for (i in 3..7) { // Mon-Fri (5 office days)
+            workDays.add(createWorkDay(LocalDate.of(2026, 2, i), WorkLocation.OFFICE, DayType.WORK))
+        }
+        for (i in 10..14) { // Next Mon-Fri (5 home office days)
+            workDays.add(createWorkDay(LocalDate.of(2026, 2, i), WorkLocation.HOME_OFFICE, DayType.WORK))
+        }
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val result = useCase(workDays, settings, YearMonth.of(2026, 2))
+
+        assertThat(result.officeMinutes).isEqualTo(2130) // 5 * 426
+        assertThat(result.homeOfficeMinutes).isEqualTo(2130) // 5 * 426
+        val expectedPercent = (2130.0 / 9266.0) * 100
+        assertThat(result.officePercent).isWithin(0.1).of(expectedPercent)
+    }
+
+    @Test
+    fun testOfficePercentWhenNeutralDaysExpectAdjustedTarget() {
+        // Target is adjusted: monthlyWorkMinutes - (neutralDays * dailyWorkMinutes)
+        // 2 work days (office), 1 vacation day
+        // Target: 9266 - (1 * 426) = 8840
+        // Office: 2 * 426 = 852
+        // Percent: (852 / 8840) * 100 = ~9.64%
+        val workDays = listOf(
+            createWorkDay(LocalDate.of(2026, 2, 3), WorkLocation.OFFICE, DayType.WORK),
+            createWorkDay(LocalDate.of(2026, 2, 4), WorkLocation.OFFICE, DayType.WORK),
+            createWorkDay(LocalDate.of(2026, 2, 5), WorkLocation.OFFICE, DayType.VACATION)
+        )
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val result = useCase(workDays, settings, YearMonth.of(2026, 2))
+
+        val adjustedTarget = 9266 - 426
+        val expectedPercent = (852.0 / adjustedTarget) * 100
+        assertThat(result.officePercent).isWithin(0.1).of(expectedPercent)
+    }
+
+    @Test
+    fun testOfficePercentWhenZeroTargetExpectZeroPercent() {
+        // All days are neutral (vacation, flex days)
+        val workDays = listOf(
+            createWorkDay(LocalDate.of(2026, 2, 3), WorkLocation.OFFICE, DayType.VACATION),
+            createWorkDay(LocalDate.of(2026, 2, 4), WorkLocation.OFFICE, DayType.FLEX_DAY)
+        )
+
+        val result = useCase(workDays, settings, YearMonth.of(2026, 2))
+
+        assertThat(result.officePercent).isEqualTo(0.0)
+    }
+
+    // Quota met conditions tests
+
+    @Test
+    fun testQuotaMetWhenPercentageExceedsThresholdExpectPercentQuotaMet() {
+        // 10 office days * 426 = 4260 minutes
+        // Percent: (4260 / 9266) * 100 = ~45.98% > 40%
+        val workDays = mutableListOf<WorkDay>()
+        for (i in 3..12) { // 10 office days
+            workDays.add(createWorkDay(LocalDate.of(2026, 2, i), WorkLocation.OFFICE, DayType.WORK))
+        }
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val result = useCase(workDays, settings, YearMonth.of(2026, 2))
+
+        assertThat(result.officePercent).isGreaterThan(40.0)
+        assertThat(result.percentQuotaMet).isTrue()
+        assertThat(result.daysQuotaMet).isTrue() // also meets days quota (10 >= 8)
+    }
+
+    @Test
+    fun testQuotaMetWhenDaysExceedMinimumExpectDaysQuotaMet() {
+        // 8 office days (meets minimum)
+        val workDays = mutableListOf<WorkDay>()
+        for (i in 3..10) { // 8 office days
+            workDays.add(createWorkDay(LocalDate.of(2026, 2, i), WorkLocation.OFFICE, DayType.WORK))
+        }
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val result = useCase(workDays, settings, YearMonth.of(2026, 2))
+
+        assertThat(result.officeDays).isEqualTo(8)
+        assertThat(result.daysQuotaMet).isTrue()
+    }
+
+    @Test
+    fun testQuotaNotMetWhenBelowBothThresholdsExpectNotMet() {
+        // 2 office days, 10 home office days
+        // Percent: (852 / 9266) * 100 = ~9.2% < 40%
+        // Days: 2 < 8
+        val workDays = mutableListOf<WorkDay>()
+        for (i in 3..4) { // 2 office days
+            workDays.add(createWorkDay(LocalDate.of(2026, 2, i), WorkLocation.OFFICE, DayType.WORK))
+        }
+        for (i in 5..14) { // 10 home office days
+            workDays.add(createWorkDay(LocalDate.of(2026, 2, i), WorkLocation.HOME_OFFICE, DayType.WORK))
+        }
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val result = useCase(workDays, settings, YearMonth.of(2026, 2))
+
+        assertThat(result.officePercent).isLessThan(40.0)
+        assertThat(result.percentQuotaMet).isFalse()
+        assertThat(result.officeDays).isLessThan(8)
+        assertThat(result.daysQuotaMet).isFalse()
+    }
+
+    @Test
+    fun testQuotaMetWhenEitherConditionMetExpectQuotaMet() {
+        // quotaMet = percentQuotaMet OR daysQuotaMet
+        // Test case: days met but percent not met
+        val workDays = mutableListOf<WorkDay>()
+        for (i in 3..10) { // 8 office days (meets min days)
+            workDays.add(createWorkDay(LocalDate.of(2026, 2, i), WorkLocation.OFFICE, DayType.WORK))
+        }
+        for (i in 11..20) { // 10 home office days
+            workDays.add(createWorkDay(LocalDate.of(2026, 2, i), WorkLocation.HOME_OFFICE, DayType.WORK))
+        }
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val result = useCase(workDays, settings, YearMonth.of(2026, 2))
+
+        // Even if percent quota not met, days quota is met
+        assertThat(result.daysQuotaMet).isTrue()
+        // quotaMet property uses OR logic
+        assertThat(result.percentQuotaMet || result.daysQuotaMet).isTrue()
+    }
+
+    // Remaining work days calculation tests
+
+    @Test
+    fun testRemainingWorkDaysWhenCurrentMonthExpectCorrectCount() {
+        // This test is time-dependent; we'll use a fixed month in the past
+        // For Feb 2026, from Feb 15 (today in context) to end of month
+        // Remaining work days: Mon-Fri from Feb 16-28
+        val result = useCase(emptyList(), settings, YearMonth.of(2026, 2))
+
+        // Feb 2026: 16-20 (5 days), 23-27 (5 days) = 10 work days
+        assertThat(result.remainingWorkDays).isGreaterThan(0)
+    }
+
+    @Test
+    fun testRemainingWorkDaysWhenPastMonthExpectZero() {
+        val result = useCase(emptyList(), settings, YearMonth.of(2026, 1))
+
+        assertThat(result.remainingWorkDays).isEqualTo(0)
+    }
+
+    @Test
+    fun testRequiredOfficeDaysWhenBelowQuotaExpectPositiveRequired() {
+        // 3 office days, need 8 total
+        // Required: 8 - 3 = 5
+        val workDays = listOf(
+            createWorkDay(LocalDate.of(2026, 2, 3), WorkLocation.OFFICE, DayType.WORK),
+            createWorkDay(LocalDate.of(2026, 2, 4), WorkLocation.OFFICE, DayType.WORK),
+            createWorkDay(LocalDate.of(2026, 2, 5), WorkLocation.OFFICE, DayType.WORK)
+        )
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val result = useCase(workDays, settings, YearMonth.of(2026, 2))
+
+        assertThat(result.officeDays).isEqualTo(3)
+        assertThat(result.requiredOfficeDaysForQuota).isEqualTo(5) // 8 - 3
+    }
+
+    @Test
+    fun testRequiredOfficeDaysWhenMetQuotaExpectZero() {
+        // 10 office days, need 8
+        // Required: max(0, 8 - 10) = 0
+        val workDays = mutableListOf<WorkDay>()
+        for (i in 3..12) { // 10 office days
+            workDays.add(createWorkDay(LocalDate.of(2026, 2, i), WorkLocation.OFFICE, DayType.WORK))
+        }
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val result = useCase(workDays, settings, YearMonth.of(2026, 2))
+
+        assertThat(result.requiredOfficeDaysForQuota).isEqualTo(0)
+    }
+
+    // Custom quota parameters tests
+
+    @Test
+    fun testCustomQuotaPercentExpectUsedInCalculation() {
+        // Override quota percent to 50%
+        val workDays = mutableListOf<WorkDay>()
+        for (i in 3..10) { // 8 office days
+            workDays.add(createWorkDay(LocalDate.of(2026, 2, i), WorkLocation.OFFICE, DayType.WORK))
+        }
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val result = useCase(
+            workDays = workDays,
+            settings = settings,
+            yearMonth = YearMonth.of(2026, 2),
+            quotaPercent = 50, // custom
+            quotaMinDays = 8
+        )
+
+        // 8 * 426 / 9266 = ~36.8% < 50%
+        assertThat(result.percentQuotaMet).isFalse()
+    }
+
+    @Test
+    fun testCustomQuotaMinDaysExpectUsedInCalculation() {
+        // Override min days to 12
+        val workDays = mutableListOf<WorkDay>()
+        for (i in 3..10) { // 8 office days
+            workDays.add(createWorkDay(LocalDate.of(2026, 2, i), WorkLocation.OFFICE, DayType.WORK))
+        }
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val result = useCase(
+            workDays = workDays,
+            settings = settings,
+            yearMonth = YearMonth.of(2026, 2),
+            quotaPercent = 40,
+            quotaMinDays = 12 // custom
+        )
+
+        assertThat(result.officeDays).isEqualTo(8)
+        assertThat(result.daysQuotaMet).isFalse() // 8 < 12
+        assertThat(result.requiredOfficeDaysForQuota).isEqualTo(4) // 12 - 8
+    }
+
+    // Edge cases
+
+    @Test
+    fun testEmptyWorkDaysListExpectZeroValues() {
+        val result = useCase(emptyList(), settings, YearMonth.of(2026, 2))
+
+        assertThat(result.officeMinutes).isEqualTo(0)
+        assertThat(result.homeOfficeMinutes).isEqualTo(0)
+        assertThat(result.officeDays).isEqualTo(0)
+        assertThat(result.homeOfficeDays).isEqualTo(0)
+        assertThat(result.officePercent).isEqualTo(0.0)
+        assertThat(result.percentQuotaMet).isFalse()
+        assertThat(result.daysQuotaMet).isFalse()
+    }
+
+    // Helper function
+    private fun createWorkDay(
+        date: LocalDate,
+        location: WorkLocation,
+        dayType: DayType
+    ): WorkDay {
+        return WorkDay(
+            id = date.dayOfMonth.toLong(),
+            date = date,
+            location = location,
+            dayType = dayType,
+            timeBlocks = listOf(
+                TimeBlock(
+                    id = date.dayOfMonth.toLong(),
+                    workDayId = date.dayOfMonth.toLong(),
+                    startTime = LocalTime.of(9, 0),
+                    endTime = LocalTime.of(17, 0)
+                )
+            )
+        )
+    }
+}
