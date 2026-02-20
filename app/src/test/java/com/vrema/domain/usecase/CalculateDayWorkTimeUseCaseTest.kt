@@ -255,6 +255,42 @@ class CalculateDayWorkTimeUseCaseTest {
     }
 
     @Test
+    fun testTwoCompletedBlocksWhenTotalOver9HAndGapCovers45MinBreakExpectNoDeduction() {
+        // Büro 8:20-14:34 (374 min), HO 15:30-19:00 (210 min) = 584 min gross
+        // Total > 9h (540 min) → requires 45 min break
+        // Gap = 56 min > 45 min → gap covers the required break → no deduction
+        val timeBlocks = listOf(
+            TimeBlock(1, 1, LocalTime.of(8, 20), LocalTime.of(14, 34), isDuration = false),
+            TimeBlock(2, 1, LocalTime.of(15, 30), LocalTime.of(19, 0), isDuration = false)
+        )
+
+        val result = useCase(timeBlocks)
+
+        assertThat(result.grossMinutes).isEqualTo(584)
+        assertThat(result.netMinutes).isEqualTo(584) // gap covers required 45-min break, no deduction
+        assertThat(result.breakMinutes).isEqualTo(56) // the actual gap
+        assertThat(result.exceedsMaxHours).isFalse()
+    }
+
+    @Test
+    fun testTwoCompletedBlocksWhenTotalOver9HAndGapUnder45MinExpectTopUp() {
+        // Büro 8:20-14:34 (374 min), HO 15:00-19:00 (240 min) = 614 min gross
+        // Total > 9h (540 min) → requires 45 min break
+        // Gap = 26 min < 45 min → top-up 19 min needed
+        val timeBlocks = listOf(
+            TimeBlock(1, 1, LocalTime.of(8, 20), LocalTime.of(14, 34), isDuration = false),
+            TimeBlock(2, 1, LocalTime.of(15, 0), LocalTime.of(19, 0), isDuration = false)
+        )
+
+        val result = useCase(timeBlocks)
+
+        assertThat(result.grossMinutes).isEqualTo(614)
+        assertThat(result.netMinutes).isEqualTo(595) // 614 - 19 (top-up: 45 required - 26 gap)
+        assertThat(result.breakMinutes).isEqualTo(45)
+        assertThat(result.exceedsMaxHours).isFalse()
+    }
+
+    @Test
     fun testMultipleBlocksWhenFirstOver6HAndGapCoversBreakWithRunningSecondExpectNoDeduction() {
         // Block 1: 9:00-16:00 (7h, completed), 45min gap, Block 2: 16:45-running
         // Gap of 45min covers the required 30min break → no additional deduction
