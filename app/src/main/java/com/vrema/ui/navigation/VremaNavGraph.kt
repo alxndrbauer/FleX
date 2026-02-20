@@ -2,6 +2,7 @@ package com.vrema.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EditCalendar
@@ -24,6 +25,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.vrema.ui.analytics.AnalyticsScreen
 import com.vrema.ui.backup.BackupScreen
 import com.vrema.ui.home.HomeScreen
 import com.vrema.ui.month.MonthScreen
@@ -36,6 +38,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     data object Month : Screen("month", "Monat", Icons.Default.CalendarMonth)
     data object Planning : Screen("planning", "Planung", Icons.Default.EditCalendar)
     data object Quota : Screen("quota", "Quote", Icons.Default.Dashboard)
+    data object Analytics : Screen("analytics", "Analytics", Icons.Default.BarChart)
     data object Settings : Screen("settings", "Einstellungen", Icons.Default.Settings)
     data object Backup : Screen("backup", "Datensicherung", Icons.Default.Settings)
 }
@@ -45,6 +48,7 @@ val bottomNavItems = listOf(
     Screen.Month,
     Screen.Planning,
     Screen.Quota,
+    Screen.Analytics,
     Screen.Settings
 )
 
@@ -86,6 +90,7 @@ fun VremaNavGraph() {
             composable(Screen.Month.route) { MonthScreen() }
             composable(Screen.Planning.route) { PlanningScreen() }
             composable(Screen.Quota.route) { QuotaScreen() }
+            composable(Screen.Analytics.route) { AnalyticsScreen() }
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     onNavigateToBackup = { navController.navigate(Screen.Backup.route) }

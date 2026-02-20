@@ -15,5 +15,6 @@ interface WorkDayRepository {
     suspend fun deleteTimeBlock(timeBlock: TimeBlock)
     fun getTimeBlocksForDay(workDayId: Long): Flow<List<TimeBlock>>
     fun getWorkDaysForYear(year: Int): Flow<List<WorkDay>>
+    fun getWorkDaysInRange(start: LocalDate, end: LocalDate): Flow<List<WorkDay>>
     suspend fun confirmPlannedDays(yearMonth: YearMonth)
 }

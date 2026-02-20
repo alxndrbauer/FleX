@@ -99,6 +99,9 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
+    // Charts
+    implementation("com.patrykandpatrick.vico:compose-m3:2.4.3")
+
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.9.0")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")

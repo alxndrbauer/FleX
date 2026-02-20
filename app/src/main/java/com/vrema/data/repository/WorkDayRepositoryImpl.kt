@@ -94,6 +94,22 @@ class WorkDayRepositoryImpl @Inject constructor(
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun getWorkDaysInRange(start: LocalDate, end: LocalDate): Flow<List<WorkDay>> {
+        return workDayDao.getWorkDaysBetween(start.toString(), end.toString()).flatMapLatest { entities ->
+            if (entities.isEmpty()) return@flatMapLatest flowOf(emptyList<WorkDay>())
+            val ids = entities.map { it.id }.toSet()
+            timeBlockDao.getAllTimeBlocksFlow().map { allBlocks ->
+                val blocksByDayId = allBlocks.filter { it.workDayId in ids }.groupBy { it.workDayId }
+                entities.map { entity ->
+                    entity.toDomain().copy(
+                        timeBlocks = blocksByDayId[entity.id]?.map { it.toDomain() } ?: emptyList()
+                    )
+                }
+            }
+        }
+    }
+
     override suspend fun confirmPlannedDays(yearMonth: YearMonth) {
         val start = yearMonth.atDay(1).toString()
         val end = yearMonth.atEndOfMonth().toString()

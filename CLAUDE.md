@@ -42,11 +42,13 @@ TaskCreate mit status: "pending"
 TaskUpdate mit model assignments in metadata
 ```
 
-### 3. Delegieren
+### 3. An Modelle delegieren
+Delegation erfolgt über den `model` Parameter des Task-Tools:
 ```bash
-Task(subagent_type: "sonnet", prompt: "...")
-Task(subagent_type: "haiku", prompt: "...")
+Task(subagent_type: "general-purpose", model: "sonnet", prompt: "...")
+Task(subagent_type: "general-purpose", model: "haiku", prompt: "...")
 ```
+**Wichtig:** `subagent_type` ist immer `"general-purpose"`, das Modell wird über `model` gewählt.
 
 ### 4. Review & Merge
 Opus prüft alle Ergebnisse und erstellt Final-Commit
@@ -100,13 +102,13 @@ feat(domain): Add overtime calculation to FlextimeBalance
 
 Add separate overtime tracking independent from flextime.
 
-Co-Authored-By: Claude Sonnet <noreply@anthropic.com>
+Co-Authored-By: Claude Sonnet <noreply@anthreply.com>
 ```
 
 ```
 fix(ui): Delete button now appears in month view dialog
 
-Co-Authored-By: Claude Haiku <noreply@anthropic.com>
+Co-Authored-By: Claude Haiku <noreply@anthreply.com>
 ```
 
 ## Regeln
