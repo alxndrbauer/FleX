@@ -287,18 +287,22 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         }
                     }
 
-                    // Explicit save button: show when selected type differs from what's saved
+                    // Explicit save button for types that don't require time blocks.
+                    // WORK type is committed implicitly when clocking in or adding time.
+                    val nonWorkSaveTypes = setOf(
+                        DayType.VACATION, DayType.SPECIAL_VACATION,
+                        DayType.FLEX_DAY, DayType.SATURDAY_BONUS
+                    )
                     val savedDayType = state.workDay?.dayType
-                    val showSaveButton = state.selectedDayType != savedDayType &&
-                        !(state.selectedDayType == DayType.WORK && savedDayType == null)
+                    val showSaveButton = state.selectedDayType in nonWorkSaveTypes &&
+                        state.selectedDayType != savedDayType
                     if (showSaveButton) {
                         Spacer(modifier = Modifier.height(4.dp))
                         val typeLabel = when (state.selectedDayType) {
                             DayType.VACATION -> "Urlaub"
                             DayType.SPECIAL_VACATION -> "Sonderurlaub"
                             DayType.FLEX_DAY -> "Gleittag"
-                            DayType.SATURDAY_BONUS -> "Samstag+"
-                            DayType.WORK -> "Arbeitstag"
+                            else -> "Samstag+"
                         }
                         Button(
                             onClick = { viewModel.saveDayType(state.selectedDayType) },
