@@ -38,11 +38,14 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Run Unit Tests
-        run: xvfb-run ./gradlew testDebugUnitTest
+        run: ./gradlew testDebugUnitTest
+        env:
+          JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
 
       - name: Build Release APK
-        run: xvfb-run ./gradlew assembleRelease renameReleaseApk --no-daemon
+        run: ./gradlew assembleRelease renameReleaseApk --no-daemon
         env:
+          JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
