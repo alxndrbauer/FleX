@@ -254,6 +254,40 @@ class CalculateDayWorkTimeUseCaseTest {
         assertThat(result.exceedsMaxHours).isFalse()
     }
 
+    @Test
+    fun testMultipleBlocksWhenFirstOver6HAndGapCoversBreakWithRunningSecondExpectNoDeduction() {
+        // Block 1: 9:00-16:00 (7h, completed), 45min gap, Block 2: 16:45-running
+        // Gap of 45min covers the required 30min break → no additional deduction
+        val timeBlocks = listOf(
+            TimeBlock(1, 1, LocalTime.of(9, 0), LocalTime.of(16, 0), isDuration = false),
+            TimeBlock(2, 1, LocalTime.of(16, 45), null, isDuration = false)
+        )
+
+        val result = useCase(timeBlocks)
+
+        assertThat(result.grossMinutes).isEqualTo(420) // only completed block counts
+        assertThat(result.netMinutes).isEqualTo(420)   // gap covers break, no deduction
+        assertThat(result.breakMinutes).isEqualTo(45)
+        assertThat(result.exceedsMaxHours).isFalse()
+    }
+
+    @Test
+    fun testMultipleBlocksWhenFirstOver6HAndGapUnderBreakWithRunningSecondExpectTopUp() {
+        // Block 1: 9:00-16:00 (7h, completed), 15min gap, Block 2: 16:15-running
+        // Gap of 15min < required 30min → top up by 15min
+        val timeBlocks = listOf(
+            TimeBlock(1, 1, LocalTime.of(9, 0), LocalTime.of(16, 0), isDuration = false),
+            TimeBlock(2, 1, LocalTime.of(16, 15), null, isDuration = false)
+        )
+
+        val result = useCase(timeBlocks)
+
+        assertThat(result.grossMinutes).isEqualTo(420)
+        assertThat(result.netMinutes).isEqualTo(405) // 420 - 15 top-up
+        assertThat(result.breakMinutes).isEqualTo(30)
+        assertThat(result.exceedsMaxHours).isFalse()
+    }
+
     // Edge cases
 
     @Test

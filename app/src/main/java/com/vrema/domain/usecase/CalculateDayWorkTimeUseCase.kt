@@ -50,13 +50,15 @@ class CalculateDayWorkTimeUseCase @Inject constructor() {
             )
         }
 
-        // Calculate manual breaks (gaps between blocks)
-        var manualBreakMinutes = 0L
-        for (i in 0 until completedBlocks.size - 1) {
-            val gapStart = completedBlocks[i].endTime!!
-            val gapEnd = completedBlocks[i + 1].startTime
-            val gap = Duration.between(gapStart, gapEnd).toMinutes()
-            if (gap > 0) manualBreakMinutes += gap
+        // Calculate gaps between consecutive blocks.
+        // Also counts the gap between the last completed block and a running block,
+        // so that a break already taken is not deducted again.
+        var totalGapMinutes = 0L
+        for (i in 0 until sorted.size - 1) {
+            val currentEnd = sorted[i].endTime ?: continue // running block has no end
+            val nextStart = sorted[i + 1].startTime
+            val gap = Duration.between(currentEnd, nextStart).toMinutes()
+            if (gap > 0) totalGapMinutes += gap
         }
 
         // Determine required legal break
@@ -69,14 +71,15 @@ class CalculateDayWorkTimeUseCase @Inject constructor() {
         val effectiveBreak: Long
         val netMinutes: Long
 
-        if (completedBlocks.size <= 1) {
-            // Single block: apply automatic break
+        if (sorted.size <= 1) {
+            // Single block (completed or running): apply automatic break
             effectiveBreak = requiredBreak
             netMinutes = totalGrossMinutes - effectiveBreak
         } else {
-            // Multiple blocks: gaps count as breaks, top up if insufficient
-            effectiveBreak = maxOf(manualBreakMinutes, requiredBreak)
-            netMinutes = totalGrossMinutes - (effectiveBreak - manualBreakMinutes).coerceAtLeast(0)
+            // Multiple blocks: gaps count as breaks, top up if insufficient.
+            // Includes gap to a running block so an existing break is not double-counted.
+            effectiveBreak = maxOf(totalGapMinutes, requiredBreak)
+            netMinutes = totalGrossMinutes - (effectiveBreak - totalGapMinutes).coerceAtLeast(0)
         }
 
         val cappedNet = netMinutes.coerceAtLeast(0)
