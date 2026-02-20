@@ -49,8 +49,7 @@ jobs:
 
       - name: Generate version tag
         id: version
-        run: echo "tag=v1.0.$(date +%Y%m%d-%H%M%S)" >> "$GITHUB_OUTPUT"
-
+        run: echo "tag=v$(grep 'versionName' app/build.gradle.kts | head -1 | grep -oP '\d+\.\d+\.\d+')" >> "$GITHUB_OUTPUT"
       - name: Create Release
         if: success()
         uses: softprops/action-gh-release@v2
