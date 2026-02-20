@@ -55,7 +55,13 @@ class WorkDayRepositoryImpl @Inject constructor(
     }
 
     override suspend fun saveWorkDay(workDay: WorkDay): Long {
-        return workDayDao.insert(workDay.toEntity())
+        val entity = workDay.toEntity()
+        return if (entity.id == 0L) {
+            workDayDao.insert(entity)
+        } else {
+            workDayDao.update(entity)
+            entity.id
+        }
     }
 
     override suspend fun deleteWorkDay(workDay: WorkDay) {

@@ -41,14 +41,9 @@ class CalculateQuotaUseCase @Inject constructor(
                     WorkLocation.HOME_OFFICE -> dayHomeOfficeMinutes += blockMinutes
                 }
             }
-            // If no time blocks, fall back to WorkDay.location for day counting
-            if (day.timeBlocks.isEmpty()) {
-                when (day.location) {
-                    WorkLocation.OFFICE -> officeDays++
-                    WorkLocation.HOME_OFFICE -> homeOfficeDays++
-                }
-            } else {
-                // Day counts as "office" if > 50% of block minutes are office
+            // Only count days that have at least one completed block
+            val hasCompletedBlocks = day.timeBlocks.any { it.endTime != null }
+            if (hasCompletedBlocks) {
                 if (dayOfficeMinutes >= dayHomeOfficeMinutes) officeDays++ else homeOfficeDays++
             }
             officeMinutes += dayOfficeMinutes
