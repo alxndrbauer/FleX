@@ -68,6 +68,7 @@ class HomeViewModel @Inject constructor(
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     private val _refreshTrigger = MutableStateFlow(Unit)
+    private val _localDayTypeOverride = MutableStateFlow<DayType?>(null)
 
     init {
         loadDayData()
@@ -80,9 +81,10 @@ class HomeViewModel @Inject constructor(
             combine(
                 dataChangeEventBus.events.onStart { emit(DataChangeEvent.WorkDayChanged) },
                 _refreshTrigger,
-                _selectedDate
-            ) { _, _, date -> date }
-                .flatMapLatest { date ->
+                _selectedDate,
+                _localDayTypeOverride
+            ) { _, _, date, override -> Pair(date, override) }
+                .flatMapLatest { (date, override) ->
                     val yearMonth = YearMonth.from(date)
                     val todayYearMonth = YearMonth.from(today)
                     combine(
@@ -143,7 +145,7 @@ class HomeViewModel @Inject constructor(
                             timeBlocks = timeBlocks,
                             isClockRunning = isRunning,
                             selectedLocation = workDay?.location ?: WorkLocation.OFFICE,
-                            selectedDayType = workDay?.dayType ?: DayType.WORK,
+                            selectedDayType = override ?: workDay?.dayType ?: DayType.WORK,
                             dayWorkTime = dayResult,
                             flextimeBalance = flextime,
                             quotaStatus = quota,
@@ -162,18 +164,22 @@ class HomeViewModel @Inject constructor(
     }
 
     fun goToPreviousDay() {
+        _localDayTypeOverride.value = null
         _selectedDate.value = _selectedDate.value.minusDays(1)
     }
 
     fun goToNextDay() {
+        _localDayTypeOverride.value = null
         _selectedDate.value = _selectedDate.value.plusDays(1)
     }
 
     fun goToToday() {
+        _localDayTypeOverride.value = null
         _selectedDate.value = LocalDate.now()
     }
 
     fun navigateToDate(date: LocalDate) {
+        _localDayTypeOverride.value = null
         _selectedDate.value = date
     }
 
@@ -191,9 +197,17 @@ class HomeViewModel @Inject constructor(
                     )
                 )
             } else {
-                // Reset isPlanned when user actually clocks in
-                if (state.workDay.isPlanned) {
-                    workDayRepository.saveWorkDay(state.workDay.copy(isPlanned = false))
+                val needsUpdate = state.workDay.isPlanned ||
+                    state.workDay.dayType != state.selectedDayType ||
+                    state.workDay.location != state.selectedLocation
+                if (needsUpdate) {
+                    workDayRepository.saveWorkDay(
+                        state.workDay.copy(
+                            isPlanned = false,
+                            dayType = state.selectedDayType,
+                            location = state.selectedLocation
+                        )
+                    )
                 }
                 state.workDay.id
             }
@@ -201,6 +215,7 @@ class HomeViewModel @Inject constructor(
             workDayRepository.saveTimeBlock(
                 TimeBlock(workDayId = workDayId, startTime = now, location = state.selectedLocation)
             )
+            _localDayTypeOverride.value = null
         }
     }
 
@@ -227,13 +242,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun setDayType(dayType: DayType) {
-        viewModelScope.launch {
-            val state = _uiState.value
-            _uiState.value = state.copy(selectedDayType = dayType)
-            state.workDay?.let { workDay ->
-                workDayRepository.saveWorkDay(workDay.copy(dayType = dayType))
-            }
-        }
+        _localDayTypeOverride.value = dayType
     }
 
     fun saveManualEntry(startTime: LocalTime, endTime: LocalTime, location: WorkLocation) {
@@ -249,8 +258,17 @@ class HomeViewModel @Inject constructor(
                     )
                 )
             } else {
-                if (state.workDay.isPlanned) {
-                    workDayRepository.saveWorkDay(state.workDay.copy(isPlanned = false))
+                val needsUpdate = state.workDay.isPlanned ||
+                    state.workDay.dayType != state.selectedDayType ||
+                    state.workDay.location != state.selectedLocation
+                if (needsUpdate) {
+                    workDayRepository.saveWorkDay(
+                        state.workDay.copy(
+                            isPlanned = false,
+                            dayType = state.selectedDayType,
+                            location = state.selectedLocation
+                        )
+                    )
                 }
                 state.workDay.id
             }
@@ -258,6 +276,7 @@ class HomeViewModel @Inject constructor(
             workDayRepository.saveTimeBlock(
                 TimeBlock(workDayId = workDayId, startTime = startTime, endTime = endTime, location = location)
             )
+            _localDayTypeOverride.value = null
         }
     }
 
@@ -276,8 +295,17 @@ class HomeViewModel @Inject constructor(
                     )
                 )
             } else {
-                if (state.workDay.isPlanned) {
-                    workDayRepository.saveWorkDay(state.workDay.copy(isPlanned = false))
+                val needsUpdate = state.workDay.isPlanned ||
+                    state.workDay.dayType != state.selectedDayType ||
+                    state.workDay.location != state.selectedLocation
+                if (needsUpdate) {
+                    workDayRepository.saveWorkDay(
+                        state.workDay.copy(
+                            isPlanned = false,
+                            dayType = state.selectedDayType,
+                            location = state.selectedLocation
+                        )
+                    )
                 }
                 state.workDay.id
             }
@@ -285,6 +313,7 @@ class HomeViewModel @Inject constructor(
             workDayRepository.saveTimeBlock(
                 TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = location)
             )
+            _localDayTypeOverride.value = null
         }
     }
 
@@ -302,7 +331,7 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun markAsNonWorkDay(dayType: DayType) {
+    fun saveDayType(dayType: DayType) {
         viewModelScope.launch {
             val state = _uiState.value
             workDayRepository.saveWorkDay(
@@ -313,6 +342,7 @@ class HomeViewModel @Inject constructor(
                     dayType = dayType
                 )
             )
+            _localDayTypeOverride.value = null
         }
     }
 

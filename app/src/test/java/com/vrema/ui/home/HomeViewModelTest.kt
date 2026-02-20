@@ -533,10 +533,10 @@ class HomeViewModelTest : BaseUnitTest() {
         verify(workDayRepository).deleteTimeBlock(timeBlock)
     }
 
-    // ========== markAsNonWorkDay Tests ==========
+    // ========== saveDayType Tests ==========
 
     @Test
-    fun `markAsNonWorkDay creates WorkDay with specified dayType`() = runTest {
+    fun `saveDayType creates WorkDay with specified dayType`() = runTest {
         // Given: No work day
         whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
 
@@ -547,7 +547,7 @@ class HomeViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         // When: Marking as vacation
-        viewModel.markAsNonWorkDay(DayType.VACATION)
+        viewModel.saveDayType(DayType.VACATION)
         advanceUntilIdle()
 
         // Then: WorkDay with VACATION type should be saved
@@ -555,7 +555,7 @@ class HomeViewModelTest : BaseUnitTest() {
     }
 
     @Test
-    fun `markAsNonWorkDay updates existing WorkDay`() = runTest {
+    fun `saveDayType updates existing WorkDay`() = runTest {
         // Given: Existing work day
         val today = LocalDate.now()
         val workDay = WorkDay(id = 1, date = today, dayType = DayType.WORK)
@@ -568,7 +568,7 @@ class HomeViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         // When: Marking as flex day
-        viewModel.markAsNonWorkDay(DayType.FLEX_DAY)
+        viewModel.saveDayType(DayType.FLEX_DAY)
         advanceUntilIdle()
 
         // Then: WorkDay should be updated
