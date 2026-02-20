@@ -23,5 +23,6 @@ data class TimeBlockEntity(
     val workDayId: Long,
     val startTime: String, // ISO LocalTime string
     val endTime: String? = null, // null = running
-    val isDuration: Boolean = false // true = total duration entry, no break deduction
+    val isDuration: Boolean = false, // true = total duration entry, no break deduction
+    val location: String = "OFFICE" // WorkLocation name
 )

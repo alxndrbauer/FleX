@@ -393,7 +393,8 @@ class CalculateAnalyticsUseCaseTest {
                     workDayId = date.toEpochDay(),
                     startTime = LocalTime.of(9, 0),
                     endTime = LocalTime.of(9, 0).plusMinutes(netMinutes),
-                    isDuration = false
+                    isDuration = false,
+                    location = location
                 )
             )
         )

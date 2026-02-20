@@ -321,9 +321,20 @@ fun DayCell(
         workDay.dayType == DayType.SPECIAL_VACATION -> SpecialVacationColor.copy(alpha = 0.3f)
         workDay.dayType == DayType.FLEX_DAY -> FlexDayColor.copy(alpha = 0.3f)
         workDay.dayType == DayType.SATURDAY_BONUS -> SaturdayBonusColor.copy(alpha = 0.3f)
-        workDay.location == WorkLocation.OFFICE -> OfficeColor.copy(alpha = 0.3f)
-        workDay.location == WorkLocation.HOME_OFFICE -> HomeOfficeColor.copy(alpha = 0.3f)
-        else -> Color.Transparent
+        else -> {
+            val blocks = workDay.timeBlocks.filter { it.endTime != null }
+            if (blocks.isEmpty()) {
+                if (workDay.location == WorkLocation.OFFICE) OfficeColor.copy(alpha = 0.3f)
+                else HomeOfficeColor.copy(alpha = 0.3f)
+            } else {
+                var officeMin = 0L; var hoMin = 0L
+                for (b in blocks) {
+                    val min = java.time.Duration.between(b.startTime, b.endTime!!).toMinutes()
+                    if (b.location == WorkLocation.OFFICE) officeMin += min else hoMin += min
+                }
+                if (officeMin >= hoMin) OfficeColor.copy(alpha = 0.3f) else HomeOfficeColor.copy(alpha = 0.3f)
+            }
+        }
     }
 
     val borderMod = if (workDay?.isPlanned == true) {
@@ -396,11 +407,26 @@ fun WorkDayListItem(workDay: WorkDay, netMinutes: Long, onClick: () -> Unit) {
             Text("$dayName, $dateStr", style = MaterialTheme.typography.bodyMedium)
 
             val typeLabel = when (workDay.dayType) {
-                DayType.WORK -> if (workDay.location == WorkLocation.OFFICE) "Büro" else "HO"
+                DayType.WORK, DayType.SATURDAY_BONUS -> {
+                    val blocks = workDay.timeBlocks.filter { it.endTime != null }
+                    if (blocks.isEmpty()) {
+                        if (workDay.location == WorkLocation.OFFICE) "Büro" else "HO"
+                    } else {
+                        var officeMin = 0L; var hoMin = 0L
+                        for (b in blocks) {
+                            val min = java.time.Duration.between(b.startTime, b.endTime!!).toMinutes()
+                            if (b.location == WorkLocation.OFFICE) officeMin += min else hoMin += min
+                        }
+                        when {
+                            officeMin > 0 && hoMin > 0 -> "Gemischt"
+                            officeMin > 0 -> "Büro"
+                            else -> "HO"
+                        }
+                    }
+                }
                 DayType.VACATION -> "Urlaub"
                 DayType.SPECIAL_VACATION -> "Sonderurlaub"
                 DayType.FLEX_DAY -> "Gleittag"
-                DayType.SATURDAY_BONUS -> "Samstag+"
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

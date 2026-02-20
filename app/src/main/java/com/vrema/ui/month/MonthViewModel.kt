@@ -127,8 +127,11 @@ class MonthViewModel @Inject constructor(
                 val workingDays = prognosisDays.filter { it.dayType !in neutralTypes }
                 var officeMin = 0L
                 for (day in workingDays) {
-                    val r = calculateDayWorkTime(day.timeBlocks)
-                    if (day.location == WorkLocation.OFFICE) officeMin += r.netMinutes
+                    for (block in day.timeBlocks) {
+                        val blockEnd = block.endTime ?: continue
+                        val blockMin = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
+                        if (blockMin > 0 && block.location == WorkLocation.OFFICE) officeMin += blockMin
+                    }
                 }
 
                 val netByDate = days.filter { !it.isPlanned || !isCurrentOrPast }.associate { day ->
@@ -201,7 +204,7 @@ class MonthViewModel @Inject constructor(
                     val start = LocalTime.of(8, 0)
                     val end = start.plusMinutes(settings.dailyWorkMinutes.toLong())
                     allDays.add(existing.copy(
-                        timeBlocks = listOf(TimeBlock(workDayId = existing.id, startTime = start, endTime = end, isDuration = true))
+                        timeBlocks = listOf(TimeBlock(workDayId = existing.id, startTime = start, endTime = end, isDuration = true, location = existing.location))
                     ))
                 } else {
                     allDays.add(existing)
@@ -216,7 +219,7 @@ class MonthViewModel @Inject constructor(
                     location = WorkLocation.HOME_OFFICE,
                     dayType = DayType.WORK,
                     isPlanned = true,
-                    timeBlocks = listOf(TimeBlock(workDayId = 0, startTime = start, endTime = end, isDuration = true))
+                    timeBlocks = listOf(TimeBlock(workDayId = 0, startTime = start, endTime = end, isDuration = true, location = WorkLocation.HOME_OFFICE))
                 ))
             }
         }
@@ -285,7 +288,7 @@ class MonthViewModel @Inject constructor(
 
             timeBlocks.forEach { (start, end) ->
                 workDayRepository.saveTimeBlock(
-                    TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = isDuration)
+                    TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = isDuration, location = location)
                 )
             }
 

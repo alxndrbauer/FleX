@@ -1,5 +1,6 @@
 package com.vrema.ui.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -16,7 +17,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
@@ -51,8 +55,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vrema.domain.model.DayType
 import com.vrema.domain.model.PublicHolidays
+import com.vrema.domain.model.TimeBlock
 import com.vrema.domain.model.WorkLocation
 import com.vrema.ui.theme.PublicHolidayColor
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -62,6 +68,9 @@ import java.util.Locale
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
     var showManualEntry by remember { mutableStateOf(false) }
+    var editingBlock by remember { mutableStateOf<TimeBlock?>(null) }
+
+    val isToday = state.selectedDate == state.today
 
     LazyColumn(
         modifier = Modifier
@@ -69,17 +78,49 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Date header
+        // Date navigation header
         item {
-            Text(
-                text = state.today.format(DateTimeFormatter.ofPattern("EEEE, d. MMMM yyyy", Locale.GERMAN)),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { viewModel.goToPreviousDay() }) {
+                    Icon(Icons.Default.ChevronLeft, contentDescription = "Vorheriger Tag")
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = if (isToday) "Heute" else state.selectedDate.format(
+                            DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)
+                        ),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = state.selectedDate.format(
+                            DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = { viewModel.goToNextDay() }) {
+                    Icon(Icons.Default.ChevronRight, contentDescription = "Nächster Tag")
+                }
+            }
+            if (!isToday) {
+                TextButton(
+                    onClick = { viewModel.goToToday() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Zurück zu Heute")
+                }
+            }
         }
 
         // Holiday card
-        val holidayName = PublicHolidays.getHolidayName(state.today)
+        val holidayName = PublicHolidays.getHolidayName(state.selectedDate)
         if (holidayName != null) {
             item {
                 Card(
@@ -204,9 +245,9 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         }
 
         if (holidayName == null) {
-            // Location selector
+            // Location selector (default for new blocks)
             item {
-                Text("Arbeitsort", style = MaterialTheme.typography.labelLarge)
+                Text("Arbeitsort (Standard)", style = MaterialTheme.typography.labelLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = state.selectedLocation == WorkLocation.OFFICE,
@@ -251,7 +292,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                 }
             }
 
-            // Clock in/out button
+            // Clock in/out button — only for today
             item {
                 val isWorkDay = state.selectedDayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
                 if (isWorkDay) {
@@ -259,27 +300,32 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Button(
-                            onClick = {
-                                if (state.isClockRunning) viewModel.clockOut() else viewModel.clockIn()
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = if (state.isClockRunning) {
-                                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                            } else {
-                                ButtonDefaults.buttonColors()
+                        if (isToday) {
+                            Button(
+                                onClick = {
+                                    if (state.isClockRunning) viewModel.clockOut() else viewModel.clockIn()
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = if (state.isClockRunning) {
+                                    ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                } else {
+                                    ButtonDefaults.buttonColors()
+                                }
+                            ) {
+                                Icon(
+                                    if (state.isClockRunning) Icons.Default.Stop else Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(if (state.isClockRunning) "Ausstempeln" else "Einstempeln")
                             }
-                        ) {
-                            Icon(
-                                if (state.isClockRunning) Icons.Default.Stop else Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (state.isClockRunning) "Ausstempeln" else "Einstempeln")
                         }
 
-                        OutlinedButton(onClick = { showManualEntry = true }) {
+                        OutlinedButton(
+                            onClick = { showManualEntry = true },
+                            modifier = if (isToday) Modifier else Modifier.fillMaxWidth()
+                        ) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Manuell")
@@ -289,11 +335,14 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
             }
         }
 
-        // Today's work time
+        // Selected day's work time
         item {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Heutige Arbeitszeit", style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        if (isToday) "Heutige Arbeitszeit" else "Arbeitszeit",
+                        style = MaterialTheme.typography.labelMedium
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
 
                     val hours = state.dayWorkTime.netMinutes / 60
@@ -340,7 +389,11 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
             }
 
             items(state.timeBlocks) { block ->
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { editingBlock = block }
+                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -348,18 +401,38 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val startStr = block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
-                        val endStr = block.endTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "laufend…"
-                        Text(
-                            text = "$startStr – $endStr",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        IconButton(onClick = { viewModel.deleteTimeBlock(block) }) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Löschen",
-                                tint = MaterialTheme.colorScheme.error
+                        Column {
+                            val startStr = block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
+                            val endStr = block.endTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "laufend…"
+                            Text(
+                                text = "$startStr – $endStr",
+                                style = MaterialTheme.typography.bodyLarge
                             )
+                            val locationLabel = when (block.location) {
+                                WorkLocation.OFFICE -> "Büro"
+                                WorkLocation.HOME_OFFICE -> "Home-Office"
+                            }
+                            Text(
+                                text = locationLabel,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Row {
+                            IconButton(onClick = { editingBlock = block }) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = "Bearbeiten",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            IconButton(onClick = { viewModel.deleteTimeBlock(block) }) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Löschen",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                 }
@@ -371,14 +444,31 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     if (showManualEntry) {
         ManualTimeEntryDialog(
             dailyWorkMinutes = state.settings.dailyWorkMinutes,
+            selectedLocation = state.selectedLocation,
             onDismiss = { showManualEntry = false },
-            onConfirmStartEnd = { start, end ->
-                viewModel.saveManualEntry(start, end)
+            onConfirmStartEnd = { start, end, location ->
+                viewModel.saveManualEntry(start, end, location)
                 showManualEntry = false
             },
-            onConfirmDuration = { totalMinutes ->
-                viewModel.saveDurationEntry(totalMinutes)
+            onConfirmDuration = { totalMinutes, location ->
+                viewModel.saveDurationEntry(totalMinutes, location)
                 showManualEntry = false
+            }
+        )
+    }
+
+    // Edit time block dialog
+    editingBlock?.let { block ->
+        EditTimeBlockDialog(
+            block = block,
+            onDismiss = { editingBlock = null },
+            onSave = { startTime, endTime, location ->
+                viewModel.updateTimeBlock(block, startTime, endTime, location)
+                editingBlock = null
+            },
+            onDelete = {
+                viewModel.deleteTimeBlock(block)
+                editingBlock = null
             }
         )
     }
@@ -387,9 +477,10 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
 @Composable
 fun ManualTimeEntryDialog(
     dailyWorkMinutes: Int = 426,
+    selectedLocation: WorkLocation = WorkLocation.OFFICE,
     onDismiss: () -> Unit,
-    onConfirmStartEnd: (LocalTime, LocalTime) -> Unit,
-    onConfirmDuration: (Int) -> Unit
+    onConfirmStartEnd: (LocalTime, LocalTime, WorkLocation) -> Unit,
+    onConfirmDuration: (Int, WorkLocation) -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val defaultEnd = LocalTime.of(8, 0).plusMinutes(dailyWorkMinutes.toLong())
@@ -397,6 +488,7 @@ fun ManualTimeEntryDialog(
     var endText by remember { mutableStateOf(defaultEnd.format(DateTimeFormatter.ofPattern("HH:mm"))) }
     var durationHours by remember { mutableStateOf((dailyWorkMinutes / 60).toString()) }
     var durationMinutes by remember { mutableStateOf((dailyWorkMinutes % 60).toString()) }
+    var dialogLocation by remember { mutableStateOf(selectedLocation) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -416,6 +508,22 @@ fun ManualTimeEntryDialog(
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // Location selector
+                Text("Arbeitsort", style = MaterialTheme.typography.labelMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = dialogLocation == WorkLocation.OFFICE,
+                        onClick = { dialogLocation = WorkLocation.OFFICE },
+                        label = { Text("Büro") }
+                    )
+                    FilterChip(
+                        selected = dialogLocation == WorkLocation.HOME_OFFICE,
+                        onClick = { dialogLocation = WorkLocation.HOME_OFFICE },
+                        label = { Text("Home-Office") }
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
 
                 if (selectedTab == 0) {
                     OutlinedTextField(
@@ -459,13 +567,13 @@ fun ManualTimeEntryDialog(
                     try {
                         val start = LocalTime.parse(startText, DateTimeFormatter.ofPattern("HH:mm"))
                         val end = LocalTime.parse(endText, DateTimeFormatter.ofPattern("HH:mm"))
-                        onConfirmStartEnd(start, end)
+                        onConfirmStartEnd(start, end, dialogLocation)
                     } catch (_: Exception) { }
                 } else {
                     val h = durationHours.toIntOrNull() ?: 0
                     val m = durationMinutes.toIntOrNull() ?: 0
                     val total = h * 60 + m
-                    if (total > 0) onConfirmDuration(total)
+                    if (total > 0) onConfirmDuration(total, dialogLocation)
                 }
             }) {
                 Text("Speichern")
@@ -474,6 +582,82 @@ fun ManualTimeEntryDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Abbrechen")
+            }
+        }
+    )
+}
+
+@Composable
+fun EditTimeBlockDialog(
+    block: TimeBlock,
+    onDismiss: () -> Unit,
+    onSave: (startTime: LocalTime, endTime: LocalTime?, location: WorkLocation) -> Unit,
+    onDelete: () -> Unit
+) {
+    val fmt = DateTimeFormatter.ofPattern("HH:mm")
+    var startText by remember { mutableStateOf(block.startTime.format(fmt)) }
+    var endText by remember { mutableStateOf(block.endTime?.format(fmt) ?: "") }
+    var dialogLocation by remember { mutableStateOf(block.location) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Zeitblock bearbeiten") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Location selector
+                Text("Arbeitsort", style = MaterialTheme.typography.labelMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = dialogLocation == WorkLocation.OFFICE,
+                        onClick = { dialogLocation = WorkLocation.OFFICE },
+                        label = { Text("Büro") }
+                    )
+                    FilterChip(
+                        selected = dialogLocation == WorkLocation.HOME_OFFICE,
+                        onClick = { dialogLocation = WorkLocation.HOME_OFFICE },
+                        label = { Text("Home-Office") }
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = startText,
+                        onValueChange = { startText = it },
+                        label = { Text("Start (HH:mm)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = endText,
+                        onValueChange = { endText = it },
+                        label = { Text("Ende (HH:mm)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        placeholder = { Text("laufend") }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                try {
+                    val start = LocalTime.parse(startText, DateTimeFormatter.ofPattern("HH:mm"))
+                    val end = if (endText.isBlank()) null
+                    else LocalTime.parse(endText, DateTimeFormatter.ofPattern("HH:mm"))
+                    onSave(start, end, dialogLocation)
+                } catch (_: Exception) { }
+            }) {
+                Text("Speichern")
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onDelete) {
+                    Text("Löschen", color = MaterialTheme.colorScheme.error)
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Abbrechen")
+                }
             }
         }
     )

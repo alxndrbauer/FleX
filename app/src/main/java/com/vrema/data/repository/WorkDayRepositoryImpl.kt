@@ -139,7 +139,8 @@ class WorkDayRepositoryImpl @Inject constructor(
         workDayId = workDayId,
         startTime = LocalTime.parse(startTime),
         endTime = endTime?.let { LocalTime.parse(it) },
-        isDuration = isDuration
+        isDuration = isDuration,
+        location = WorkLocation.valueOf(location)
     )
 
     private fun TimeBlock.toEntity() = TimeBlockEntity(
@@ -147,6 +148,7 @@ class WorkDayRepositoryImpl @Inject constructor(
         workDayId = workDayId,
         startTime = startTime.toString(),
         endTime = endTime?.toString(),
-        isDuration = isDuration
+        isDuration = isDuration,
+        location = location.name
     )
 }

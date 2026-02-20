@@ -52,6 +52,18 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
     }
 }
 
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE time_blocks ADD COLUMN location TEXT NOT NULL DEFAULT 'OFFICE'")
+        db.execSQL("""
+            UPDATE time_blocks SET location = (
+                SELECT work_days.location FROM work_days
+                WHERE work_days.id = time_blocks.workDayId
+            )
+        """)
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
@@ -63,7 +75,7 @@ object AppModule {
             context,
             VremaDatabase::class.java,
             "vrema_database"
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build()
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build()
     }
 
     @Provides

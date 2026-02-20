@@ -101,9 +101,14 @@ class CalculateAnalyticsUseCase @Inject constructor(
                 val result = calculateDayWorkTime(day.timeBlocks)
                 totalMinutes += result.netMinutes
 
-                when (day.location) {
-                    WorkLocation.OFFICE -> officeMinutes += result.netMinutes
-                    WorkLocation.HOME_OFFICE -> homeOfficeMinutes += result.netMinutes
+                for (block in day.timeBlocks) {
+                    val blockEnd = block.endTime ?: continue
+                    val blockMinutes = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
+                    if (blockMinutes <= 0) continue
+                    when (block.location) {
+                        WorkLocation.OFFICE -> officeMinutes += blockMinutes
+                        WorkLocation.HOME_OFFICE -> homeOfficeMinutes += blockMinutes
+                    }
                 }
             }
 
@@ -135,10 +140,14 @@ class CalculateAnalyticsUseCase @Inject constructor(
         var homeOfficeMinutes = 0L
 
         for (day in workDays) {
-            val result = calculateDayWorkTime(day.timeBlocks)
-            when (day.location) {
-                WorkLocation.OFFICE -> officeMinutes += result.netMinutes
-                WorkLocation.HOME_OFFICE -> homeOfficeMinutes += result.netMinutes
+            for (block in day.timeBlocks) {
+                val blockEnd = block.endTime ?: continue
+                val blockMinutes = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
+                if (blockMinutes <= 0) continue
+                when (block.location) {
+                    WorkLocation.OFFICE -> officeMinutes += blockMinutes
+                    WorkLocation.HOME_OFFICE -> homeOfficeMinutes += blockMinutes
+                }
             }
         }
 

@@ -34,6 +34,7 @@ import javax.inject.Inject
 
 data class HomeUiState(
     val today: LocalDate = LocalDate.now(),
+    val selectedDate: LocalDate = LocalDate.now(),
     val workDay: WorkDay? = null,
     val timeBlocks: List<TimeBlock> = emptyList(),
     val isClockRunning: Boolean = false,
@@ -65,26 +66,29 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private val _selectedDate = MutableStateFlow(LocalDate.now())
     private val _refreshTrigger = MutableStateFlow(Unit)
 
     init {
-        loadTodayData()
+        loadDayData()
     }
 
-    private fun loadTodayData() {
+    private fun loadDayData() {
         val today = LocalDate.now()
-        val yearMonth = YearMonth.from(today)
 
         viewModelScope.launch {
             combine(
                 dataChangeEventBus.events.onStart { emit(DataChangeEvent.WorkDayChanged) },
-                _refreshTrigger
-            ) { _, _ -> Unit }
-                .flatMapLatest {
+                _refreshTrigger,
+                _selectedDate
+            ) { _, _, date -> date }
+                .flatMapLatest { date ->
+                    val yearMonth = YearMonth.from(date)
+                    val todayYearMonth = YearMonth.from(today)
                     combine(
-                        workDayRepository.getWorkDay(today),
+                        workDayRepository.getWorkDay(date),
                         getSettings(),
-                        getMonthWorkDays(yearMonth),
+                        getMonthWorkDays(todayYearMonth),
                         settingsRepository.getQuotaRules(),
                         workDayRepository.getWorkDaysForYear(today.year)
                     ) { arr ->
@@ -97,7 +101,7 @@ class HomeViewModel @Inject constructor(
                         @Suppress("UNCHECKED_CAST")
                         val yearDays = arr[4] as List<WorkDay>
 
-                        val rule = settingsRepository.getQuotaRuleForMonth(yearMonth, rules)
+                        val rule = settingsRepository.getQuotaRuleForMonth(todayYearMonth, rules)
                         val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
                         val qDays = rule?.officeQuotaMinDays ?: settings.officeQuotaMinDays
 
@@ -106,15 +110,15 @@ class HomeViewModel @Inject constructor(
                         val dayResult = calculateDayWorkTime(timeBlocks)
                         // Exclude planned days from calculations in current month
                         val actualMonthDays = monthDays.filter { !it.isPlanned }.map { day ->
-                            if (day.date == today && workDay != null) workDay else day
+                            if (day.date == today && workDay != null && date == today) workDay else day
                         }
 
                         // Cumulative flextime: all year's actual days (not planned), with today replaced
                         val actualYearDays = yearDays.filter { !it.isPlanned }.map { day ->
-                            if (day.date == today && workDay != null) workDay else day
+                            if (day.date == today && workDay != null && date == today) workDay else day
                         }
-                        val flextime = calculateFlextime(actualYearDays, settings, yearMonth)
-                        val quota = calculateQuota(actualMonthDays, settings, yearMonth, qPercent, qDays)
+                        val flextime = calculateFlextime(actualYearDays, settings, todayYearMonth)
+                        val quota = calculateQuota(actualMonthDays, settings, todayYearMonth, qPercent, qDays)
 
                         // Fixed monthly target, reduced by neutral days
                         val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY)
@@ -125,12 +129,16 @@ class HomeViewModel @Inject constructor(
                         val workingDays = actualMonthDays.filter { it.dayType !in neutralTypes }
                         var officeMin = 0L
                         for (day in workingDays) {
-                            val r = calculateDayWorkTime(day.timeBlocks)
-                            if (day.location == WorkLocation.OFFICE) officeMin += r.netMinutes
+                            for (block in day.timeBlocks) {
+                                val blockEnd = block.endTime ?: continue
+                                val blockMin = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
+                                if (blockMin > 0 && block.location == WorkLocation.OFFICE) officeMin += blockMin
+                            }
                         }
 
                         HomeUiState(
                             today = today,
+                            selectedDate = date,
                             workDay = workDay,
                             timeBlocks = timeBlocks,
                             isClockRunning = isRunning,
@@ -153,6 +161,22 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun goToPreviousDay() {
+        _selectedDate.value = _selectedDate.value.minusDays(1)
+    }
+
+    fun goToNextDay() {
+        _selectedDate.value = _selectedDate.value.plusDays(1)
+    }
+
+    fun goToToday() {
+        _selectedDate.value = LocalDate.now()
+    }
+
+    fun navigateToDate(date: LocalDate) {
+        _selectedDate.value = date
+    }
+
     fun clockIn() {
         viewModelScope.launch {
             val state = _uiState.value
@@ -161,7 +185,7 @@ class HomeViewModel @Inject constructor(
             val workDayId = if (state.workDay == null) {
                 workDayRepository.saveWorkDay(
                     WorkDay(
-                        date = state.today,
+                        date = state.selectedDate,
                         location = state.selectedLocation,
                         dayType = state.selectedDayType
                     )
@@ -175,7 +199,7 @@ class HomeViewModel @Inject constructor(
             }
 
             workDayRepository.saveTimeBlock(
-                TimeBlock(workDayId = workDayId, startTime = now)
+                TimeBlock(workDayId = workDayId, startTime = now, location = state.selectedLocation)
             )
         }
     }
@@ -212,14 +236,14 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun saveManualEntry(startTime: LocalTime, endTime: LocalTime) {
+    fun saveManualEntry(startTime: LocalTime, endTime: LocalTime, location: WorkLocation) {
         viewModelScope.launch {
             val state = _uiState.value
 
             val workDayId = if (state.workDay == null) {
                 workDayRepository.saveWorkDay(
                     WorkDay(
-                        date = state.today,
+                        date = state.selectedDate,
                         location = state.selectedLocation,
                         dayType = state.selectedDayType
                     )
@@ -232,12 +256,12 @@ class HomeViewModel @Inject constructor(
             }
 
             workDayRepository.saveTimeBlock(
-                TimeBlock(workDayId = workDayId, startTime = startTime, endTime = endTime)
+                TimeBlock(workDayId = workDayId, startTime = startTime, endTime = endTime, location = location)
             )
         }
     }
 
-    fun saveDurationEntry(totalMinutes: Int) {
+    fun saveDurationEntry(totalMinutes: Int, location: WorkLocation) {
         viewModelScope.launch {
             val state = _uiState.value
             val start = LocalTime.of(8, 0)
@@ -246,7 +270,7 @@ class HomeViewModel @Inject constructor(
             val workDayId = if (state.workDay == null) {
                 workDayRepository.saveWorkDay(
                     WorkDay(
-                        date = state.today,
+                        date = state.selectedDate,
                         location = state.selectedLocation,
                         dayType = state.selectedDayType
                     )
@@ -259,7 +283,15 @@ class HomeViewModel @Inject constructor(
             }
 
             workDayRepository.saveTimeBlock(
-                TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true)
+                TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = location)
+            )
+        }
+    }
+
+    fun updateTimeBlock(block: TimeBlock, startTime: LocalTime, endTime: LocalTime?, location: WorkLocation) {
+        viewModelScope.launch {
+            workDayRepository.saveTimeBlock(
+                block.copy(startTime = startTime, endTime = endTime, location = location)
             )
         }
     }
@@ -276,7 +308,7 @@ class HomeViewModel @Inject constructor(
             workDayRepository.saveWorkDay(
                 WorkDay(
                     id = state.workDay?.id ?: 0,
-                    date = state.today,
+                    date = state.selectedDate,
                     location = state.selectedLocation,
                     dayType = dayType
                 )

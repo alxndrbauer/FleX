@@ -435,7 +435,8 @@ class CalculateQuotaUseCaseTest {
                     id = date.dayOfMonth.toLong(),
                     workDayId = date.dayOfMonth.toLong(),
                     startTime = LocalTime.of(9, 0),
-                    endTime = LocalTime.of(17, 0)
+                    endTime = LocalTime.of(16, 6), // 7h6min = 426 min
+                    location = location
                 )
             )
         )

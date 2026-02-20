@@ -7,5 +7,6 @@ data class TimeBlock(
     val workDayId: Long,
     val startTime: LocalTime,
     val endTime: LocalTime? = null,
-    val isDuration: Boolean = false
+    val isDuration: Boolean = false,
+    val location: WorkLocation = WorkLocation.OFFICE
 )

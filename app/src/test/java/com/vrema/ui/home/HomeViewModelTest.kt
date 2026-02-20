@@ -456,7 +456,7 @@ class HomeViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         // When: Saving manual entry
-        viewModel.saveManualEntry(LocalTime.of(9, 0), LocalTime.of(17, 0))
+        viewModel.saveManualEntry(LocalTime.of(9, 0), LocalTime.of(17, 0), WorkLocation.OFFICE)
         advanceUntilIdle()
 
         // Then: WorkDay and TimeBlock should be created
@@ -478,7 +478,7 @@ class HomeViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         // When: Saving manual entry
-        viewModel.saveManualEntry(LocalTime.of(13, 0), LocalTime.of(17, 0))
+        viewModel.saveManualEntry(LocalTime.of(13, 0), LocalTime.of(17, 0), WorkLocation.HOME_OFFICE)
         advanceUntilIdle()
 
         // Then: TimeBlock should be saved
@@ -500,7 +500,7 @@ class HomeViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         // When: Saving duration entry
-        viewModel.saveDurationEntry(480) // 8 hours
+        viewModel.saveDurationEntry(480, WorkLocation.OFFICE) // 8 hours
         advanceUntilIdle()
 
         // Then: TimeBlock with isDuration=true should be saved
