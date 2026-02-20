@@ -280,14 +280,27 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                     dayTypes.forEach { (type, label) ->
                         FilterChip(
                             selected = state.selectedDayType == type,
-                            onClick = {
-                                viewModel.setDayType(type)
-                                if (type in listOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY)) {
-                                    viewModel.markAsNonWorkDay(type)
-                                }
-                            },
+                            onClick = { viewModel.setDayType(type) },
                             label = { Text(label) }
                         )
+                    }
+                }
+
+                // Explicit save button for non-work types when no WorkDay exists yet
+                val nonWorkTypes = listOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY)
+                if (state.selectedDayType in nonWorkTypes && state.workDay == null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    val typeLabel = when (state.selectedDayType) {
+                        DayType.VACATION -> "Urlaub"
+                        DayType.SPECIAL_VACATION -> "Sonderurlaub"
+                        DayType.FLEX_DAY -> "Gleittag"
+                        else -> ""
+                    }
+                    Button(
+                        onClick = { viewModel.markAsNonWorkDay(state.selectedDayType) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Als $typeLabel eintragen")
                     }
                 }
             }
