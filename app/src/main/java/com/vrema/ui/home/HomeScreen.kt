@@ -264,43 +264,46 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
 
             // Day type selector
             item {
-                Text("Tagestyp", style = MaterialTheme.typography.labelLarge)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val dayTypes = listOf(
-                        DayType.WORK to "Arbeitstag",
-                        DayType.VACATION to "Urlaub",
-                        DayType.SPECIAL_VACATION to "Sonderurlaub",
-                        DayType.FLEX_DAY to "Gleittag",
-                        DayType.SATURDAY_BONUS to "Samstag+"
-                    )
-                    dayTypes.forEach { (type, label) ->
-                        FilterChip(
-                            selected = state.selectedDayType == type,
-                            onClick = { viewModel.setDayType(type) },
-                            label = { Text(label) }
-                        )
-                    }
-                }
-
-                // Explicit save button for non-work types when no WorkDay exists yet
-                val nonWorkTypes = listOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY)
-                if (state.selectedDayType in nonWorkTypes && state.workDay == null) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    val typeLabel = when (state.selectedDayType) {
-                        DayType.VACATION -> "Urlaub"
-                        DayType.SPECIAL_VACATION -> "Sonderurlaub"
-                        DayType.FLEX_DAY -> "Gleittag"
-                        else -> ""
-                    }
-                    Button(
-                        onClick = { viewModel.markAsNonWorkDay(state.selectedDayType) },
+                Column {
+                    Text("Tagestyp", style = MaterialTheme.typography.labelLarge)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Als $typeLabel eintragen")
+                        val dayTypes = listOf(
+                            DayType.WORK to "Arbeitstag",
+                            DayType.VACATION to "Urlaub",
+                            DayType.SPECIAL_VACATION to "Sonderurlaub",
+                            DayType.FLEX_DAY to "Gleittag",
+                            DayType.SATURDAY_BONUS to "Samstag+"
+                        )
+                        dayTypes.forEach { (type, label) ->
+                            FilterChip(
+                                selected = state.selectedDayType == type,
+                                onClick = { viewModel.setDayType(type) },
+                                label = { Text(label) }
+                            )
+                        }
+                    }
+
+                    // Explicit save button for non-work types
+                    val nonWorkTypes = listOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY)
+                    val savedDayType = state.workDay?.dayType
+                    if (state.selectedDayType in nonWorkTypes && state.selectedDayType != savedDayType) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val typeLabel = when (state.selectedDayType) {
+                            DayType.VACATION -> "Urlaub"
+                            DayType.SPECIAL_VACATION -> "Sonderurlaub"
+                            DayType.FLEX_DAY -> "Gleittag"
+                            else -> ""
+                        }
+                        Button(
+                            onClick = { viewModel.markAsNonWorkDay(state.selectedDayType) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Als $typeLabel eintragen")
+                        }
                     }
                 }
             }
