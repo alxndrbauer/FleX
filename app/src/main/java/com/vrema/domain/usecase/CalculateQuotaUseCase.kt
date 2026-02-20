@@ -30,24 +30,30 @@ class CalculateQuotaUseCase @Inject constructor(
         var homeOfficeDays = 0
 
         for (day in workingDays) {
-            var dayOfficeMinutes = 0L
-            var dayHomeOfficeMinutes = 0L
+            val dayResult = calculateDayWorkTime(day.timeBlocks)
+            val totalGross = dayResult.grossMinutes
+
+            var dayOfficeGross = 0L
+            var dayHomeOfficeGross = 0L
             for (block in day.timeBlocks) {
                 val blockEnd = block.endTime ?: continue
                 val blockMinutes = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
                 if (blockMinutes <= 0) continue
                 when (block.location) {
-                    WorkLocation.OFFICE -> dayOfficeMinutes += blockMinutes
-                    WorkLocation.HOME_OFFICE -> dayHomeOfficeMinutes += blockMinutes
+                    WorkLocation.OFFICE -> dayOfficeGross += blockMinutes
+                    WorkLocation.HOME_OFFICE -> dayHomeOfficeGross += blockMinutes
                 }
             }
             // Only count days that have at least one completed block
             val hasCompletedBlocks = day.timeBlocks.any { it.endTime != null }
             if (hasCompletedBlocks) {
-                if (dayOfficeMinutes >= dayHomeOfficeMinutes) officeDays++ else homeOfficeDays++
+                if (dayOfficeGross >= dayHomeOfficeGross) officeDays++ else homeOfficeDays++
             }
-            officeMinutes += dayOfficeMinutes
-            homeOfficeMinutes += dayHomeOfficeMinutes
+            // Distribute net time proportionally across locations
+            if (totalGross > 0) {
+                officeMinutes += dayOfficeGross * dayResult.netMinutes / totalGross
+                homeOfficeMinutes += dayHomeOfficeGross * dayResult.netMinutes / totalGross
+            }
         }
 
         val neutralDayCount = workDays.count { it.dayType in neutralTypes }
