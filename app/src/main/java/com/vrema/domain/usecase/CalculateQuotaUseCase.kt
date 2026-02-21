@@ -30,12 +30,13 @@ class CalculateQuotaUseCase @Inject constructor(
         var homeOfficeDays = 0
 
         for (day in workingDays) {
+            val adjustedBlocks = CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
             val dayResult = calculateDayWorkTime(day.timeBlocks)
             val totalGross = dayResult.grossMinutes
 
             var dayOfficeGross = 0L
             var dayHomeOfficeGross = 0L
-            for (block in day.timeBlocks) {
+            for (block in adjustedBlocks) {
                 val blockEnd = block.endTime ?: continue
                 val blockMinutes = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
                 if (blockMinutes <= 0) continue

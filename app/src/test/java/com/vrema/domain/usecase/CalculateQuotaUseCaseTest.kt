@@ -44,12 +44,17 @@ class CalculateQuotaUseCaseTest {
         )
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
-            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+            DayWorkTimeResult(
+                netMinutes = 420,
+                grossMinutes = 420,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
         )
 
         val result = useCase(listOf(workDay), settings, YearMonth.of(2026, 2))
 
-        assertThat(result.officeMinutes).isEqualTo(426)
+        assertThat(result.officeMinutes).isEqualTo(420)
         assertThat(result.homeOfficeMinutes).isEqualTo(0)
         assertThat(result.officeDays).isEqualTo(1)
         assertThat(result.homeOfficeDays).isEqualTo(0)
@@ -64,13 +69,18 @@ class CalculateQuotaUseCaseTest {
         )
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
-            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+            DayWorkTimeResult(
+                netMinutes = 420,
+                grossMinutes = 420,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
         )
 
         val result = useCase(listOf(workDay), settings, YearMonth.of(2026, 2))
 
         assertThat(result.officeMinutes).isEqualTo(0)
-        assertThat(result.homeOfficeMinutes).isEqualTo(426)
+        assertThat(result.homeOfficeMinutes).isEqualTo(420)
         assertThat(result.officeDays).isEqualTo(0)
         assertThat(result.homeOfficeDays).isEqualTo(1)
     }
@@ -84,13 +94,18 @@ class CalculateQuotaUseCaseTest {
         )
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
-            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+            DayWorkTimeResult(
+                netMinutes = 420,
+                grossMinutes = 420,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
         )
 
         val result = useCase(workDays, settings, YearMonth.of(2026, 2))
 
-        assertThat(result.officeMinutes).isEqualTo(852) // 2 * 426
-        assertThat(result.homeOfficeMinutes).isEqualTo(426) // 1 * 426
+        assertThat(result.officeMinutes).isEqualTo(840) // 2 * 420
+        assertThat(result.homeOfficeMinutes).isEqualTo(420) // 1 * 420
         assertThat(result.officeDays).isEqualTo(2)
         assertThat(result.homeOfficeDays).isEqualTo(1)
     }
@@ -147,8 +162,8 @@ class CalculateQuotaUseCaseTest {
     fun testOfficePercentWhenNoNeutralDaysExpectCorrectCalculation() {
         // 5 office days, 5 home office days (all work days)
         // Monthly target: 9266 minutes
-        // Office work: 5 * 426 = 2130 minutes
-        // Percent: (2130 / 9266) * 100 = ~22.98%
+        // Office work: 5 * 420 = 2100 minutes
+        // Percent: (2100 / 9266) * 100 = ~22.66%
         val workDays = mutableListOf<WorkDay>()
         for (i in 3..7) { // Mon-Fri (5 office days)
             workDays.add(createWorkDay(LocalDate.of(2026, 2, i), WorkLocation.OFFICE, DayType.WORK))
@@ -158,14 +173,19 @@ class CalculateQuotaUseCaseTest {
         }
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
-            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+            DayWorkTimeResult(
+                netMinutes = 420,
+                grossMinutes = 420,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
         )
 
         val result = useCase(workDays, settings, YearMonth.of(2026, 2))
 
-        assertThat(result.officeMinutes).isEqualTo(2130) // 5 * 426
-        assertThat(result.homeOfficeMinutes).isEqualTo(2130) // 5 * 426
-        val expectedPercent = (2130.0 / 9266.0) * 100
+        assertThat(result.officeMinutes).isEqualTo(2100) // 5 * 420
+        assertThat(result.homeOfficeMinutes).isEqualTo(2100) // 5 * 420
+        val expectedPercent = (2100.0 / 9266.0) * 100
         assertThat(result.officePercent).isWithin(0.1).of(expectedPercent)
     }
 
@@ -174,8 +194,8 @@ class CalculateQuotaUseCaseTest {
         // Target is adjusted: monthlyWorkMinutes - (neutralDays * dailyWorkMinutes)
         // 2 work days (office), 1 vacation day
         // Target: 9266 - (1 * 426) = 8840
-        // Office: 2 * 426 = 852
-        // Percent: (852 / 8840) * 100 = ~9.64%
+        // Office: 2 * 420 = 840
+        // Percent: (840 / 8840) * 100 = ~9.50%
         val workDays = listOf(
             createWorkDay(LocalDate.of(2026, 2, 3), WorkLocation.OFFICE, DayType.WORK),
             createWorkDay(LocalDate.of(2026, 2, 4), WorkLocation.OFFICE, DayType.WORK),
@@ -183,13 +203,18 @@ class CalculateQuotaUseCaseTest {
         )
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
-            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+            DayWorkTimeResult(
+                netMinutes = 420,
+                grossMinutes = 420,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
         )
 
         val result = useCase(workDays, settings, YearMonth.of(2026, 2))
 
         val adjustedTarget = 9266 - 426
-        val expectedPercent = (852.0 / adjustedTarget) * 100
+        val expectedPercent = (840.0 / adjustedTarget) * 100
         assertThat(result.officePercent).isWithin(0.1).of(expectedPercent)
     }
 
@@ -210,15 +235,20 @@ class CalculateQuotaUseCaseTest {
 
     @Test
     fun testQuotaMetWhenPercentageExceedsThresholdExpectPercentQuotaMet() {
-        // 10 office days * 426 = 4260 minutes
-        // Percent: (4260 / 9266) * 100 = ~45.98% > 40%
+        // 10 office days * 420 = 4200 minutes
+        // Percent: (4200 / 9266) * 100 = ~45.32% > 40%
         val workDays = mutableListOf<WorkDay>()
         for (i in 3..12) { // 10 office days
             workDays.add(createWorkDay(LocalDate.of(2026, 2, i), WorkLocation.OFFICE, DayType.WORK))
         }
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
-            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+            DayWorkTimeResult(
+                netMinutes = 420,
+                grossMinutes = 420,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
         )
 
         val result = useCase(workDays, settings, YearMonth.of(2026, 2))
@@ -237,7 +267,12 @@ class CalculateQuotaUseCaseTest {
         }
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
-            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+            DayWorkTimeResult(
+                netMinutes = 420,
+                grossMinutes = 420,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
         )
 
         val result = useCase(workDays, settings, YearMonth.of(2026, 2))
@@ -249,7 +284,7 @@ class CalculateQuotaUseCaseTest {
     @Test
     fun testQuotaNotMetWhenBelowBothThresholdsExpectNotMet() {
         // 2 office days, 10 home office days
-        // Percent: (852 / 9266) * 100 = ~9.2% < 40%
+        // Percent: (840 / 9266) * 100 = ~9.1% < 40%
         // Days: 2 < 8
         val workDays = mutableListOf<WorkDay>()
         for (i in 3..4) { // 2 office days
@@ -260,7 +295,12 @@ class CalculateQuotaUseCaseTest {
         }
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
-            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+            DayWorkTimeResult(
+                netMinutes = 420,
+                grossMinutes = 420,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
         )
 
         val result = useCase(workDays, settings, YearMonth.of(2026, 2))
@@ -284,7 +324,12 @@ class CalculateQuotaUseCaseTest {
         }
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
-            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+            DayWorkTimeResult(
+                netMinutes = 420,
+                grossMinutes = 420,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
         )
 
         val result = useCase(workDays, settings, YearMonth.of(2026, 2))
@@ -326,7 +371,12 @@ class CalculateQuotaUseCaseTest {
         )
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
-            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+            DayWorkTimeResult(
+                netMinutes = 420,
+                grossMinutes = 420,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
         )
 
         val result = useCase(workDays, settings, YearMonth.of(2026, 2))
@@ -345,7 +395,12 @@ class CalculateQuotaUseCaseTest {
         }
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
-            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+            DayWorkTimeResult(
+                netMinutes = 420,
+                grossMinutes = 420,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
         )
 
         val result = useCase(workDays, settings, YearMonth.of(2026, 2))
@@ -364,7 +419,12 @@ class CalculateQuotaUseCaseTest {
         }
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
-            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+            DayWorkTimeResult(
+                netMinutes = 420,
+                grossMinutes = 420,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
         )
 
         val result = useCase(
@@ -375,7 +435,7 @@ class CalculateQuotaUseCaseTest {
             quotaMinDays = 8
         )
 
-        // 8 * 426 / 9266 = ~36.8% < 50%
+        // 8 * 420 / 9266 = ~36.3% < 50%
         assertThat(result.percentQuotaMet).isFalse()
     }
 
@@ -388,7 +448,12 @@ class CalculateQuotaUseCaseTest {
         }
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
-            DayWorkTimeResult(netMinutes = 426, grossMinutes = 426, breakMinutes = 0, exceedsMaxHours = false)
+            DayWorkTimeResult(
+                netMinutes = 420,
+                grossMinutes = 420,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
         )
 
         val result = useCase(
@@ -435,7 +500,7 @@ class CalculateQuotaUseCaseTest {
                     id = date.dayOfMonth.toLong(),
                     workDayId = date.dayOfMonth.toLong(),
                     startTime = LocalTime.of(9, 0),
-                    endTime = LocalTime.of(16, 6), // 7h6min = 426 min
+                    endTime = LocalTime.of(16, 0), // 7h = 420 min (on 5-min boundary)
                     location = location
                 )
             )

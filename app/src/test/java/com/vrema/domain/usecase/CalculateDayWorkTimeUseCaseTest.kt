@@ -388,6 +388,96 @@ class CalculateDayWorkTimeUseCaseTest {
         assertThat(result.breakMinutes).isEqualTo(0)
     }
 
+    // 5-Minuten-Rundung tests
+
+    @Test
+    fun testRoundingWhenSingleBlockNotOnBoundaryExpectRoundedGross() {
+        // 8:39–16:56 → adjusted: 8:35–17:00 → gross = 505 min
+        val timeBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(8, 39),
+            endTime = LocalTime.of(16, 56),
+            isDuration = false
+        )
+
+        val result = useCase(listOf(timeBlock))
+
+        assertThat(result.grossMinutes).isEqualTo(505) // 17:00 - 8:35 = 8h25min
+        assertThat(result.netMinutes).isEqualTo(475)   // 505 - 30 (>6h break)
+        assertThat(result.breakMinutes).isEqualTo(30)
+    }
+
+    @Test
+    fun testRoundingWhenTwoBlocksExpectOnlyFirstStartAndLastEndRounded() {
+        // 8:39–12:13 + 13:02–15:38 → adjusted: 8:35–12:13 + 13:02–15:40
+        // Gross: (12:13-8:35)=218 + (15:40-13:02)=158 = 376 min
+        // Gap: 13:02-12:13 = 49 min > required 30 min → no deduction
+        val timeBlocks = listOf(
+            TimeBlock(1, 1, LocalTime.of(8, 39), LocalTime.of(12, 13), isDuration = false),
+            TimeBlock(2, 1, LocalTime.of(13, 2), LocalTime.of(15, 38), isDuration = false)
+        )
+
+        val result = useCase(timeBlocks)
+
+        assertThat(result.grossMinutes).isEqualTo(376)
+        assertThat(result.netMinutes).isEqualTo(376) // gap covers required break
+        assertThat(result.breakMinutes).isEqualTo(49) // the actual gap
+    }
+
+    @Test
+    fun testRoundingWhenAlreadyOnBoundaryExpectNoChange() {
+        // 8:35–17:00 → already on boundary, no change → gross = 505 min
+        val timeBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(8, 35),
+            endTime = LocalTime.of(17, 0),
+            isDuration = false
+        )
+
+        val result = useCase(listOf(timeBlock))
+
+        assertThat(result.grossMinutes).isEqualTo(505)
+        assertThat(result.netMinutes).isEqualTo(475) // 505 - 30
+        assertThat(result.breakMinutes).isEqualTo(30)
+    }
+
+    @Test
+    fun testRoundingWhenDurationBlockExpectNoRounding() {
+        // Duration block 8:39–16:56 → isDuration=true → no rounding applied
+        // Gross = 16:56-8:39 = 497 min, no break deduction
+        val timeBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(8, 39),
+            endTime = LocalTime.of(16, 56),
+            isDuration = true
+        )
+
+        val result = useCase(listOf(timeBlock))
+
+        assertThat(result.grossMinutes).isEqualTo(497)
+        assertThat(result.netMinutes).isEqualTo(497) // duration: no break deducted
+        assertThat(result.breakMinutes).isEqualTo(0)
+    }
+
+    @Test
+    fun testRoundingWhenRunningLastBlockExpectOnlyStartRounded() {
+        // Block 1: 8:39–12:00 (completed), Block 2: 12:30–null (running)
+        // Adjusted[0]: start 8:39→8:35 (index 0), end 12:00 unchanged
+        // Adjusted[1]: start 12:30 (on boundary), end null → no rounding
+        // Gross = 12:00-8:35 = 205 min (vs. unrounded 201 min)
+        val timeBlocks = listOf(
+            TimeBlock(1, 1, LocalTime.of(8, 39), LocalTime.of(12, 0), isDuration = false),
+            TimeBlock(2, 1, LocalTime.of(12, 30), null, isDuration = false)
+        )
+
+        val result = useCase(timeBlocks)
+
+        assertThat(result.grossMinutes).isEqualTo(205)
+    }
+
     // Helper function to invoke use case with single block
     private operator fun CalculateDayWorkTimeUseCase.invoke(timeBlock: TimeBlock): DayWorkTimeResult {
         return this.invoke(listOf(timeBlock))

@@ -11,14 +11,14 @@ import com.vrema.domain.model.Settings
 import com.vrema.domain.model.TimeBlock
 import com.vrema.domain.model.WorkDay
 import com.vrema.domain.model.WorkLocation
+import com.vrema.domain.repository.SettingsRepository
+import com.vrema.domain.repository.WorkDayRepository
 import com.vrema.domain.usecase.CalculateDayWorkTimeUseCase
 import com.vrema.domain.usecase.CalculateFlextimeUseCase
 import com.vrema.domain.usecase.CalculateQuotaUseCase
 import com.vrema.domain.usecase.DayWorkTimeResult
 import com.vrema.domain.usecase.GetMonthWorkDaysUseCase
 import com.vrema.domain.usecase.GetSettingsUseCase
-import com.vrema.domain.repository.SettingsRepository
-import com.vrema.domain.repository.WorkDayRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -131,11 +131,13 @@ class HomeViewModel @Inject constructor(
                         val workingDays = actualMonthDays.filter { it.dayType !in neutralTypes }
                         var officeMin = 0L
                         for (day in workingDays) {
+                            val adjustedBlocks =
+                                CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
                             val dayResult = calculateDayWorkTime(day.timeBlocks)
                             val totalGross = dayResult.grossMinutes
                             if (totalGross == 0L) continue
                             var dayOfficeGross = 0L
-                            for (block in day.timeBlocks) {
+                            for (block in adjustedBlocks) {
                                 val blockEnd = block.endTime ?: continue
                                 val blockMin = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
                                 if (blockMin > 0 && block.location == WorkLocation.OFFICE) dayOfficeGross += blockMin

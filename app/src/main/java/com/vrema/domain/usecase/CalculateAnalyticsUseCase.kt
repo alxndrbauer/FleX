@@ -98,10 +98,11 @@ class CalculateAnalyticsUseCase @Inject constructor(
             var homeOfficeMinutes = 0L
 
             for (day in daysInWeek) {
+                val adjustedBlocks = CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
                 val result = calculateDayWorkTime(day.timeBlocks)
                 totalMinutes += result.netMinutes
 
-                for (block in day.timeBlocks) {
+                for (block in adjustedBlocks) {
                     val blockEnd = block.endTime ?: continue
                     val blockMinutes = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
                     if (blockMinutes <= 0) continue
@@ -140,7 +141,8 @@ class CalculateAnalyticsUseCase @Inject constructor(
         var homeOfficeMinutes = 0L
 
         for (day in workDays) {
-            for (block in day.timeBlocks) {
+            val adjustedBlocks = CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
+            for (block in adjustedBlocks) {
                 val blockEnd = block.endTime ?: continue
                 val blockMinutes = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
                 if (blockMinutes <= 0) continue

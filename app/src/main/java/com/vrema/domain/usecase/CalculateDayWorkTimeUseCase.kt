@@ -2,6 +2,7 @@ package com.vrema.domain.usecase
 
 import com.vrema.domain.model.TimeBlock
 import java.time.Duration
+import java.time.LocalTime
 import javax.inject.Inject
 
 data class DayWorkTimeResult(
@@ -19,6 +20,29 @@ class CalculateDayWorkTimeUseCase @Inject constructor() {
         const val BREAK_THRESHOLD_9H = 540L // 9 hours in minutes
         const val BREAK_30_MIN = 30L
         const val BREAK_45_MIN = 45L
+
+        /** Sortiert Blöcke und wendet 5-Minuten-Rundung an (erster Start ↓, letztes Ende ↑). */
+        fun adjustTimeBlocks(timeBlocks: List<TimeBlock>): List<TimeBlock> {
+            val sorted = timeBlocks.sortedBy { it.startTime }
+            return sorted.mapIndexed { index, block ->
+                if (block.isDuration) return@mapIndexed block
+                var start = block.startTime
+                var end = block.endTime
+                if (index == 0) start = roundDownTo5Min(start)
+                if (index == sorted.lastIndex && end != null) end = roundUpTo5Min(end)
+                block.copy(startTime = start, endTime = end)
+            }
+        }
+
+        private fun roundDownTo5Min(time: LocalTime): LocalTime {
+            val remainder = time.minute % 5
+            return if (remainder == 0) time else time.minusMinutes(remainder.toLong())
+        }
+
+        private fun roundUpTo5Min(time: LocalTime): LocalTime {
+            val remainder = time.minute % 5
+            return if (remainder == 0) time else time.plusMinutes((5 - remainder).toLong())
+        }
     }
 
     operator fun invoke(timeBlocks: List<TimeBlock>): DayWorkTimeResult {
@@ -26,18 +50,18 @@ class CalculateDayWorkTimeUseCase @Inject constructor() {
             return DayWorkTimeResult(0, 0, 0, false)
         }
 
-        val sorted = timeBlocks.sortedBy { it.startTime }
+        val adjusted = adjustTimeBlocks(timeBlocks)
 
         // Calculate gross time per block
         var totalGrossMinutes = 0L
-        for (block in sorted) {
+        for (block in adjusted) {
             val end = block.endTime ?: continue // skip blocks without end
             val duration = Duration.between(block.startTime, end).toMinutes()
             if (duration > 0) totalGrossMinutes += duration
         }
 
         // If all blocks are duration-based (Gesamtzeit / Planung), skip break deduction
-        val completedBlocks = sorted.filter { it.endTime != null }
+        val completedBlocks = adjusted.filter { it.endTime != null }
         val allDurationBased = completedBlocks.isNotEmpty() && completedBlocks.all { it.isDuration }
 
         if (allDurationBased) {
@@ -54,9 +78,9 @@ class CalculateDayWorkTimeUseCase @Inject constructor() {
         // Also counts the gap between the last completed block and a running block,
         // so that a break already taken is not deducted again.
         var totalGapMinutes = 0L
-        for (i in 0 until sorted.size - 1) {
-            val currentEnd = sorted[i].endTime ?: continue // running block has no end
-            val nextStart = sorted[i + 1].startTime
+        for (i in 0 until adjusted.size - 1) {
+            val currentEnd = adjusted[i].endTime ?: continue // running block has no end
+            val nextStart = adjusted[i + 1].startTime
             val gap = Duration.between(currentEnd, nextStart).toMinutes()
             if (gap > 0) totalGapMinutes += gap
         }
@@ -71,7 +95,7 @@ class CalculateDayWorkTimeUseCase @Inject constructor() {
         val effectiveBreak: Long
         val netMinutes: Long
 
-        if (sorted.size <= 1) {
+        if (adjusted.size <= 1) {
             // Single block (completed or running): apply automatic break
             effectiveBreak = requiredBreak
             netMinutes = totalGrossMinutes - effectiveBreak
@@ -92,4 +116,5 @@ class CalculateDayWorkTimeUseCase @Inject constructor() {
             exceedsMaxHours = exceedsMax
         )
     }
+
 }
