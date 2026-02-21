@@ -51,7 +51,7 @@ jobs:
         id: version
         run: |
           VERSION=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -1)
-          TIMESTAMP=$(date -u +%Y%m%d-%H%M)
+          TIMESTAMP=$(date -u +%Y%m%d-%s)
           echo "tag=v${VERSION}-${TIMESTAMP}" >> "$GITHUB_OUTPUT"
       - name: Create Release
         if: success()
