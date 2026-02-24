@@ -127,11 +127,17 @@ class MonthViewModel @Inject constructor(
                 val workingDays = prognosisDays.filter { it.dayType !in neutralTypes }
                 var officeMin = 0L
                 for (day in workingDays) {
-                    for (block in day.timeBlocks) {
+                    val adjustedBlocks = CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
+                    val dayResult = calculateDayWorkTime(day.timeBlocks)
+                    val totalGross = dayResult.grossMinutes
+                    if (totalGross == 0L) continue
+                    var dayOfficeGross = 0L
+                    for (block in adjustedBlocks) {
                         val blockEnd = block.endTime ?: continue
                         val blockMin = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
-                        if (blockMin > 0 && block.location == WorkLocation.OFFICE) officeMin += blockMin
+                        if (blockMin > 0 && block.location == WorkLocation.OFFICE) dayOfficeGross += blockMin
                     }
+                    officeMin += dayOfficeGross * dayResult.netMinutes / totalGross
                 }
 
                 val netByDate = days.filter { !it.isPlanned || !isCurrentOrPast }.associate { day ->
