@@ -101,16 +101,22 @@ class CalculateAnalyticsUseCase @Inject constructor(
                 val adjustedBlocks = CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
                 val result = calculateDayWorkTime(day.timeBlocks)
                 totalMinutes += result.netMinutes
+                val totalGross = result.grossMinutes
+                if (totalGross == 0L) continue
 
+                var dayOfficeGross = 0L
+                var dayHomeOfficeGross = 0L
                 for (block in adjustedBlocks) {
                     val blockEnd = block.endTime ?: continue
                     val blockMinutes = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
                     if (blockMinutes <= 0) continue
                     when (block.location) {
-                        WorkLocation.OFFICE -> officeMinutes += blockMinutes
-                        WorkLocation.HOME_OFFICE -> homeOfficeMinutes += blockMinutes
+                        WorkLocation.OFFICE -> dayOfficeGross += blockMinutes
+                        WorkLocation.HOME_OFFICE -> dayHomeOfficeGross += blockMinutes
                     }
                 }
+                officeMinutes += dayOfficeGross * result.netMinutes / totalGross
+                homeOfficeMinutes += dayHomeOfficeGross * result.netMinutes / totalGross
             }
 
             WeeklyWorkHours(
@@ -142,15 +148,23 @@ class CalculateAnalyticsUseCase @Inject constructor(
 
         for (day in workDays) {
             val adjustedBlocks = CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
+            val result = calculateDayWorkTime(day.timeBlocks)
+            val totalGross = result.grossMinutes
+            if (totalGross == 0L) continue
+
+            var dayOfficeGross = 0L
+            var dayHomeOfficeGross = 0L
             for (block in adjustedBlocks) {
                 val blockEnd = block.endTime ?: continue
                 val blockMinutes = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
                 if (blockMinutes <= 0) continue
                 when (block.location) {
-                    WorkLocation.OFFICE -> officeMinutes += blockMinutes
-                    WorkLocation.HOME_OFFICE -> homeOfficeMinutes += blockMinutes
+                    WorkLocation.OFFICE -> dayOfficeGross += blockMinutes
+                    WorkLocation.HOME_OFFICE -> dayHomeOfficeGross += blockMinutes
                 }
             }
+            officeMinutes += dayOfficeGross * result.netMinutes / totalGross
+            homeOfficeMinutes += dayHomeOfficeGross * result.netMinutes / totalGross
         }
 
         return LocationDistribution(
