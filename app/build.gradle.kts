@@ -136,8 +136,8 @@ dependencies {
     ksp("androidx.room:room-compiler:2.7.1")
 
     // Hilt
-    implementation("com.google.dagger:hilt-android:2.56.2")
-    ksp("com.google.dagger:hilt-android-compiler:2.56.2")
+    implementation("com.google.dagger:hilt-android:2.59.2")
+    ksp("com.google.dagger:hilt-android-compiler:2.59.2")
 
     // Lifecycle
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
@@ -175,8 +175,8 @@ dependencies {
     androidTestImplementation("com.google.truth:truth:1.1.5")
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1")
     androidTestImplementation("androidx.arch.core:core-testing:2.2.0")
-    androidTestImplementation("com.google.dagger:hilt-android-testing:2.56.2")
-    kspAndroidTest("com.google.dagger:hilt-android-compiler:2.56.2")
+    androidTestImplementation("com.google.dagger:hilt-android-testing:2.59.2")
+    kspAndroidTest("com.google.dagger:hilt-android-compiler:2.59.2")
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.05.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 
