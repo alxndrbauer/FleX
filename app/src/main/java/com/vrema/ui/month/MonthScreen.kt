@@ -1,5 +1,7 @@
 package com.vrema.ui.month
 
+import androidx.compose.ui.text.input.TextFieldValue
+import com.vrema.ui.components.formatTimeInput
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -464,8 +466,8 @@ fun EditDayDialog(
     val dialogState = calculateEditDayDialogState(workDay, dailyWorkMinutes)
 
     var selectedTab by remember { mutableIntStateOf(dialogState.selectedTab) }
-    var startText by remember { mutableStateOf(dialogState.startText) }
-    var endText by remember { mutableStateOf(dialogState.endText) }
+    var startText by remember { mutableStateOf(TextFieldValue(dialogState.startText)) }
+    var endText by remember { mutableStateOf(TextFieldValue(dialogState.endText)) }
     var durationHours by remember { mutableStateOf(dialogState.durationHours) }
     var durationMinutes by remember { mutableStateOf(dialogState.durationMinutes) }
 
@@ -534,14 +536,14 @@ fun EditDayDialog(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
                                 value = startText,
-                                onValueChange = { startText = it },
+                                onValueChange = { startText = formatTimeInput(it) },
                                 label = { Text("Start") },
                                 modifier = Modifier.weight(1f),
                                 singleLine = true
                             )
                             OutlinedTextField(
                                 value = endText,
-                                onValueChange = { endText = it },
+                                onValueChange = { endText = formatTimeInput(it) },
                                 label = { Text("Ende") },
                                 modifier = Modifier.weight(1f),
                                 singleLine = true
@@ -579,8 +581,8 @@ fun EditDayDialog(
                     if (selectedTab == 0) {
                         try {
                             val start =
-                                LocalTime.parse(startText, DateTimeFormatter.ofPattern("HH:mm"))
-                            val end = LocalTime.parse(endText, DateTimeFormatter.ofPattern("HH:mm"))
+                                LocalTime.parse(startText.text, DateTimeFormatter.ofPattern("HH:mm"))
+                            val end = LocalTime.parse(endText.text, DateTimeFormatter.ofPattern("HH:mm"))
                             listOf(start to end)
                         } catch (_: Exception) {
                             emptyList()

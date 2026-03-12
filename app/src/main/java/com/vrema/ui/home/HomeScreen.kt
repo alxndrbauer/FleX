@@ -1,5 +1,7 @@
 package com.vrema.ui.home
 
+import androidx.compose.ui.text.input.TextFieldValue
+import com.vrema.ui.components.formatTimeInput
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -506,8 +508,8 @@ fun ManualTimeEntryDialog(
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val defaultEnd = LocalTime.of(8, 0).plusMinutes(dailyWorkMinutes.toLong())
-    var startText by remember { mutableStateOf("08:00") }
-    var endText by remember { mutableStateOf(defaultEnd.format(DateTimeFormatter.ofPattern("HH:mm"))) }
+    var startText by remember { mutableStateOf(TextFieldValue("08:00")) }
+    var endText by remember { mutableStateOf(TextFieldValue(defaultEnd.format(DateTimeFormatter.ofPattern("HH:mm")))) }
     var durationHours by remember { mutableStateOf((dailyWorkMinutes / 60).toString()) }
     var durationMinutes by remember { mutableStateOf((dailyWorkMinutes % 60).toString()) }
     var dialogLocation by remember { mutableStateOf(selectedLocation) }
@@ -550,7 +552,7 @@ fun ManualTimeEntryDialog(
                 if (selectedTab == 0) {
                     OutlinedTextField(
                         value = startText,
-                        onValueChange = { startText = it },
+                        onValueChange = { startText = formatTimeInput(it) },
                         label = { Text("Startzeit (HH:mm)") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
@@ -558,7 +560,7 @@ fun ManualTimeEntryDialog(
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = endText,
-                        onValueChange = { endText = it },
+                        onValueChange = { endText = formatTimeInput(it) },
                         label = { Text("Endzeit (HH:mm)") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
@@ -587,8 +589,8 @@ fun ManualTimeEntryDialog(
             TextButton(onClick = {
                 if (selectedTab == 0) {
                     try {
-                        val start = LocalTime.parse(startText, DateTimeFormatter.ofPattern("HH:mm"))
-                        val end = LocalTime.parse(endText, DateTimeFormatter.ofPattern("HH:mm"))
+                        val start = LocalTime.parse(startText.text, DateTimeFormatter.ofPattern("HH:mm"))
+                        val end = LocalTime.parse(endText.text, DateTimeFormatter.ofPattern("HH:mm"))
                         onConfirmStartEnd(start, end, dialogLocation)
                     } catch (_: Exception) { }
                 } else {
@@ -617,8 +619,8 @@ fun EditTimeBlockDialog(
     onDelete: () -> Unit
 ) {
     val fmt = DateTimeFormatter.ofPattern("HH:mm")
-    var startText by remember { mutableStateOf(block.startTime.format(fmt)) }
-    var endText by remember { mutableStateOf(block.endTime?.format(fmt) ?: "") }
+    var startText by remember { mutableStateOf(TextFieldValue(block.startTime.format(fmt))) }
+    var endText by remember { mutableStateOf(TextFieldValue(block.endTime?.format(fmt) ?: "")) }
     var dialogLocation by remember { mutableStateOf(block.location) }
 
     AlertDialog(
@@ -644,14 +646,14 @@ fun EditTimeBlockDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = startText,
-                        onValueChange = { startText = it },
+                        onValueChange = { startText = formatTimeInput(it) },
                         label = { Text("Start (HH:mm)") },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                     OutlinedTextField(
                         value = endText,
-                        onValueChange = { endText = it },
+                        onValueChange = { endText = formatTimeInput(it) },
                         label = { Text("Ende (HH:mm)") },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
@@ -663,9 +665,9 @@ fun EditTimeBlockDialog(
         confirmButton = {
             TextButton(onClick = {
                 try {
-                    val start = LocalTime.parse(startText, DateTimeFormatter.ofPattern("HH:mm"))
-                    val end = if (endText.isBlank()) null
-                    else LocalTime.parse(endText, DateTimeFormatter.ofPattern("HH:mm"))
+                    val start = LocalTime.parse(startText.text, DateTimeFormatter.ofPattern("HH:mm"))
+                    val end = if (endText.text.isBlank()) null
+                    else LocalTime.parse(endText.text, DateTimeFormatter.ofPattern("HH:mm"))
                     onSave(start, end, dialogLocation)
                 } catch (_: Exception) { }
             }) {

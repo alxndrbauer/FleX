@@ -344,12 +344,12 @@ class CalculateQuotaUseCaseTest {
 
     @Test
     fun testRemainingWorkDaysWhenCurrentMonthExpectCorrectCount() {
-        // This test is time-dependent; we'll use a fixed month in the past
-        // For Feb 2026, from Feb 15 (today in context) to end of month
-        // Remaining work days: Mon-Fri from Feb 16-28
-        val result = useCase(emptyList(), settings, YearMonth.of(2026, 2))
+        // This test is time-dependent; uses the current month so remainingWorkDays > 0
+        // For Mar 2026, from Mar 12 to end of month
+        // Remaining work days: Mon-Fri from Mar 13-31
+        val result = useCase(emptyList(), settings, YearMonth.of(2026, 3))
 
-        // Feb 2026: 16-20 (5 days), 23-27 (5 days) = 10 work days
+        // Mar 2026: 13-20 (6 days), 23-27 (5 days), 30-31 (2 days) = 13 work days remaining
         assertThat(result.remainingWorkDays).isGreaterThan(0)
     }
 
