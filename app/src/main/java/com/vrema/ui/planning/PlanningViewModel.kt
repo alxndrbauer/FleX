@@ -253,7 +253,7 @@ class PlanningViewModel @Inject constructor(
                     val start = LocalTime.of(8, 0)
                     val end = start.plusMinutes(settings.dailyWorkMinutes.toLong())
                     allDays.add(existing.copy(
-                        timeBlocks = listOf(TimeBlock(workDayId = existing.id, startTime = start, endTime = end, isDuration = true))
+                        timeBlocks = listOf(TimeBlock(workDayId = existing.id, startTime = start, endTime = end, isDuration = true, location = existing.location))
                     ))
                 } else {
                     allDays.add(existing)
@@ -267,7 +267,7 @@ class PlanningViewModel @Inject constructor(
                     location = WorkLocation.HOME_OFFICE,
                     dayType = DayType.WORK,
                     isPlanned = true,
-                    timeBlocks = listOf(TimeBlock(workDayId = 0, startTime = start, endTime = end, isDuration = true))
+                    timeBlocks = listOf(TimeBlock(workDayId = 0, startTime = start, endTime = end, isDuration = true, location = WorkLocation.HOME_OFFICE))
                 ))
             }
         }
