@@ -77,31 +77,27 @@ tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }
 
-// Workaround: KSP's bundled IntelliJ Platform posts invokeLater events (e.g.
-// BinaryFileTypeDecompilers.notifyDecompilerSetChange) *during* Application disposal.
-// These events land on the AWT-EventQueue-0 thread after Application is already null,
-// causing an NPE that no drain-based approach can prevent (the event is posted after the drain).
-// Solution: install a Thread.UncaughtExceptionHandler on the EDT that silently swallows
-// NPEs originating from ksp.com.intellij.* — all other exceptions are forwarded to the
-// previous handler unchanged.
-try {
-    val isHeadless = Class.forName("java.awt.GraphicsEnvironment")
-        .getMethod("isHeadless").invoke(null) as Boolean
-    if (!isHeadless) {
-        val eventQueueClass = Class.forName("java.awt.EventQueue")
-        val invokeAndWait = eventQueueClass.getMethod("invokeAndWait", Runnable::class.java)
-        invokeAndWait.invoke(null, Runnable {
-            val edt = Thread.currentThread()
-            val prev = edt.uncaughtExceptionHandler
-            edt.uncaughtExceptionHandler = Thread.UncaughtExceptionHandler { t, e ->
-                if (e is NullPointerException &&
-                    e.stackTrace.any { it.className.startsWith("ksp.com.intellij") }
-                ) return@UncaughtExceptionHandler
-                prev?.uncaughtException(t, e)
+// Workaround: KSP's bundled IntelliJ Platform posts AWT EDT events asynchronously during
+// annotation processing. When IntelliJ disposes its Application, pending EDT events call
+// ApplicationManager.getApplication() which returns null → NPE in AWT-EventQueue-0 thread.
+// These events are posted async and can fire during *any* subsequent task (not just ksp*Kotlin),
+// so we drain the EDT after every task to ensure events run while Application is still alive.
+tasks.configureEach {
+    doLast {
+        try {
+            val gfxEnvClass = Class.forName("java.awt.GraphicsEnvironment")
+            val isHeadless = gfxEnvClass.getMethod("isHeadless").invoke(null) as Boolean
+            val eventQueueClass = Class.forName("java.awt.EventQueue")
+            val isEdt = eventQueueClass.getMethod("isDispatchThread").invoke(null) as Boolean
+            if (!isHeadless && !isEdt) {
+                val invokeAndWait = eventQueueClass.getMethod("invokeAndWait", Runnable::class.java)
+                repeat(2) {
+                    try { invokeAndWait.invoke(null, Runnable { }) } catch (_: Exception) { }
+                }
             }
-        })
+        } catch (_: Exception) { }
     }
-} catch (_: Exception) { }
+}
 
 tasks.register<Sync>("renameReleaseApk") {
     dependsOn("assembleRelease")
