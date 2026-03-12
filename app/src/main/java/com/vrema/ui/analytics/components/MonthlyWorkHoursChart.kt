@@ -18,8 +18,11 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
 import com.vrema.domain.model.TimeSeriesPoint
+import java.time.format.TextStyle
+import java.util.Locale
 
 @Composable
 fun MonthlyWorkHoursChart(
@@ -37,6 +40,15 @@ fun MonthlyWorkHoursChart(
         return
     }
 
+    val xLabels = data.map { it.date.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
+
+    val bottomFormatter = CartesianValueFormatter { _, x, _ ->
+        xLabels.getOrElse(x.toInt()) { x.toInt().toString() }
+    }
+    val startFormatter = CartesianValueFormatter { _, y, _ ->
+        "${String.format("%.1f", y)}h"
+    }
+
     val modelProducer = remember { CartesianChartModelProducer() }
 
     LaunchedEffect(data) {
@@ -50,8 +62,8 @@ fun MonthlyWorkHoursChart(
     CartesianChartHost(
         chart = rememberCartesianChart(
             rememberColumnCartesianLayer(),
-            startAxis = VerticalAxis.rememberStart(),
-            bottomAxis = HorizontalAxis.rememberBottom(),
+            startAxis = VerticalAxis.rememberStart(valueFormatter = startFormatter),
+            bottomAxis = HorizontalAxis.rememberBottom(valueFormatter = bottomFormatter),
         ),
         modelProducer = modelProducer,
         modifier = modifier

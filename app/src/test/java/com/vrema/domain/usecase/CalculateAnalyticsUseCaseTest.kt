@@ -329,8 +329,8 @@ class CalculateAnalyticsUseCaseTest {
         // Feb: 240 overtime (50% of 480)
         // March: 240 overtime (50% of 480)
         whenever(calculateFlextime.invoke(any(), any(), any())).thenReturn(
-            FlextimeBalance(earnedMinutes = 480, totalMinutes = 480, overtimeMinutes = 240, targetMinutes = 0, initialMinutes = 0),
-            FlextimeBalance(earnedMinutes = 480, totalMinutes = 480, overtimeMinutes = 240, targetMinutes = 0, initialMinutes = 0)
+            FlextimeBalance(earnedMinutes = 480, totalMinutes = 480, overtimeMinutes = 240, earnedOvertimeMinutes = 240, targetMinutes = 0, initialMinutes = 0),
+            FlextimeBalance(earnedMinutes = 480, totalMinutes = 480, overtimeMinutes = 240, earnedOvertimeMinutes = 240, targetMinutes = 0, initialMinutes = 0)
         )
 
         val result = useCase(workDays, settings, TimeRange.Custom(

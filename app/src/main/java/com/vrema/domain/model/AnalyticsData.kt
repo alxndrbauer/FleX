@@ -1,11 +1,14 @@
 package com.vrema.domain.model
 
+import java.time.LocalDate
 import java.time.YearMonth
 
 data class TimeSeriesPoint(
-    val yearMonth: YearMonth,
+    val date: LocalDate,
     val value: Long  // minutes
-)
+) {
+    val yearMonth: YearMonth get() = YearMonth.from(date)
+}
 
 data class WeeklyWorkHours(
     val weekOfYear: Int,

@@ -5,7 +5,8 @@ data class FlextimeBalance(
     val earnedMinutes: Long = 0,
     val totalMinutes: Long = 0,
     val targetMinutes: Long = 0,
-    val overtimeMinutes: Long = 0
+    val overtimeMinutes: Long = 0,
+    val earnedOvertimeMinutes: Long = 0
 ) {
     val hours: Long get() = totalMinutes / 60
     val remainingMinutes: Long get() = kotlin.math.abs(totalMinutes % 60)

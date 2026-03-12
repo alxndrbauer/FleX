@@ -1,6 +1,7 @@
 package com.vrema.domain.usecase
 
 import com.vrema.domain.model.AnalyticsData
+import com.vrema.domain.model.DayType
 import com.vrema.domain.model.LocationDistribution
 import com.vrema.domain.model.Settings
 import com.vrema.domain.model.TimeRange
@@ -8,9 +9,11 @@ import com.vrema.domain.model.TimeSeriesPoint
 import com.vrema.domain.model.WeeklyWorkHours
 import com.vrema.domain.model.WorkDay
 import com.vrema.domain.model.WorkLocation
+import java.time.DayOfWeek
 import java.time.YearMonth
 import java.time.temporal.ChronoField
 import javax.inject.Inject
+import kotlin.math.roundToLong
 
 class CalculateAnalyticsUseCase @Inject constructor(
     private val calculateDayWorkTime: CalculateDayWorkTimeUseCase,
@@ -36,8 +39,8 @@ class CalculateAnalyticsUseCase @Inject constructor(
         }
 
         return AnalyticsData(
-            flextimeSeries = calculateFlextimeSeries(actualWorkDays, settings),
-            overtimeSeries = calculateOvertimeSeries(actualWorkDays, settings),
+            flextimeSeries = calculateFlextimeSeries(actualWorkDays, settings, timeRange),
+            overtimeSeries = calculateOvertimeSeries(actualWorkDays, settings, timeRange),
             weeklyHours = calculateWeeklyHours(actualWorkDays),
             monthlyHours = calculateMonthlyHours(actualWorkDays),
             locationDistribution = calculateLocationDistribution(actualWorkDays)
@@ -46,42 +49,78 @@ class CalculateAnalyticsUseCase @Inject constructor(
 
     private fun calculateFlextimeSeries(
         workDays: List<WorkDay>,
-        settings: Settings
+        settings: Settings,
+        timeRange: TimeRange
     ): List<TimeSeriesPoint> {
-        val monthlyGroups = workDays
-            .groupBy { YearMonth.from(it.date) }
-            .toSortedMap()
-
-        var cumulativeFlextime = 0L
-        val series = mutableListOf<TimeSeriesPoint>()
-
-        for ((yearMonth, daysInMonth) in monthlyGroups) {
-            val balance = calculateFlextimeUseCase(daysInMonth, settings, yearMonth)
-            cumulativeFlextime += balance.totalMinutes
-            series.add(TimeSeriesPoint(yearMonth, cumulativeFlextime))
+        return when (timeRange) {
+            is TimeRange.Month -> {
+                val sortedDays = workDays.sortedBy { it.date }
+                var cumulativeFlextime = settings.initialFlextimeMinutes.toLong()
+                sortedDays.map { day ->
+                    cumulativeFlextime += calculateDayFlextime(day, settings)
+                    TimeSeriesPoint(day.date, cumulativeFlextime)
+                }
+            }
+            else -> {
+                val monthlyGroups = workDays.groupBy { YearMonth.from(it.date) }.toSortedMap()
+                var cumulativeFlextime = settings.initialFlextimeMinutes.toLong()
+                val series = mutableListOf<TimeSeriesPoint>()
+                for ((yearMonth, daysInMonth) in monthlyGroups) {
+                    val balance = calculateFlextimeUseCase(daysInMonth, settings, yearMonth)
+                    cumulativeFlextime += balance.earnedMinutes
+                    series.add(TimeSeriesPoint(yearMonth.atDay(1), cumulativeFlextime))
+                }
+                series
+            }
         }
-
-        return series
     }
 
     private fun calculateOvertimeSeries(
         workDays: List<WorkDay>,
-        settings: Settings
+        settings: Settings,
+        timeRange: TimeRange
     ): List<TimeSeriesPoint> {
-        val monthlyGroups = workDays
-            .groupBy { YearMonth.from(it.date) }
-            .toSortedMap()
-
-        var cumulativeOvertime = 0L
-        val series = mutableListOf<TimeSeriesPoint>()
-
-        for ((yearMonth, daysInMonth) in monthlyGroups) {
-            val balance = calculateFlextimeUseCase(daysInMonth, settings, yearMonth)
-            cumulativeOvertime += balance.overtimeMinutes
-            series.add(TimeSeriesPoint(yearMonth, cumulativeOvertime))
+        return when (timeRange) {
+            is TimeRange.Month -> {
+                val sortedDays = workDays.sortedBy { it.date }
+                var cumulativeOvertime = settings.initialOvertimeMinutes.toLong()
+                sortedDays.map { day ->
+                    cumulativeOvertime += calculateDayOvertime(day)
+                    TimeSeriesPoint(day.date, cumulativeOvertime)
+                }
+            }
+            else -> {
+                val monthlyGroups = workDays.groupBy { YearMonth.from(it.date) }.toSortedMap()
+                var cumulativeOvertime = settings.initialOvertimeMinutes.toLong()
+                val series = mutableListOf<TimeSeriesPoint>()
+                for ((yearMonth, daysInMonth) in monthlyGroups) {
+                    val balance = calculateFlextimeUseCase(daysInMonth, settings, yearMonth)
+                    cumulativeOvertime += balance.earnedOvertimeMinutes
+                    series.add(TimeSeriesPoint(yearMonth.atDay(1), cumulativeOvertime))
+                }
+                series
+            }
         }
+    }
 
-        return series
+    private fun calculateDayFlextime(day: WorkDay, settings: Settings): Long {
+        return when (day.dayType) {
+            DayType.WORK -> {
+                val result = calculateDayWorkTime(day.timeBlocks)
+                val isWeekend = day.date.dayOfWeek == DayOfWeek.SATURDAY || day.date.dayOfWeek == DayOfWeek.SUNDAY
+                if (isWeekend) result.netMinutes else result.netMinutes - settings.dailyWorkMinutes
+            }
+            DayType.SATURDAY_BONUS -> calculateDayWorkTime(day.timeBlocks).netMinutes
+            DayType.FLEX_DAY -> -settings.dailyWorkMinutes.toLong()
+            DayType.VACATION, DayType.SPECIAL_VACATION -> 0L
+        }
+    }
+
+    private fun calculateDayOvertime(day: WorkDay): Long {
+        return when (day.dayType) {
+            DayType.SATURDAY_BONUS -> (calculateDayWorkTime(day.timeBlocks).netMinutes * 0.5).roundToLong()
+            else -> 0L
+        }
     }
 
     private fun calculateWeeklyHours(workDays: List<WorkDay>): List<WeeklyWorkHours> {
@@ -138,7 +177,7 @@ class CalculateAnalyticsUseCase @Inject constructor(
             val totalMinutes = daysInMonth.sumOf { day ->
                 calculateDayWorkTime(day.timeBlocks).netMinutes
             }
-            TimeSeriesPoint(yearMonth, totalMinutes)
+            TimeSeriesPoint(yearMonth.atDay(1), totalMinutes)
         }
     }
 

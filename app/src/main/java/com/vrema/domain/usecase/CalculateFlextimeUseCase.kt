@@ -69,7 +69,8 @@ class CalculateFlextimeUseCase @Inject constructor(
             earnedMinutes = earnedMinutes,
             totalMinutes = total,
             targetMinutes = targetMinutes,
-            overtimeMinutes = settings.initialOvertimeMinutes + overtimeMinutes
+            overtimeMinutes = settings.initialOvertimeMinutes + overtimeMinutes,
+            earnedOvertimeMinutes = overtimeMinutes
         )
     }
 }

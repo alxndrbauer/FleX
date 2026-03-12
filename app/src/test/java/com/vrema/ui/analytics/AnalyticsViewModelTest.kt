@@ -255,7 +255,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDaysForMonth(febMonth)).thenReturn(flowOf(workDays))
 
         val expectedAnalytics = AnalyticsData(
-            flextimeSeries = listOf(TimeSeriesPoint(febMonth, 120)),
+            flextimeSeries = listOf(TimeSeriesPoint(febMonth.atDay(1), 120)),
             overtimeSeries = emptyList(),
             weeklyHours = emptyList(),
             monthlyHours = emptyList(),
@@ -327,14 +327,14 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDaysForYear(2025)).thenReturn(flowOf(yearWorkDays))
 
         val monthAnalytics = AnalyticsData(
-            flextimeSeries = listOf(TimeSeriesPoint(febMonth, 60)),
+            flextimeSeries = listOf(TimeSeriesPoint(febMonth.atDay(1), 60)),
             overtimeSeries = emptyList(),
             weeklyHours = emptyList(),
             monthlyHours = emptyList(),
             locationDistribution = LocationDistribution(480, 0)
         )
         val yearAnalytics = AnalyticsData(
-            flextimeSeries = listOf(TimeSeriesPoint(febMonth, 120)),
+            flextimeSeries = listOf(TimeSeriesPoint(febMonth.atDay(1), 120)),
             overtimeSeries = emptyList(),
             weeklyHours = emptyList(),
             monthlyHours = emptyList(),
