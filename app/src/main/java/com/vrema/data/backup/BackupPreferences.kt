@@ -25,9 +25,20 @@ class BackupPreferences @Inject constructor(
         get() = prefs.getInt(KEY_MAX_LOCAL_BACKUPS, 5)
         set(value) = prefs.edit().putInt(KEY_MAX_LOCAL_BACKUPS, value).apply()
 
+    var autoBackupDirectoryUri: String?
+        get() = prefs.getString(KEY_AUTO_BACKUP_DIR, null)
+        set(value) {
+            if (value != null) {
+                prefs.edit().putString(KEY_AUTO_BACKUP_DIR, value).apply()
+            } else {
+                prefs.edit().remove(KEY_AUTO_BACKUP_DIR).apply()
+            }
+        }
+
     companion object {
         private const val KEY_LAST_BACKUP = "last_backup_timestamp"
         private const val KEY_AUTO_BACKUP_ENABLED = "auto_backup_enabled"
         private const val KEY_MAX_LOCAL_BACKUPS = "max_local_backups"
+        private const val KEY_AUTO_BACKUP_DIR = "auto_backup_directory_uri"
     }
 }

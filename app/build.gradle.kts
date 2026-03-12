@@ -15,7 +15,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "1.2.2"
+        versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -152,6 +152,9 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.1")
     implementation("androidx.hilt:hilt-work:1.2.0")
     ksp("androidx.hilt:hilt-compiler:1.2.0")
+
+    // DocumentFile (SAF)
+    implementation("androidx.documentfile:documentfile:1.0.1")
 
     // Java 8+ API desugaring (for LocalDate/LocalTime on older APIs)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")

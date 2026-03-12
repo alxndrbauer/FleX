@@ -71,6 +71,12 @@ fun BackupScreen(
         }
     }
 
+    val directoryPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        uri?.let { viewModel.selectBackupDirectory(it) }
+    }
+
     LaunchedEffect(uiState.message) {
         uiState.message?.let {
             snackbarHostState.showSnackbar(it)
@@ -153,6 +159,33 @@ fun BackupScreen(
             // Auto backup card
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "Automatische Sicherung",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Verzeichnis",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        uiState.autoBackupDirectoryName ?: "Kein Verzeichnis gewählt",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (uiState.autoBackupDirectoryName != null)
+                            MaterialTheme.colorScheme.onSurface
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedButton(
+                        onClick = { directoryPickerLauncher.launch(null) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Verzeichnis wählen")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -160,25 +193,28 @@ fun BackupScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "Automatische Sicherung",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                "Täglich sichern",
+                                style = MaterialTheme.typography.bodyMedium
                             )
                             Text(
-                                "Tägliches lokales Backup",
+                                if (uiState.autoBackupDirectoryName != null)
+                                    "In: ${uiState.autoBackupDirectoryName}"
+                                else
+                                    "Bitte Verzeichnis wählen",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Switch(
                             checked = uiState.isAutoBackupEnabled,
-                            onCheckedChange = { viewModel.toggleAutoBackup(it) }
+                            onCheckedChange = { viewModel.toggleAutoBackup(it) },
+                            enabled = uiState.autoBackupDirectoryUri != null && !uiState.isLoading
                         )
                     }
                     if (uiState.localBackupCount > 0) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "${uiState.localBackupCount} lokale Backups gespeichert (max. 5)",
+                            "${uiState.localBackupCount} Backups im gewählten Verzeichnis (max. 5)",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

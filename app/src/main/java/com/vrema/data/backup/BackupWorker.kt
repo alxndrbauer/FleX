@@ -1,12 +1,13 @@
 package com.vrema.data.backup
 
 import android.content.Context
+import android.net.Uri
+import androidx.documentfile.provider.DocumentFile
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -19,23 +20,31 @@ class BackupWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
+        val dirUriString = backupPreferences.autoBackupDirectoryUri
+            ?: return Result.failure()
+
+        val dirUri = Uri.parse(dirUriString)
+        val docDir = DocumentFile.fromTreeUri(applicationContext, dirUri)
+            ?: return Result.failure()
+
         return try {
             val json = backupRepository.createBackupJson()
 
-            val backupDir = File(applicationContext.filesDir, "backups")
-            backupDir.mkdirs()
-
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
-            val file = File(backupDir, "vrema_backup_$timestamp.json")
-            file.writeText(json, Charsets.UTF_8)
+            val file = docDir.createFile("application/json", "vrema_backup_$timestamp")
+                ?: return Result.retry()
+
+            applicationContext.contentResolver.openOutputStream(file.uri)?.use { outputStream ->
+                outputStream.write(json.toByteArray(Charsets.UTF_8))
+            }
 
             backupPreferences.lastBackupTimestamp = System.currentTimeMillis()
 
             // Keep only the N most recent backups
             val maxBackups = backupPreferences.maxLocalBackups
-            val backupFiles = backupDir.listFiles { f -> f.name.endsWith(".json") }
-                ?.sortedByDescending { it.lastModified() }
-                ?: emptyList()
+            val backupFiles = docDir.listFiles()
+                .filter { it.name?.startsWith("vrema_backup_") == true && it.name?.endsWith(".json") == true }
+                .sortedByDescending { it.lastModified() }
 
             backupFiles.drop(maxBackups).forEach { it.delete() }
 

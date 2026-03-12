@@ -1,10 +1,13 @@
 package com.vrema.ui.backup
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.vrema.data.backup.BackupPreferences
@@ -18,7 +21,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -33,7 +35,9 @@ data class BackupUiState(
     val localBackupCount: Int = 0,
     val message: String? = null,
     val showImportModeDialog: Boolean = false,
-    val pendingImportUri: Uri? = null
+    val pendingImportUri: Uri? = null,
+    val autoBackupDirectoryUri: Uri? = null,
+    val autoBackupDirectoryName: String? = null
 )
 
 @HiltViewModel
@@ -54,8 +58,17 @@ class BackupViewModel @Inject constructor(
 
     private fun loadState() {
         val lastBackup = backupPreferences.lastBackupTimestamp
-        val backupDir = File(appContext.filesDir, "backups")
-        val count = backupDir.listFiles { f -> f.name.endsWith(".json") }?.size ?: 0
+        val dirUriString = backupPreferences.autoBackupDirectoryUri
+        val dirUri = dirUriString?.let { Uri.parse(it) }
+        val count = if (dirUri != null) {
+            DocumentFile.fromTreeUri(appContext, dirUri)
+                ?.listFiles()
+                ?.count { it.name?.startsWith("vrema_backup_") == true && it.name?.endsWith(".json") == true }
+                ?: 0
+        } else 0
+        val dirName = if (dirUri != null) {
+            DocumentFile.fromTreeUri(appContext, dirUri)?.name ?: dirUri.lastPathSegment
+        } else null
 
         _uiState.update {
             it.copy(
@@ -65,8 +78,15 @@ class BackupViewModel @Inject constructor(
                     Instant.ofEpochMilli(lastBackup)
                         .atZone(ZoneId.systemDefault())
                         .format(dateTimeFormatter)
-                } else null
+                } else null,
+                autoBackupDirectoryUri = dirUri,
+                autoBackupDirectoryName = dirName
             )
+        }
+
+        // Re-schedule if auto-backup was enabled before (survives app restarts)
+        if (backupPreferences.isAutoBackupEnabled) {
+            schedulePeriodicBackup()
         }
     }
 
@@ -106,24 +126,43 @@ class BackupViewModel @Inject constructor(
         }
     }
 
+    fun selectBackupDirectory(uri: Uri) {
+        appContext.contentResolver.takePersistableUriPermission(
+            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        )
+        backupPreferences.autoBackupDirectoryUri = uri.toString()
+        loadState()
+    }
+
     fun toggleAutoBackup(enabled: Boolean) {
+        if (enabled && backupPreferences.autoBackupDirectoryUri == null) {
+            _uiState.update { it.copy(message = "Bitte zuerst ein Verzeichnis wählen") }
+            return
+        }
+
         backupPreferences.isAutoBackupEnabled = enabled
         _uiState.update { it.copy(isAutoBackupEnabled = enabled) }
 
-        val workManager = WorkManager.getInstance(appContext)
         if (enabled) {
-            val backupRequest = PeriodicWorkRequestBuilder<BackupWorker>(
-                24, TimeUnit.HOURS
-            ).build()
-
-            workManager.enqueueUniquePeriodicWork(
-                BackupWorker.WORK_NAME,
-                ExistingPeriodicWorkPolicy.UPDATE,
-                backupRequest
-            )
+            schedulePeriodicBackup()
+            // Run an immediate backup so the user sees it working right away
+            WorkManager.getInstance(appContext)
+                .enqueue(OneTimeWorkRequestBuilder<BackupWorker>().build())
         } else {
-            workManager.cancelUniqueWork(BackupWorker.WORK_NAME)
+            WorkManager.getInstance(appContext).cancelUniqueWork(BackupWorker.WORK_NAME)
         }
+    }
+
+    private fun schedulePeriodicBackup() {
+        val backupRequest = PeriodicWorkRequestBuilder<BackupWorker>(
+            24, TimeUnit.HOURS
+        ).build()
+
+        WorkManager.getInstance(appContext).enqueueUniquePeriodicWork(
+            BackupWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            backupRequest
+        )
     }
 
     fun clearMessage() {
