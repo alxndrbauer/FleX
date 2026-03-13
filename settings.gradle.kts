@@ -17,5 +17,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Vrema"
+rootProject.name = "FleX"
 include(":app")

@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "com.vrema"
+    namespace = "com.flex"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.vrema"
+        applicationId = "com.flex"
         minSdk = 26
         targetSdk = 36
         versionCode = 2
@@ -104,7 +104,7 @@ tasks.register<Sync>("renameReleaseApk") {
     from(layout.buildDirectory.dir("outputs/apk/release"))
     into(layout.buildDirectory.dir("outputs/apk/release/renamed"))
     include("app-release.apk")
-    rename { "vrema-v${android.defaultConfig.versionName}.apk" }
+    rename { "flex-v${android.defaultConfig.versionName}.apk" }
 }
 
 dependencies {
