@@ -85,12 +85,15 @@ class CalculateDayWorkTimeUseCase @Inject constructor() {
             if (gap > 0) totalGapMinutes += gap
         }
 
-        // Determine required legal break
-        val requiredBreak = when {
-            totalGrossMinutes > BREAK_THRESHOLD_9H -> BREAK_45_MIN
-            totalGrossMinutes > BREAK_THRESHOLD_6H -> BREAK_30_MIN
-            else -> 0L
-        }
+        // Determine required legal break (graduated: up to 30 min for >6h, up to 15 min extra for >9h net)
+        val stage1Break = if (totalGrossMinutes > BREAK_THRESHOLD_6H)
+            minOf(totalGrossMinutes - BREAK_THRESHOLD_6H, BREAK_30_MIN)
+        else 0L
+        val afterStage1 = totalGrossMinutes - stage1Break
+        val stage2Break = if (afterStage1 > BREAK_THRESHOLD_9H)
+            minOf(afterStage1 - BREAK_THRESHOLD_9H, BREAK_45_MIN - BREAK_30_MIN)
+        else 0L
+        val requiredBreak = stage1Break + stage2Break
 
         val effectiveBreak: Long
         val netMinutes: Long

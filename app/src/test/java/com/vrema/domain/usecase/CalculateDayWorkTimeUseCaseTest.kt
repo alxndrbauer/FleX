@@ -478,6 +478,133 @@ class CalculateDayWorkTimeUseCaseTest {
         assertThat(result.grossMinutes).isEqualTo(205)
     }
 
+    // Gestaffelte Pausenlogik tests
+
+    @Test
+    fun testGraduatedBreakWhen1MinOver6HoursExpect1MinBreak() {
+        // 6h 01m gross (361 min): stage1 = min(1, 30) = 1, net = 360
+        // Single block can't yield 361 min (end rounds to 5-min boundary).
+        // Two blocks with no gap: block 1 end is not rounded because it's not the last index.
+        val timeBlocks = listOf(
+            TimeBlock(1, 1, LocalTime.of(8, 0), LocalTime.of(14, 1), isDuration = false),
+            TimeBlock(2, 1, LocalTime.of(14, 1), null, isDuration = false)
+        )
+
+        val result = useCase(timeBlocks)
+
+        assertThat(result.grossMinutes).isEqualTo(361)
+        assertThat(result.breakMinutes).isEqualTo(1)
+        assertThat(result.netMinutes).isEqualTo(360)
+    }
+
+    @Test
+    fun testGraduatedBreakWhenJustOver6HoursExpectPartialStage1() {
+        // 6h 05m gross (365 min): stage1 = min(5, 30) = 5, net = 360
+        val timeBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(8, 0),
+            endTime = LocalTime.of(14, 5),
+            isDuration = false
+        )
+
+        val result = useCase(listOf(timeBlock))
+
+        assertThat(result.grossMinutes).isEqualTo(365)
+        assertThat(result.breakMinutes).isEqualTo(5)
+        assertThat(result.netMinutes).isEqualTo(360)
+    }
+
+    @Test
+    fun testGraduatedBreakWhenOver6HoursExpect15MinStage1() {
+        // 6h 15m gross (375 min): stage1 = min(15, 30) = 15, net = 360
+        val timeBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(8, 0),
+            endTime = LocalTime.of(14, 15),
+            isDuration = false
+        )
+
+        val result = useCase(listOf(timeBlock))
+
+        assertThat(result.grossMinutes).isEqualTo(375)
+        assertThat(result.breakMinutes).isEqualTo(15)
+        assertThat(result.netMinutes).isEqualTo(360)
+    }
+
+    @Test
+    fun testGraduatedBreakWhenAtStage2ThresholdExpectNoStage2() {
+        // 9h 30m gross (570 min): stage1=30, afterStage1=540 (not >540), stage2=0, break=30, net=540
+        val timeBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(8, 0),
+            endTime = LocalTime.of(17, 30),
+            isDuration = false
+        )
+
+        val result = useCase(listOf(timeBlock))
+
+        assertThat(result.grossMinutes).isEqualTo(570)
+        assertThat(result.breakMinutes).isEqualTo(30)
+        assertThat(result.netMinutes).isEqualTo(540)
+    }
+
+    @Test
+    fun testGraduatedBreakWhenSlightlyOver9hNetExpectPartialStage2() {
+        // 9h 35m gross (575 min): stage1=30, afterStage1=545>540, stage2=min(5,15)=5, break=35, net=540
+        val timeBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(8, 0),
+            endTime = LocalTime.of(17, 35),
+            isDuration = false
+        )
+
+        val result = useCase(listOf(timeBlock))
+
+        assertThat(result.grossMinutes).isEqualTo(575)
+        assertThat(result.breakMinutes).isEqualTo(35)
+        assertThat(result.netMinutes).isEqualTo(540)
+    }
+
+    @Test
+    fun testGraduatedBreakWhenOver9h40mGrossExpect10MinStage2() {
+        // 9h 40m gross (580 min): stage1=30, afterStage1=550>540, stage2=min(10,15)=10, break=40, net=540
+        val timeBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(8, 0),
+            endTime = LocalTime.of(17, 40),
+            isDuration = false
+        )
+
+        val result = useCase(listOf(timeBlock))
+
+        assertThat(result.grossMinutes).isEqualTo(580)
+        assertThat(result.breakMinutes).isEqualTo(40)
+        assertThat(result.netMinutes).isEqualTo(540)
+    }
+
+    @Test
+    fun testGraduatedBreakWhenStage2FullExpect45MinTotalBreak() {
+        // 9h 45m gross (585 min): stage1=30, afterStage1=555>540, stage2=min(15,15)=15, break=45, net=540
+        val timeBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(8, 0),
+            endTime = LocalTime.of(17, 45),
+            isDuration = false
+        )
+
+        val result = useCase(listOf(timeBlock))
+
+        assertThat(result.grossMinutes).isEqualTo(585)
+        assertThat(result.breakMinutes).isEqualTo(45)
+        assertThat(result.netMinutes).isEqualTo(540)
+    }
+
     // Helper function to invoke use case with single block
     private operator fun CalculateDayWorkTimeUseCase.invoke(timeBlock: TimeBlock): DayWorkTimeResult {
         return this.invoke(listOf(timeBlock))
