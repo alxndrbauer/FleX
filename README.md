@@ -1,7 +1,7 @@
-# Vrema – Time Tracking App
+# FleX – Time Tracking App
 
 <div align="center">
-  <img src="vrema-logo.png" alt="Vrema Logo" width="400" height="400">
+  <img src="flex-logo.png" alt="FleX Logo">
 </div>
 
 Eine Android-App zur Erfassung von Arbeitszeiten mit Fokus auf Büro/Home-Office-Quoten, Gleitzeit und Überstundenverwaltung.
