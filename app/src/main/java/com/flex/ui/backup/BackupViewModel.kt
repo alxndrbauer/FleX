@@ -15,11 +15,13 @@ import com.flex.data.backup.BackupWorker
 import com.flex.data.backup.ImportMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -58,6 +60,8 @@ class BackupViewModel @Inject constructor(
     init {
         loadState()
     }
+
+    fun refreshState() = loadState()
 
     private fun loadState() {
         val lastBackup = backupPreferences.lastBackupTimestamp
@@ -168,11 +172,11 @@ class BackupViewModel @Inject constructor(
         backupPreferences.autoBackupMinute = minute
         _uiState.update { it.copy(autoBackupHour = hour, autoBackupMinute = minute, showTimePicker = false) }
         if (backupPreferences.isAutoBackupEnabled) {
-            schedulePeriodicBackup()
+            schedulePeriodicBackup(ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE)
         }
     }
 
-    private fun schedulePeriodicBackup() {
+    private fun schedulePeriodicBackup(policy: ExistingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.UPDATE) {
         val now = LocalDateTime.now()
         val hour = backupPreferences.autoBackupHour
         val minute = backupPreferences.autoBackupMinute
@@ -188,9 +192,53 @@ class BackupViewModel @Inject constructor(
 
         WorkManager.getInstance(appContext).enqueueUniquePeriodicWork(
             BackupWorker.WORK_NAME,
-            ExistingPeriodicWorkPolicy.UPDATE,
+            policy,
             backupRequest
         )
+    }
+
+    fun runAutoBackupNow() {
+        val dirUriString = backupPreferences.autoBackupDirectoryUri ?: return
+        val dirUri = Uri.parse(dirUriString)
+        val docDir = DocumentFile.fromTreeUri(appContext, dirUri) ?: return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, message = null) }
+            try {
+                withContext(Dispatchers.IO) {
+                    val json = backupRepository.createBackupJson()
+                    val timestamp =
+                        LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
+                    val file = docDir.createFile("application/json", "flex_backup_$timestamp")
+                        ?: throw IllegalStateException("Datei konnte nicht erstellt werden")
+
+                    appContext.contentResolver.openOutputStream(file.uri)
+                        ?.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+                    backupPreferences.lastBackupTimestamp = System.currentTimeMillis()
+
+                    val maxBackups = backupPreferences.maxLocalBackups
+                    docDir.listFiles()
+                        .filter { it.name?.startsWith("flex_backup_") == true && it.name?.endsWith(".json") == true }
+                        .sortedByDescending { it.lastModified() }
+                        .drop(maxBackups)
+                        .forEach { it.delete() }
+                }
+                loadState()
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        message = "Backup erfolgreich erstellt"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        message = "Backup fehlgeschlagen: ${e.message}"
+                    )
+                }
+            }
+        }
     }
 
     fun clearMessage() {

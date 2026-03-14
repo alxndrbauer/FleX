@@ -13,9 +13,9 @@ data class BackupFile(
 
 data class BackupData(
     val workDays: List<WorkDayEntity>,
-    val timeBlocks: List<TimeBlockEntity>,
+    val timeBlocks: List<TimeBlockEntity> = emptyList(),
     val settings: SettingsEntity?,
-    val quotaRules: List<QuotaRuleEntity>
+    val quotaRules: List<QuotaRuleEntity> = emptyList()
 )
 
 enum class ImportMode {
