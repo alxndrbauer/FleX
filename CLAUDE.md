@@ -56,12 +56,13 @@ Opus prüft alle Ergebnisse und erstellt Final-Commit
 ## Projektspezifisch
 
 ### Tech Stack
-- **Language:** Kotlin 2.2.10
+- **Language:** Kotlin 2.3.10
 - **UI:** Jetpack Compose + Material 3
 - **Architecture:** MVVM + Clean Architecture
-- **Database:** Room 2.7.1
-- **DI:** Hilt 2.56.2
-- **Build:** Gradle 9.2.1, AGP 9.0.1
+- **Database:** Room 2.8.4
+- **DI:** Hilt 2.57.1
+- **Build:** Gradle 9.4.0, AGP 9.1.0
+- **Version Catalog:** `gradle/libs.versions.toml`
 
 ### Key Patterns
 - **UI Layer:** `*Screen.kt` (Composables) + `*ViewModel.kt` (StateFlow, Hilt)
@@ -76,6 +77,7 @@ Opus prüft alle Ergebnisse und erstellt Final-Commit
 - GitHub Actions: Auto-Build & Release auf Push zu main
 
 ### Important Files
+- `gradle/libs.versions.toml` - Version Catalog (alle Dependency-Versionen zentral)
 - `app/build.gradle.kts` - App-Dependencies, Signing Config
 - `.github/workflows/build.yml` - Release Workflow
 - `.github/workflows/pr-check.yml` - PR Validation
