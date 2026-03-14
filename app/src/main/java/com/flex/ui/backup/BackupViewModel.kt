@@ -42,7 +42,7 @@ data class BackupUiState(
 
 @HiltViewModel
 class BackupViewModel @Inject constructor(
-    @ApplicationContext private val appContext: Context,
+    @param:ApplicationContext private val appContext: Context,
     private val backupRepository: BackupRepository,
     private val backupPreferences: BackupPreferences
 ) : ViewModel() {

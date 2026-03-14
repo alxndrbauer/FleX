@@ -43,8 +43,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -64,7 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.flex.domain.model.DayType
 import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.WorkDay
@@ -563,7 +563,7 @@ fun EditDayDialog(
 
                 // Time entry — only for work day types
                 if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)) {
-                    TabRow(selectedTabIndex = selectedTab) {
+                    PrimaryTabRow(selectedTabIndex = selectedTab) {
                         Tab(
                             selected = selectedTab == 0, onClick = { selectedTab = 0 },
                             text = { Text("Start / Ende") })

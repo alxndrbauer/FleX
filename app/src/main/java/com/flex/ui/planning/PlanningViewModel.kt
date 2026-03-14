@@ -129,7 +129,9 @@ class PlanningViewModel @Inject constructor(
                     @Suppress("UNCHECKED_CAST")
                     val month = arr[0] as YearMonth
                     val settings = arr[1] as Settings
+                    @Suppress("UNCHECKED_CAST")
                     val rules = arr[2] as List<QuotaRule>
+                    @Suppress("UNCHECKED_CAST")
                     val days = arr[3] as List<WorkDay>
                     @Suppress("UNCHECKED_CAST")
                     val yearDays = arr[4] as List<WorkDay>
