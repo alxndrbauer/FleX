@@ -25,11 +25,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -46,7 +49,9 @@ import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -58,6 +63,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -106,6 +112,26 @@ class MutableBlockState(
 @Composable
 fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    val csvLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        uri?.let { viewModel.exportToUri(it, ExportFormat.CSV, context.contentResolver) }
+    }
+
+    val pdfLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri ->
+        uri?.let { viewModel.exportToUri(it, ExportFormat.PDF, context.contentResolver) }
+    }
+
+    LaunchedEffect(state.exportMessage) {
+        state.exportMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            viewModel.clearExportMessage()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -115,7 +141,6 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
         // Month navigation header
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { viewModel.previousMonth() }) {
@@ -129,8 +154,13 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                     )
                 ),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center
             )
+            IconButton(onClick = { viewModel.onExportClick() }) {
+                Icon(Icons.Default.FileDownload, contentDescription = "Exportieren")
+            }
             IconButton(onClick = { viewModel.nextMonth() }) {
                 Icon(Icons.Default.ChevronRight, contentDescription = "Nächster Monat")
             }
@@ -324,6 +354,37 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                 )
             }
         }
+    }
+
+    // Export format dialog
+    if (state.showExportDialog) {
+        val yearMonthStr = state.yearMonth.format(DateTimeFormatter.ofPattern("yyyy-MM"))
+        AlertDialog(
+            onDismissRequest = { viewModel.onExportDismiss() },
+            title = { Text("Monat exportieren") },
+            text = { Text("Format wählen:") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.onExportDismiss()
+                    csvLauncher.launch("vrema_$yearMonthStr.csv")
+                }) {
+                    Text("CSV")
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        viewModel.onExportDismiss()
+                        pdfLauncher.launch("vrema_$yearMonthStr.pdf")
+                    }) {
+                        Text("PDF")
+                    }
+                    TextButton(onClick = { viewModel.onExportDismiss() }) {
+                        Text("Abbrechen")
+                    }
+                }
+            }
+        )
     }
 
     // Edit dialog

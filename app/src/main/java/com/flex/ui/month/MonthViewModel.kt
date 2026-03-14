@@ -1,7 +1,10 @@
 package com.flex.ui.month
 
+import android.content.ContentResolver
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.flex.data.export.ExportService
 import com.flex.domain.events.DataChangeEvent
 import com.flex.domain.events.DataChangeEventBus
 import com.flex.domain.model.DayType
@@ -19,6 +22,7 @@ import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.domain.usecase.PrepareExportDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,12 +30,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
 import javax.inject.Inject
+
+enum class ExportFormat { CSV, PDF }
 
 data class MonthUiState(
     val yearMonth: YearMonth = YearMonth.now(),
@@ -50,7 +57,9 @@ data class MonthUiState(
     val hasPlannedDays: Boolean = false,
     val workedMinutesMonth: Long = 0,
     val targetMinutesMonth: Long = 0,
-    val differenceMinutesMonth: Long = 0
+    val differenceMinutesMonth: Long = 0,
+    val showExportDialog: Boolean = false,
+    val exportMessage: String? = null
 )
 
 @HiltViewModel
@@ -62,7 +71,9 @@ class MonthViewModel @Inject constructor(
     private val calculateDayWorkTime: CalculateDayWorkTimeUseCase,
     private val calculateQuota: CalculateQuotaUseCase,
     private val calculateFlextime: CalculateFlextimeUseCase,
-    private val dataChangeEventBus: DataChangeEventBus
+    private val dataChangeEventBus: DataChangeEventBus,
+    private val prepareExportData: PrepareExportDataUseCase,
+    private val exportService: ExportService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MonthUiState())
@@ -269,6 +280,33 @@ class MonthViewModel @Inject constructor(
             workDayRepository.deleteWorkDay(workDay)
             clearEditing()
         }
+    }
+
+    fun onExportClick() {
+        _uiState.update { it.copy(showExportDialog = true) }
+    }
+
+    fun onExportDismiss() {
+        _uiState.update { it.copy(showExportDialog = false) }
+    }
+
+    fun exportToUri(uri: Uri, format: ExportFormat, contentResolver: ContentResolver) {
+        viewModelScope.launch {
+            try {
+                val exportData = prepareExportData(_uiState.value.yearMonth)
+                when (format) {
+                    ExportFormat.CSV -> exportService.exportToCsv(exportData, uri, contentResolver)
+                    ExportFormat.PDF -> exportService.exportToPdf(exportData, uri, contentResolver)
+                }
+                _uiState.update { it.copy(exportMessage = "Export erfolgreich gespeichert") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(exportMessage = "Export fehlgeschlagen: ${e.message}") }
+            }
+        }
+    }
+
+    fun clearExportMessage() {
+        _uiState.update { it.copy(exportMessage = null) }
     }
 
     fun saveDay(
