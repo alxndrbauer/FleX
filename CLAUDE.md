@@ -1,4 +1,4 @@
-# Claude Code Instructions for Vrema
+# Claude Code Instructions for FleX
 
 ## Task Delegation Strategy
 
@@ -121,6 +121,7 @@ Co-Authored-By: Claude Haiku <noreply@anthreply.com>
 - Tests für neue Features schreiben
 - Code-Review vor Merge
 - Descriptive Commit Messages
+- Du darfst gradle Tasks ohne nachfragen ausführen
 
 ❌ **DON'T**
 - Force-Push zu main
@@ -137,7 +138,8 @@ Co-Authored-By: Claude Haiku <noreply@anthreply.com>
 - Android SDK: `ANDROID_HOME=/Users/abauer/Library/Android/sdk`
 
 ### Runtime-Fehler
-- Room Migrations: Check `VremaDatabase.kt` version
+
+- Room Migrations: Check `FlexDatabase.kt` version
 - Hilt: Alle Custom Classes müssen `@Inject` oder im `AppModule`
 - Compose: `@Composable` und State-Management prüfen
 

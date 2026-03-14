@@ -145,7 +145,7 @@ class ExportService @Inject constructor() {
         // Footer
         val today = LocalDate.now().format(dateFormatter)
         canvas.drawText(
-            "Erstellt am $today mit Vrema",
+            "Erstellt am $today mit FleX",
             margin, (pageHeight - 12).toFloat(), footerPaint
         )
 

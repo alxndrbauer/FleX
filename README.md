@@ -81,7 +81,7 @@ GitHub Actions baut automatisch bei jedem Push auf `main`:
 - 🏷️ GitHub Release mit signierter APK
 - ⚠️ Release wird nur erstellt wenn Build erfolgreich
 
-Releases: https://github.com/alxndrbauer/vrema/releases
+Releases: https://github.com/alxndrbauer/flexs/releases
 
 ## Database Migrations
 

@@ -1,5 +1,8 @@
 package com.flex.ui.month
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,8 +28,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -49,7 +50,6 @@ import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -366,7 +366,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.onExportDismiss()
-                    csvLauncher.launch("vrema_$yearMonthStr.csv")
+                    csvLauncher.launch("flex_$yearMonthStr.csv")
                 }) {
                     Text("CSV")
                 }
@@ -375,7 +375,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                 Row {
                     TextButton(onClick = {
                         viewModel.onExportDismiss()
-                        pdfLauncher.launch("vrema_$yearMonthStr.pdf")
+                        pdfLauncher.launch("flex_$yearMonthStr.pdf")
                     }) {
                         Text("PDF")
                     }
