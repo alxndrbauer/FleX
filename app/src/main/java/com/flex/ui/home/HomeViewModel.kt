@@ -335,6 +335,10 @@ class HomeViewModel @Inject constructor(
     fun deleteTimeBlock(timeBlock: TimeBlock) {
         viewModelScope.launch {
             workDayRepository.deleteTimeBlock(timeBlock)
+            val workDay = _uiState.value.workDay
+            if (workDay != null && workDay.timeBlocks.all { it.id == timeBlock.id }) {
+                workDayRepository.deleteWorkDay(workDay)
+            }
         }
     }
 
