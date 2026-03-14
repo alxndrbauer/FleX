@@ -1,6 +1,5 @@
 package com.flex.data.repository
 
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.google.common.truth.Truth.assertThat
 import com.flex.BaseUnitTest
 import com.flex.data.local.dao.TimeBlockDao
@@ -14,8 +13,8 @@ import com.flex.domain.model.WorkLocation
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.Test
-import org.junit.Rule
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.mockito.Mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -29,9 +28,6 @@ import java.time.YearMonth
  */
 class WorkDayRepositoryImplTest : BaseUnitTest() {
 
-    @get:Rule
-    val instantTaskExecutorRule = InstantTaskExecutorRule()
-
     @Mock
     private lateinit var workDayDao: WorkDayDao
 
@@ -40,6 +36,7 @@ class WorkDayRepositoryImplTest : BaseUnitTest() {
 
     private lateinit var repository: WorkDayRepositoryImpl
 
+    @BeforeEach
     override fun setUp() {
         super.setUp()
         repository = WorkDayRepositoryImpl(workDayDao, timeBlockDao)
@@ -461,7 +458,7 @@ class WorkDayRepositoryImplTest : BaseUnitTest() {
 
         whenever(workDayDao.getWorkDaysBetween("2025-02-01", "2025-02-28"))
             .thenReturn(flowOf(workDayEntities))
-        whenever(timeBlockDao.getTimeBlocksForDaysFlow(listOf(1L, 2L)))
+        whenever(timeBlockDao.getAllTimeBlocksFlow())
             .thenReturn(flowOf(emptyList()))
 
         // When: Getting work days for February 2025
@@ -502,7 +499,7 @@ class WorkDayRepositoryImplTest : BaseUnitTest() {
 
         whenever(workDayDao.getWorkDaysBetween("2025-02-01", "2025-02-28"))
             .thenReturn(flowOf(workDayEntities))
-        whenever(timeBlockDao.getTimeBlocksForDaysFlow(listOf(1L, 2L)))
+        whenever(timeBlockDao.getAllTimeBlocksFlow())
             .thenReturn(flowOf(timeBlockEntities))
 
         // When: Getting work days

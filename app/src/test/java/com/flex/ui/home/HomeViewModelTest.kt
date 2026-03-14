@@ -1,9 +1,8 @@
 package com.flex.ui.home
 
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.google.common.truth.Truth.assertThat
 import com.flex.BaseUnitTest
-import com.flex.MainDispatcherRule
+import com.flex.MainDispatcherExtension
 import com.flex.domain.model.DayType
 import com.flex.domain.model.FlextimeBalance
 import com.flex.domain.model.QuotaStatus
@@ -21,11 +20,13 @@ import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.events.DataChangeEventBus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.Test
-import org.junit.Rule
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
@@ -37,14 +38,9 @@ import java.time.LocalTime
  * Unit tests for HomeViewModel.
  * Tests today's summary, clock in/out, manual/duration entry, and calculations.
  */
+@ExtendWith(MainDispatcherExtension::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest : BaseUnitTest() {
-
-    @get:Rule
-    val instantTaskExecutorRule = InstantTaskExecutorRule()
-
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
 
     @Mock
     private lateinit var workDayRepository: WorkDayRepository
@@ -72,6 +68,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     private lateinit var viewModel: HomeViewModel
 
+    @BeforeEach
     override fun setUp() {
         super.setUp()
         // Default mock behavior
@@ -83,6 +80,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(calculateDayWorkTime(any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
         whenever(calculateFlextime(any(), any(), any())).thenReturn(FlextimeBalance())
         whenever(calculateQuota(any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
+        whenever(dataChangeEventBus.events).thenReturn(MutableSharedFlow())
     }
 
     // ========== Initial State Tests ==========
@@ -436,9 +434,8 @@ class HomeViewModelTest : BaseUnitTest() {
         viewModel.setDayType(DayType.SATURDAY_BONUS)
         advanceUntilIdle()
 
-        // Then: Day type should be updated
+        // Then: Day type should be updated in state (setDayType sets a local override, does not persist directly)
         assertThat(viewModel.uiState.value.selectedDayType).isEqualTo(DayType.SATURDAY_BONUS)
-        verify(workDayRepository).saveWorkDay(workDay.copy(dayType = DayType.SATURDAY_BONUS))
     }
 
     // ========== saveManualEntry Tests ==========

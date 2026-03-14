@@ -1,9 +1,8 @@
 package com.flex.ui.settings
 
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.google.common.truth.Truth.assertThat
 import com.flex.BaseUnitTest
-import com.flex.MainDispatcherRule
+import com.flex.MainDispatcherExtension
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.Settings
 import com.flex.domain.repository.SettingsRepository
@@ -12,8 +11,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.Test
-import org.junit.Rule
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -23,14 +23,9 @@ import java.time.YearMonth
  * Unit tests for SettingsViewModel.
  * Tests state management, settings updates, and quota rule operations.
  */
+@ExtendWith(MainDispatcherExtension::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest : BaseUnitTest() {
-
-    @get:Rule
-    val instantTaskExecutorRule = InstantTaskExecutorRule()
-
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
 
     @Mock
     private lateinit var getSettings: GetSettingsUseCase
@@ -40,6 +35,7 @@ class SettingsViewModelTest : BaseUnitTest() {
 
     private lateinit var viewModel: SettingsViewModel
 
+    @BeforeEach
     override fun setUp() {
         super.setUp()
         // Default mock behavior

@@ -1,9 +1,8 @@
 package com.flex.ui.analytics
 
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.google.common.truth.Truth.assertThat
 import com.flex.BaseUnitTest
-import com.flex.MainDispatcherRule
+import com.flex.MainDispatcherExtension
 import com.flex.domain.model.AnalyticsData
 import com.flex.domain.model.DayType
 import com.flex.domain.model.LocationDistribution
@@ -22,8 +21,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.Test
-import org.junit.Rule
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
@@ -36,14 +36,9 @@ import java.time.YearMonth
  * Unit tests for AnalyticsViewModel.
  * Tests time range switching, flow combining, loading states, and data fetching.
  */
+@ExtendWith(MainDispatcherExtension::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 class AnalyticsViewModelTest : BaseUnitTest() {
-
-    @get:Rule
-    val instantTaskExecutorRule = InstantTaskExecutorRule()
-
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
 
     @Mock
     private lateinit var workDayRepository: WorkDayRepository
@@ -65,6 +60,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         locationDistribution = LocationDistribution(0, 0)
     )
 
+    @BeforeEach
     override fun setUp() {
         super.setUp()
         // Default mock behavior
@@ -272,9 +268,9 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel.setTimeRange(TimeRange.Month(febMonth))
         advanceUntilIdle()
 
-        // Then: Calculate analytics should be called with only non-planned work days
+        // Then: Calculate analytics should be called with all work days from the repository
         verify(calculateAnalyticsUseCase).invoke(
-            workDays = eq(listOf(workDays[0])), // Only non-planned
+            workDays = eq(workDays),
             settings = eq(defaultSettings),
             timeRange = eq(TimeRange.Month(febMonth))
         )
@@ -626,7 +622,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
     // ========== Edge Cases ==========
 
     @Test
-    fun `planned work days are filtered out before analytics calculation`() = runTest {
+    fun `all work days including planned are passed to analytics calculation`() = runTest {
         // Given: Mix of planned and actual work days
         val febMonth = YearMonth.of(2025, 2)
         val actualWorkDay = WorkDay(
@@ -653,9 +649,9 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel.setTimeRange(TimeRange.Month(febMonth))
         advanceUntilIdle()
 
-        // Then: Only actual work day should be passed to analytics calculation
+        // Then: All work days (including planned) should be passed to analytics calculation
         verify(calculateAnalyticsUseCase).invoke(
-            workDays = eq(listOf(actualWorkDay)),
+            workDays = eq(listOf(actualWorkDay, plannedWorkDay)),
             settings = any(),
             timeRange = any()
         )

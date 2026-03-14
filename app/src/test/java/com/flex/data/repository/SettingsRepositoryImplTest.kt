@@ -1,6 +1,5 @@
 package com.flex.data.repository
 
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.google.common.truth.Truth.assertThat
 import com.flex.BaseUnitTest
 import com.flex.data.local.dao.QuotaRuleDao
@@ -12,8 +11,8 @@ import com.flex.domain.model.Settings
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.Test
-import org.junit.Rule
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.mockito.Mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -25,9 +24,6 @@ import java.time.YearMonth
  */
 class SettingsRepositoryImplTest : BaseUnitTest() {
 
-    @get:Rule
-    val instantTaskExecutorRule = InstantTaskExecutorRule()
-
     @Mock
     private lateinit var settingsDao: SettingsDao
 
@@ -36,6 +32,7 @@ class SettingsRepositoryImplTest : BaseUnitTest() {
 
     private lateinit var repository: SettingsRepositoryImpl
 
+    @BeforeEach
     override fun setUp() {
         super.setUp()
         repository = SettingsRepositoryImpl(settingsDao, quotaRuleDao)

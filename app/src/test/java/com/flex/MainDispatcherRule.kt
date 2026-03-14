@@ -6,23 +6,24 @@ import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
-import org.junit.rules.TestWatcher
-import org.junit.runner.Description
+import org.junit.jupiter.api.extension.AfterEachCallback
+import org.junit.jupiter.api.extension.BeforeEachCallback
+import org.junit.jupiter.api.extension.ExtensionContext
 
 /**
- * JUnit rule to set the Main dispatcher for coroutines in tests.
+ * JUnit 5 Extension to set the Main dispatcher for coroutines in tests.
  * Replaces Dispatchers.Main with a TestDispatcher for testing ViewModels.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class MainDispatcherRule(
-    private val testDispatcher: TestDispatcher = UnconfinedTestDispatcher()
-) : TestWatcher() {
+class MainDispatcherExtension(
+    val testDispatcher: TestDispatcher = UnconfinedTestDispatcher()
+) : BeforeEachCallback, AfterEachCallback {
 
-    override fun starting(description: Description) {
+    override fun beforeEach(context: ExtensionContext) {
         Dispatchers.setMain(testDispatcher)
     }
 
-    override fun finished(description: Description) {
+    override fun afterEach(context: ExtensionContext) {
         Dispatchers.resetMain()
     }
 }

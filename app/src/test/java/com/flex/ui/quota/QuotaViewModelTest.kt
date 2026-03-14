@@ -1,9 +1,8 @@
 package com.flex.ui.quota
 
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.google.common.truth.Truth.assertThat
 import com.flex.BaseUnitTest
-import com.flex.MainDispatcherRule
+import com.flex.MainDispatcherExtension
 import com.flex.domain.model.DayType
 import com.flex.domain.model.FlextimeBalance
 import com.flex.domain.model.QuotaRule
@@ -21,8 +20,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.Test
-import org.junit.Rule
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
@@ -33,14 +33,9 @@ import java.time.YearMonth
  * Unit tests for QuotaViewModel.
  * Tests quota status, flextime balance, vacation info calculations, and state updates.
  */
+@ExtendWith(MainDispatcherExtension::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 class QuotaViewModelTest : BaseUnitTest() {
-
-    @get:Rule
-    val instantTaskExecutorRule = InstantTaskExecutorRule()
-
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
 
     @Mock
     private lateinit var getMonthWorkDays: GetMonthWorkDaysUseCase
@@ -62,6 +57,7 @@ class QuotaViewModelTest : BaseUnitTest() {
 
     private lateinit var viewModel: QuotaViewModel
 
+    @BeforeEach
     override fun setUp() {
         super.setUp()
         // Default mock behavior

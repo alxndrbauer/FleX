@@ -1,9 +1,8 @@
 package com.flex.ui.month
 
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.google.common.truth.Truth.assertThat
 import com.flex.BaseUnitTest
-import com.flex.MainDispatcherRule
+import com.flex.MainDispatcherExtension
 import com.flex.domain.model.DayType
 import com.flex.domain.model.FlextimeBalance
 import com.flex.domain.model.QuotaStatus
@@ -24,8 +23,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.Test
-import org.junit.Rule
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
@@ -38,14 +38,9 @@ import java.time.YearMonth
  * Unit tests for MonthViewModel.
  * Tests month navigation, day editing, saving/deleting work days, and calculations.
  */
+@ExtendWith(MainDispatcherExtension::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 class MonthViewModelTest : BaseUnitTest() {
-
-    @get:Rule
-    val instantTaskExecutorRule = InstantTaskExecutorRule()
-
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
 
     @Mock
     private lateinit var getMonthWorkDays: GetMonthWorkDaysUseCase
@@ -73,6 +68,7 @@ class MonthViewModelTest : BaseUnitTest() {
 
     private lateinit var viewModel: MonthViewModel
 
+    @BeforeEach
     override fun setUp() {
         super.setUp()
         // Default mock behavior
