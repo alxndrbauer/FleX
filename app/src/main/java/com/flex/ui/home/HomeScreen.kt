@@ -1,7 +1,5 @@
 package com.flex.ui.home
 
-import androidx.compose.ui.text.input.TextFieldValue
-import com.flex.ui.components.formatTimeInput
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -38,8 +37,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,17 +51,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.flex.domain.model.DayType
 import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkLocation
+import com.flex.ui.components.InfoTooltip
+import com.flex.ui.components.TOOLTIP_FLEXTIME
+import com.flex.ui.components.TOOLTIP_FLEXTIME_TITLE
+import com.flex.ui.components.TOOLTIP_OFFICE_QUOTA
+import com.flex.ui.components.TOOLTIP_OFFICE_QUOTA_TITLE
+import com.flex.ui.components.TOOLTIP_WORK_TIME
+import com.flex.ui.components.TOOLTIP_WORK_TIME_TITLE
+import com.flex.ui.components.formatTimeInput
 import com.flex.ui.theme.PublicHolidayColor
-import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -167,10 +173,16 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Gleitzeit-Saldo (Soll: ${state.flextimeBalance.formatTarget()})",
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "Gleitzeit-Saldo (Soll: ${state.flextimeBalance.formatTarget()})",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        InfoTooltip(title = TOOLTIP_FLEXTIME_TITLE, text = TOOLTIP_FLEXTIME)
+                    }
                     Text(
                         text = state.flextimeBalance.formatDisplay(),
                         style = MaterialTheme.typography.headlineMedium,
@@ -184,7 +196,13 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         item {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Büro-Quote", style = MaterialTheme.typography.labelMedium)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text("Büro-Quote", style = MaterialTheme.typography.labelMedium)
+                        InfoTooltip(title = TOOLTIP_OFFICE_QUOTA_TITLE, text = TOOLTIP_OFFICE_QUOTA)
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
 
                     val quota = state.quotaStatus
@@ -204,7 +222,9 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                     else 0f
                     LinearProgressIndicator(
                     progress = { hoursProgress },
-                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp),
                     color = ProgressIndicatorDefaults.linearColor,
                     trackColor = ProgressIndicatorDefaults.linearTrackColor,
                     strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
@@ -218,7 +238,9 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                     )
                     LinearProgressIndicator(
                     progress = { pctProgress },
-                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp),
                     color = ProgressIndicatorDefaults.linearColor,
                     trackColor = ProgressIndicatorDefaults.linearTrackColor,
                     strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
@@ -232,7 +254,9 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                     )
                     LinearProgressIndicator(
                     progress = { dayProgress.coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp),
                     color = ProgressIndicatorDefaults.linearColor,
                     trackColor = ProgressIndicatorDefaults.linearTrackColor,
                     strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
@@ -365,10 +389,16 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         item {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        if (isToday) "Heutige Arbeitszeit" else "Arbeitszeit",
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            if (isToday) "Heutige Arbeitszeit" else "Arbeitszeit",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        InfoTooltip(title = TOOLTIP_WORK_TIME_TITLE, text = TOOLTIP_WORK_TIME)
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
 
                     val hours = state.dayWorkTime.netMinutes / 60

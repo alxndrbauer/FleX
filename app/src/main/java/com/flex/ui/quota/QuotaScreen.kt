@@ -2,6 +2,7 @@ package com.flex.ui.quota
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,10 +19,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.flex.ui.components.InfoTooltip
+import com.flex.ui.components.TOOLTIP_FLEXTIME
+import com.flex.ui.components.TOOLTIP_FLEXTIME_TITLE
+import com.flex.ui.components.TOOLTIP_OFFICE_DAYS
+import com.flex.ui.components.TOOLTIP_OFFICE_DAYS_TITLE
+import com.flex.ui.components.TOOLTIP_OFFICE_QUOTA
+import com.flex.ui.components.TOOLTIP_OFFICE_QUOTA_TITLE
+import com.flex.ui.components.TOOLTIP_OVERTIME
+import com.flex.ui.components.TOOLTIP_OVERTIME_TITLE
+import com.flex.ui.components.TOOLTIP_SPECIAL_VACATION
+import com.flex.ui.components.TOOLTIP_SPECIAL_VACATION_TITLE
+import com.flex.ui.components.TOOLTIP_VACATION
+import com.flex.ui.components.TOOLTIP_VACATION_TITLE
 import java.time.LocalDate
 import java.time.Month
 import java.time.format.DateTimeFormatter
@@ -60,11 +75,17 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
             )
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    if (state.quotaStatus.quotaMet) "Quote erfüllt" else "Quote nicht erfüllt",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        if (state.quotaStatus.quotaMet) "Quote erfüllt" else "Quote nicht erfüllt",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    InfoTooltip(title = TOOLTIP_OFFICE_QUOTA_TITLE, text = TOOLTIP_OFFICE_QUOTA)
+                }
                 Text(
                     "Mindestens ${state.effectiveQuotaPercent}% Büro ODER ${state.effectiveQuotaMinDays} Büro-Tage",
                     style = MaterialTheme.typography.bodySmall
@@ -75,11 +96,17 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
         // Office quota (hours)
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    "Büro-Quote (Stunden)",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        "Büro-Quote (Stunden)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    InfoTooltip(title = TOOLTIP_OFFICE_QUOTA_TITLE, text = TOOLTIP_OFFICE_QUOTA)
+                }
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val quota = state.quotaStatus
@@ -133,11 +160,17 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
         // Office quota (days)
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    "Büro-Quote (Tage)",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        "Büro-Quote (Tage)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    InfoTooltip(title = TOOLTIP_OFFICE_DAYS_TITLE, text = TOOLTIP_OFFICE_DAYS)
+                }
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val quota = state.quotaStatus
@@ -176,11 +209,17 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
         // Flextime
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    "Gleitzeit-Saldo",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        "Gleitzeit-Saldo",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    InfoTooltip(title = TOOLTIP_FLEXTIME_TITLE, text = TOOLTIP_FLEXTIME)
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = state.flextimeBalance.formatDisplay(),
@@ -195,11 +234,17 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
         // Overtime
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    "Überstunden-Saldo",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        "Überstunden-Saldo",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    InfoTooltip(title = TOOLTIP_OVERTIME_TITLE, text = TOOLTIP_OVERTIME)
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = state.flextimeBalance.formatOvertime(),
@@ -220,11 +265,17 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
 
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    "Jahresurlaub",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        "Jahresurlaub",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    InfoTooltip(title = TOOLTIP_VACATION_TITLE, text = TOOLTIP_VACATION)
+                }
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val v = state.vacationInfo
@@ -262,11 +313,20 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
 
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    "Sonderurlaub",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        "Sonderurlaub",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    InfoTooltip(
+                        title = TOOLTIP_SPECIAL_VACATION_TITLE,
+                        text = TOOLTIP_SPECIAL_VACATION
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val v = state.vacationInfo

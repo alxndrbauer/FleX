@@ -59,6 +59,11 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.flex.domain.model.DayType
 import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.WorkLocation
+import com.flex.ui.components.InfoTooltip
+import com.flex.ui.components.TOOLTIP_FLEXTIME_PROGNOSIS
+import com.flex.ui.components.TOOLTIP_FLEXTIME_PROGNOSIS_TITLE
+import com.flex.ui.components.TOOLTIP_QUOTA_PREVIEW
+import com.flex.ui.components.TOOLTIP_QUOTA_PREVIEW_TITLE
 import com.flex.ui.theme.FlexDayColor
 import com.flex.ui.theme.HomeOfficeColor
 import com.flex.ui.theme.OfficeColor
@@ -246,11 +251,20 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
         item {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "Quoten-Vorschau",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            "Quoten-Vorschau",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        InfoTooltip(
+                            title = TOOLTIP_QUOTA_PREVIEW_TITLE,
+                            text = TOOLTIP_QUOTA_PREVIEW
+                        )
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
 
                     val quota = state.quotaStatus
@@ -321,11 +335,20 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
         item {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "Gleitzeit-Prognose (Soll: ${state.flextimeBalance.formatTarget()})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            "Gleitzeit-Prognose (Soll: ${state.flextimeBalance.formatTarget()})",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        InfoTooltip(
+                            title = TOOLTIP_FLEXTIME_PROGNOSIS_TITLE,
+                            text = TOOLTIP_FLEXTIME_PROGNOSIS
+                        )
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = state.flextimeBalance.formatDisplay(),
