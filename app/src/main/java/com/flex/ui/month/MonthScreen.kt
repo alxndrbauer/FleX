@@ -22,11 +22,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -47,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -76,6 +81,24 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+
+/**
+ * Mutable holder for one block's editor state. Properties are snapshot-state so Compose
+ * can observe fine-grained changes within each block.
+ */
+class MutableBlockState(
+    startText: TextFieldValue,
+    endText: TextFieldValue,
+    durationHours: String,
+    durationMinutes: String,
+    location: WorkLocation
+) {
+    var startText by mutableStateOf(startText)
+    var endText by mutableStateOf(endText)
+    var durationHours by mutableStateOf(durationHours)
+    var durationMinutes by mutableStateOf(durationMinutes)
+    var location by mutableStateOf(location)
+}
 
 @Composable
 fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
@@ -300,8 +323,8 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             workDay = editDay,
             dailyWorkMinutes = state.settings.dailyWorkMinutes,
             onDismiss = { viewModel.clearEditing() },
-            onSave = { location, dayType, note, timeBlocks, isDuration ->
-                viewModel.saveDay(editDay.date, location, dayType, note, timeBlocks, isDuration)
+            onSave = { dayType, note, timeBlocks ->
+                viewModel.saveDay(editDay.date, dayType, note, timeBlocks)
             },
             onDelete = if (editDay.id != 0L) {
                 { viewModel.deleteDay(editDay) }
@@ -394,58 +417,76 @@ fun LegendItem(color: Color, label: String) {
 
 @Composable
 fun WorkDayListItem(workDay: WorkDay, netMinutes: Long, onClick: () -> Unit) {
+    val isWorkType = workDay.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
+    val workBlocks = workDay.timeBlocks.filter { it.endTime != null }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val dayName = workDay.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.GERMAN)
-            val dateStr = workDay.date.format(DateTimeFormatter.ofPattern("d. MMM"))
-            Text("$dayName, $dateStr", style = MaterialTheme.typography.bodyMedium)
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val dayName = workDay.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.GERMAN)
+                val dateStr = workDay.date.format(DateTimeFormatter.ofPattern("d. MMM"))
+                Text("$dayName, $dateStr", style = MaterialTheme.typography.bodyMedium)
 
-            val typeLabel = when (workDay.dayType) {
-                DayType.WORK, DayType.SATURDAY_BONUS -> {
-                    val blocks = workDay.timeBlocks.filter { it.endTime != null }
-                    if (blocks.isEmpty()) {
-                        if (workDay.location == WorkLocation.OFFICE) "Büro" else "HO"
-                    } else {
-                        var officeMin = 0L; var hoMin = 0L
-                        for (b in blocks) {
-                            val min = java.time.Duration.between(b.startTime, b.endTime!!).toMinutes()
-                            if (b.location == WorkLocation.OFFICE) officeMin += min else hoMin += min
-                        }
-                        when {
-                            officeMin > 0 && hoMin > 0 -> "Gemischt"
-                            officeMin > 0 -> "Büro"
-                            else -> "HO"
+                val typeLabel = when (workDay.dayType) {
+                    DayType.WORK, DayType.SATURDAY_BONUS -> {
+                        val blocks = workDay.timeBlocks.filter { it.endTime != null }
+                        if (blocks.isEmpty()) {
+                            if (workDay.location == WorkLocation.OFFICE) "Büro" else "HO"
+                        } else {
+                            var officeMin = 0L; var hoMin = 0L
+                            for (b in blocks) {
+                                val min = java.time.Duration.between(b.startTime, b.endTime!!).toMinutes()
+                                if (b.location == WorkLocation.OFFICE) officeMin += min else hoMin += min
+                            }
+                            when {
+                                officeMin > 0 && hoMin > 0 -> "Gemischt"
+                                officeMin > 0 -> "Büro"
+                                else -> "HO"
+                            }
                         }
                     }
+                    DayType.VACATION -> "Urlaub"
+                    DayType.SPECIAL_VACATION -> "Sonderurlaub"
+                    DayType.FLEX_DAY -> "Gleittag"
                 }
-                DayType.VACATION -> "Urlaub"
-                DayType.SPECIAL_VACATION -> "Sonderurlaub"
-                DayType.FLEX_DAY -> "Gleittag"
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (netMinutes > 0) {
+                        Text(
+                            "${netMinutes / 60}h ${netMinutes % 60}min",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        typeLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (netMinutes > 0) {
+            // Show individual time blocks for work days
+            if (isWorkType && workBlocks.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                workBlocks.forEach { block ->
+                    val startStr = block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
+                    val endStr = block.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))
+                    val locationLabel = if (block.location == WorkLocation.OFFICE) "Büro" else "HO"
                     Text(
-                        "${netMinutes / 60}h ${netMinutes % 60}min",
-                        style = MaterialTheme.typography.bodyMedium,
+                        "$startStr – $endStr · $locationLabel",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Text(
-                    typeLabel,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
             }
         }
     }
@@ -457,21 +498,29 @@ fun EditDayDialog(
     workDay: WorkDay,
     dailyWorkMinutes: Int = 426,
     onDismiss: () -> Unit,
-    onSave: (WorkLocation, DayType, String?, List<Pair<LocalTime, LocalTime>>, Boolean) -> Unit,
+    onSave: (DayType, String?, List<TimeBlockInput>) -> Unit,
     onDelete: (() -> Unit)? = null
 ) {
-    var location by remember { mutableStateOf(workDay.location) }
     var dayType by remember { mutableStateOf(workDay.dayType) }
     var note by remember { mutableStateOf(workDay.note ?: "") }
 
-    // Calculate initial state based on existing WorkDay
     val dialogState = calculateEditDayDialogState(workDay, dailyWorkMinutes)
 
     var selectedTab by remember { mutableIntStateOf(dialogState.selectedTab) }
-    var startText by remember { mutableStateOf(TextFieldValue(dialogState.startText)) }
-    var endText by remember { mutableStateOf(TextFieldValue(dialogState.endText)) }
-    var durationHours by remember { mutableStateOf(dialogState.durationHours) }
-    var durationMinutes by remember { mutableStateOf(dialogState.durationMinutes) }
+
+    val blocks = remember {
+        mutableStateListOf(*dialogState.blocks.map { b ->
+            MutableBlockState(
+                startText = TextFieldValue(b.startText),
+                endText = TextFieldValue(b.endText),
+                durationHours = b.durationHours,
+                durationMinutes = b.durationMinutes,
+                location = b.location
+            )
+        }.toTypedArray())
+    }
+
+    val scrollState = rememberScrollState()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -479,22 +528,12 @@ fun EditDayDialog(
             Text(workDay.date.format(DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)))
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Location
-                Text("Arbeitsort", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = location == WorkLocation.OFFICE,
-                        onClick = { location = WorkLocation.OFFICE },
-                        label = { Text("Büro") }
-                    )
-                    FilterChip(
-                        selected = location == WorkLocation.HOME_OFFICE,
-                        onClick = { location = WorkLocation.HOME_OFFICE },
-                        label = { Text("Home-Office") }
-                    )
-                }
-
+            Column(
+                modifier = Modifier
+                    .verticalScroll(scrollState)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 // Day type
                 Text("Tagestyp", style = MaterialTheme.typography.labelMedium)
                 FlowRow(
@@ -522,7 +561,7 @@ fun EditDayDialog(
                         label = { Text("Samstag+") })
                 }
 
-                // Time entry with tabs
+                // Time entry — only for work day types
                 if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)) {
                     TabRow(selectedTabIndex = selectedTab) {
                         Tab(
@@ -532,46 +571,109 @@ fun EditDayDialog(
                             selected = selectedTab == 1, onClick = { selectedTab = 1 },
                             text = { Text("Gesamtzeit") })
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
 
-                    if (selectedTab == 0) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = startText,
-                                onValueChange = { startText = formatTimeInput(it) },
-                                label = { Text("Start") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    // Per-block editors
+                    blocks.forEachIndexed { index, block ->
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Block ${index + 1}",
+                                style = MaterialTheme.typography.labelMedium
                             )
-                            OutlinedTextField(
-                                value = endText,
-                                onValueChange = { endText = formatTimeInput(it) },
-                                label = { Text("Ende") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            if (blocks.size > 1) {
+                                IconButton(
+                                    onClick = { blocks.removeAt(index) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Block löschen",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Location per block
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = block.location == WorkLocation.OFFICE,
+                                onClick = { block.location = WorkLocation.OFFICE },
+                                label = { Text("Büro") }
+                            )
+                            FilterChip(
+                                selected = block.location == WorkLocation.HOME_OFFICE,
+                                onClick = { block.location = WorkLocation.HOME_OFFICE },
+                                label = { Text("HO") }
                             )
                         }
-                    } else {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = durationHours,
-                                onValueChange = { durationHours = it },
-                                label = { Text("Stunden") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                            )
-                            OutlinedTextField(
-                                value = durationMinutes,
-                                onValueChange = { durationMinutes = it },
-                                label = { Text("Minuten") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                            )
+
+                        // Time fields
+                        if (selectedTab == 0) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = block.startText,
+                                    onValueChange = { block.startText = formatTimeInput(it) },
+                                    label = { Text("Start") },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                )
+                                OutlinedTextField(
+                                    value = block.endText,
+                                    onValueChange = { block.endText = formatTimeInput(it) },
+                                    label = { Text("Ende") },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                )
+                            }
+                        } else {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = block.durationHours,
+                                    onValueChange = { block.durationHours = it },
+                                    label = { Text("Stunden") },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                )
+                                OutlinedTextField(
+                                    value = block.durationMinutes,
+                                    onValueChange = { block.durationMinutes = it },
+                                    label = { Text("Minuten") },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                )
+                            }
                         }
+                    }
+
+                    // Add block button
+                    TextButton(
+                        onClick = {
+                            val lastLocation = blocks.lastOrNull()?.location ?: WorkLocation.HOME_OFFICE
+                            blocks.add(
+                                MutableBlockState(
+                                    startText = TextFieldValue(""),
+                                    endText = TextFieldValue(""),
+                                    durationHours = (dailyWorkMinutes / 60).toString(),
+                                    durationMinutes = (dailyWorkMinutes % 60).toString(),
+                                    location = lastLocation
+                                )
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Text("Block hinzufügen")
                     }
                 }
 
@@ -583,29 +685,39 @@ fun EditDayDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                val timeBlocks = if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)) {
-                    if (selectedTab == 0) {
-                        try {
-                            val start =
-                                LocalTime.parse(startText.text, DateTimeFormatter.ofPattern("HH:mm"))
-                            val end = LocalTime.parse(endText.text, DateTimeFormatter.ofPattern("HH:mm"))
-                            listOf(start to end)
-                        } catch (_: Exception) {
-                            emptyList()
+                val timeBlockInputs = if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)) {
+                    blocks.mapNotNull { block ->
+                        if (selectedTab == 0) {
+                            try {
+                                val start = LocalTime.parse(
+                                    block.startText.text,
+                                    DateTimeFormatter.ofPattern("HH:mm")
+                                )
+                                val end = LocalTime.parse(
+                                    block.endText.text,
+                                    DateTimeFormatter.ofPattern("HH:mm")
+                                )
+                                TimeBlockInput(start, end, block.location, isDuration = false)
+                            } catch (_: Exception) {
+                                null
+                            }
+                        } else {
+                            val h = block.durationHours.toIntOrNull() ?: 0
+                            val m = block.durationMinutes.toIntOrNull() ?: 0
+                            val total = h * 60 + m
+                            if (total > 0) {
+                                val start = LocalTime.of(8, 0)
+                                TimeBlockInput(
+                                    start,
+                                    start.plusMinutes(total.toLong()),
+                                    block.location,
+                                    isDuration = true
+                                )
+                            } else null
                         }
-                    } else {
-                        val h = durationHours.toIntOrNull() ?: 0
-                        val m = durationMinutes.toIntOrNull() ?: 0
-                        val total = h * 60 + m
-                        if (total > 0) {
-                            val start = LocalTime.of(8, 0)
-                            listOf(start to start.plusMinutes(total.toLong()))
-                        } else emptyList()
                     }
                 } else emptyList()
-                val isDuration =
-                    selectedTab == 1 || dayType !in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
-                onSave(location, dayType, note.ifBlank { null }, timeBlocks, isDuration)
+                onSave(dayType, note.ifBlank { null }, timeBlockInputs)
             }) {
                 Text("Speichern")
             }

@@ -271,19 +271,25 @@ class MonthViewModel @Inject constructor(
 
     fun saveDay(
         date: LocalDate,
-        location: WorkLocation,
         dayType: DayType,
         note: String?,
-        timeBlocks: List<Pair<LocalTime, LocalTime>>,
-        isDuration: Boolean = false
+        timeBlocks: List<TimeBlockInput>
     ) {
         viewModelScope.launch {
             val existingDay = _uiState.value.editingDay
+
+            // Derive day-level location: if all blocks agree → use that; otherwise first block
+            val dayLocation = if (timeBlocks.isEmpty()) {
+                existingDay?.location ?: WorkLocation.HOME_OFFICE
+            } else {
+                timeBlocks.first().location
+            }
+
             val workDayId = workDayRepository.saveWorkDay(
                 WorkDay(
                     id = existingDay?.id ?: 0,
                     date = date,
-                    location = location,
+                    location = dayLocation,
                     dayType = dayType,
                     isPlanned = false,
                     note = note
@@ -292,9 +298,15 @@ class MonthViewModel @Inject constructor(
 
             existingDay?.timeBlocks?.forEach { workDayRepository.deleteTimeBlock(it) }
 
-            timeBlocks.forEach { (start, end) ->
+            timeBlocks.forEach { block ->
                 workDayRepository.saveTimeBlock(
-                    TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = isDuration, location = location)
+                    TimeBlock(
+                        workDayId = workDayId,
+                        startTime = block.startTime,
+                        endTime = block.endTime,
+                        isDuration = block.isDuration,
+                        location = block.location
+                    )
                 )
             }
 
@@ -304,3 +316,10 @@ class MonthViewModel @Inject constructor(
         }
     }
 }
+
+data class TimeBlockInput(
+    val startTime: LocalTime,
+    val endTime: LocalTime,
+    val location: WorkLocation,
+    val isDuration: Boolean
+)

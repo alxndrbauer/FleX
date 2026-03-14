@@ -209,13 +209,22 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = (index + 1).toString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (isHoliday) PublicHolidayColor
-                            else if (isWeekend) MaterialTheme.colorScheme.onSurfaceVariant
-                            else MaterialTheme.colorScheme.onSurface
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = (index + 1).toString(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isHoliday) PublicHolidayColor
+                                else if (isWeekend) MaterialTheme.colorScheme.onSurfaceVariant
+                                else MaterialTheme.colorScheme.onSurface
+                            )
+                            if ((workDay?.timeBlocks?.size ?: 0) > 1) {
+                                Text(
+                                    text = "${workDay!!.timeBlocks.size}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     }
                 }
             }
