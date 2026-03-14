@@ -26,9 +26,10 @@ class EditDayDialogStateTest {
         val state = calculateEditDayDialogState(workDay, dailyWorkMinutes = 426)
 
         assertThat(state.selectedTab).isEqualTo(0)  // Start/Ende
-        assertThat(state.startText).isEqualTo("08:00")
-        assertThat(state.durationHours).isEqualTo("7")  // 426 / 60
-        assertThat(state.durationMinutes).isEqualTo("6")  // 426 % 60
+        assertThat(state.blocks).hasSize(1)
+        assertThat(state.blocks[0].startText).isEqualTo("08:00")
+        assertThat(state.blocks[0].durationHours).isEqualTo("7")  // 426 / 60
+        assertThat(state.blocks[0].durationMinutes).isEqualTo("6")  // 426 % 60
     }
 
     @Test
@@ -54,11 +55,12 @@ class EditDayDialogStateTest {
         val state = calculateEditDayDialogState(workDay)
 
         assertThat(state.selectedTab).isEqualTo(0)  // Start/Ende tab
-        assertThat(state.startText).isEqualTo("09:30")
-        assertThat(state.endText).isEqualTo("17:15")
+        assertThat(state.blocks).hasSize(1)
+        assertThat(state.blocks[0].startText).isEqualTo("09:30")
+        assertThat(state.blocks[0].endText).isEqualTo("17:15")
         // Duration values should still be initialized with defaults
-        assertThat(state.durationHours).isEqualTo("7")
-        assertThat(state.durationMinutes).isEqualTo("6")
+        assertThat(state.blocks[0].durationHours).isEqualTo("7")
+        assertThat(state.blocks[0].durationMinutes).isEqualTo("6")
     }
 
     @Test
@@ -85,15 +87,16 @@ class EditDayDialogStateTest {
         val state = calculateEditDayDialogState(workDay)
 
         assertThat(state.selectedTab).isEqualTo(1)  // Gesamtzeit tab
-        assertThat(state.durationHours).isEqualTo("10")
-        assertThat(state.durationMinutes).isEqualTo("0")
+        assertThat(state.blocks).hasSize(1)
+        assertThat(state.blocks[0].durationHours).isEqualTo("10")
+        assertThat(state.blocks[0].durationMinutes).isEqualTo("0")
         // Start/End values should still be initialized with defaults
-        assertThat(state.startText).isEqualTo("08:00")
+        assertThat(state.blocks[0].startText).isEqualTo("08:00")
     }
 
     @Test
-    fun workDay_withMultipleBlocks_usesFirstBlock() {
-        // Work day with multiple blocks should use the first one
+    fun workDay_withMultipleBlocks_loadsAllBlocks() {
+        // Work day with multiple blocks — all blocks should be returned
         val workDay = WorkDay(
             id = 3,
             date = LocalDate.of(2026, 2, 15),
@@ -121,8 +124,11 @@ class EditDayDialogStateTest {
         val state = calculateEditDayDialogState(workDay)
 
         assertThat(state.selectedTab).isEqualTo(0)
-        assertThat(state.startText).isEqualTo("08:00")
-        assertThat(state.endText).isEqualTo("12:00")  // First block only
+        assertThat(state.blocks).hasSize(2)
+        assertThat(state.blocks[0].startText).isEqualTo("08:00")
+        assertThat(state.blocks[0].endText).isEqualTo("12:00")
+        assertThat(state.blocks[1].startText).isEqualTo("13:00")
+        assertThat(state.blocks[1].endText).isEqualTo("17:00")
     }
 
     @Test
@@ -191,7 +197,7 @@ class EditDayDialogStateTest {
         val state = calculateEditDayDialogState(workDay)
 
         assertThat(state.selectedTab).isEqualTo(0)  // Start/Ende for Saturday Bonus
-        assertThat(state.startText).isEqualTo("08:00")
+        assertThat(state.blocks[0].startText).isEqualTo("08:00")
     }
 
     @Test
@@ -217,8 +223,8 @@ class EditDayDialogStateTest {
         val state = calculateEditDayDialogState(workDay)
 
         assertThat(state.selectedTab).isEqualTo(1)
-        assertThat(state.durationHours).isEqualTo("8")
-        assertThat(state.durationMinutes).isEqualTo("45")
+        assertThat(state.blocks[0].durationHours).isEqualTo("8")
+        assertThat(state.blocks[0].durationMinutes).isEqualTo("45")
     }
 
     @Test
@@ -244,8 +250,8 @@ class EditDayDialogStateTest {
         val state = calculateEditDayDialogState(workDay)
 
         assertThat(state.selectedTab).isEqualTo(0)
-        assertThat(state.startText).isEqualTo("07:30")
-        assertThat(state.endText).isEqualTo("16:30")
+        assertThat(state.blocks[0].startText).isEqualTo("07:30")
+        assertThat(state.blocks[0].endText).isEqualTo("16:30")
     }
 
     @Test
@@ -262,7 +268,7 @@ class EditDayDialogStateTest {
 
         val state = calculateEditDayDialogState(workDay, dailyWorkMinutes = 480)  // 8 hours
 
-        assertThat(state.durationHours).isEqualTo("8")
-        assertThat(state.durationMinutes).isEqualTo("0")
+        assertThat(state.blocks[0].durationHours).isEqualTo("8")
+        assertThat(state.blocks[0].durationMinutes).isEqualTo("0")
     }
 }

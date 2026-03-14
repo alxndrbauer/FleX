@@ -296,18 +296,16 @@ class MonthViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         val timeBlocks = listOf(
-            Pair(LocalTime.of(9, 0), LocalTime.of(12, 0)),
-            Pair(LocalTime.of(13, 0), LocalTime.of(17, 0))
+            TimeBlockInput(LocalTime.of(9, 0), LocalTime.of(12, 0), WorkLocation.OFFICE, isDuration = false),
+            TimeBlockInput(LocalTime.of(13, 0), LocalTime.of(17, 0), WorkLocation.OFFICE, isDuration = false)
         )
 
         // When: Saving day
         viewModel.saveDay(
             date = date,
-            location = WorkLocation.OFFICE,
             dayType = DayType.WORK,
             note = "Test note",
-            timeBlocks = timeBlocks,
-            isDuration = false
+            timeBlocks = timeBlocks
         )
         advanceUntilIdle()
 
@@ -338,12 +336,13 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel.selectDay(date)
         advanceUntilIdle()
 
-        val newTimeBlocks = listOf(Pair(LocalTime.of(9, 0), LocalTime.of(17, 0)))
+        val newTimeBlocks = listOf(
+            TimeBlockInput(LocalTime.of(9, 0), LocalTime.of(17, 0), WorkLocation.HOME_OFFICE, isDuration = false)
+        )
 
         // When: Saving day with new time blocks
         viewModel.saveDay(
             date = date,
-            location = WorkLocation.HOME_OFFICE,
             dayType = DayType.WORK,
             note = null,
             timeBlocks = newTimeBlocks
@@ -374,10 +373,9 @@ class MonthViewModelTest : BaseUnitTest() {
         // When: Saving day
         viewModel.saveDay(
             date = date,
-            location = WorkLocation.OFFICE,
             dayType = DayType.WORK,
             note = null,
-            timeBlocks = listOf(Pair(LocalTime.of(9, 0), LocalTime.of(17, 0)))
+            timeBlocks = listOf(TimeBlockInput(LocalTime.of(9, 0), LocalTime.of(17, 0), WorkLocation.OFFICE, isDuration = false))
         )
         advanceUntilIdle()
 
@@ -508,7 +506,6 @@ class MonthViewModelTest : BaseUnitTest() {
         // When: Saving day with no time blocks
         viewModel.saveDay(
             date = date,
-            location = WorkLocation.OFFICE,
             dayType = DayType.VACATION,
             note = null,
             timeBlocks = emptyList()
