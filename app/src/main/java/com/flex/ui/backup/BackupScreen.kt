@@ -15,6 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -258,11 +260,64 @@ fun BackupScreen(
                         ) {
                             Text("Jetzt sichern")
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    "Max. Backups",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    "Ältere Backups werden gelöscht",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        viewModel.setMaxLocalBackups(
+                                            (uiState.maxLocalBackups - 1).coerceAtLeast(
+                                                1
+                                            )
+                                        )
+                                    },
+                                    enabled = uiState.maxLocalBackups > 1
+                                ) {
+                                    Icon(Icons.Filled.Remove, contentDescription = "Weniger")
+                                }
+                                Text(
+                                    uiState.maxLocalBackups.toString(),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                IconButton(
+                                    onClick = {
+                                        viewModel.setMaxLocalBackups(
+                                            (uiState.maxLocalBackups + 1).coerceAtMost(
+                                                20
+                                            )
+                                        )
+                                    },
+                                    enabled = uiState.maxLocalBackups < 20
+                                ) {
+                                    Icon(Icons.Filled.Add, contentDescription = "Mehr")
+                                }
+                            }
+                        }
                     }
                     if (uiState.localBackupCount > 0) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "${uiState.localBackupCount} Backups im gewählten Verzeichnis (max. 5)",
+                            "${uiState.localBackupCount} Backups im gewählten Verzeichnis (max. ${uiState.maxLocalBackups})",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

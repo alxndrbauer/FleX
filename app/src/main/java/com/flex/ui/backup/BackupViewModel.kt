@@ -42,7 +42,8 @@ data class BackupUiState(
     val autoBackupDirectoryUri: Uri? = null,
     val autoBackupDirectoryName: String? = null,
     val autoBackupHour: Int = 2,
-    val autoBackupMinute: Int = 0
+    val autoBackupMinute: Int = 0,
+    val maxLocalBackups: Int = 5
 )
 
 @HiltViewModel
@@ -89,7 +90,8 @@ class BackupViewModel @Inject constructor(
                 autoBackupDirectoryUri = dirUri,
                 autoBackupDirectoryName = dirName,
                 autoBackupHour = backupPreferences.autoBackupHour,
-                autoBackupMinute = backupPreferences.autoBackupMinute
+                autoBackupMinute = backupPreferences.autoBackupMinute,
+                maxLocalBackups = backupPreferences.maxLocalBackups
             )
         }
 
@@ -239,6 +241,11 @@ class BackupViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun setMaxLocalBackups(count: Int) {
+        backupPreferences.maxLocalBackups = count
+        _uiState.update { it.copy(maxLocalBackups = count) }
     }
 
     fun clearMessage() {
