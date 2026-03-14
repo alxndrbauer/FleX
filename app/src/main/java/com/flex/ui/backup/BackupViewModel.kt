@@ -7,7 +7,6 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.flex.data.backup.BackupPreferences
@@ -22,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -35,9 +35,12 @@ data class BackupUiState(
     val localBackupCount: Int = 0,
     val message: String? = null,
     val showImportModeDialog: Boolean = false,
+    val showTimePicker: Boolean = false,
     val pendingImportUri: Uri? = null,
     val autoBackupDirectoryUri: Uri? = null,
-    val autoBackupDirectoryName: String? = null
+    val autoBackupDirectoryName: String? = null,
+    val autoBackupHour: Int = 2,
+    val autoBackupMinute: Int = 0
 )
 
 @HiltViewModel
@@ -80,7 +83,9 @@ class BackupViewModel @Inject constructor(
                         .format(dateTimeFormatter)
                 } else null,
                 autoBackupDirectoryUri = dirUri,
-                autoBackupDirectoryName = dirName
+                autoBackupDirectoryName = dirName,
+                autoBackupHour = backupPreferences.autoBackupHour,
+                autoBackupMinute = backupPreferences.autoBackupMinute
             )
         }
 
@@ -145,22 +150,45 @@ class BackupViewModel @Inject constructor(
 
         if (enabled) {
             schedulePeriodicBackup()
-            // Run an immediate backup so the user sees it working right away
-            WorkManager.getInstance(appContext)
-                .enqueue(OneTimeWorkRequestBuilder<BackupWorker>().build())
         } else {
             WorkManager.getInstance(appContext).cancelUniqueWork(BackupWorker.WORK_NAME)
         }
     }
 
+    fun showTimePicker() {
+        _uiState.update { it.copy(showTimePicker = true) }
+    }
+
+    fun dismissTimePicker() {
+        _uiState.update { it.copy(showTimePicker = false) }
+    }
+
+    fun setBackupTime(hour: Int, minute: Int) {
+        backupPreferences.autoBackupHour = hour
+        backupPreferences.autoBackupMinute = minute
+        _uiState.update { it.copy(autoBackupHour = hour, autoBackupMinute = minute, showTimePicker = false) }
+        if (backupPreferences.isAutoBackupEnabled) {
+            schedulePeriodicBackup()
+        }
+    }
+
     private fun schedulePeriodicBackup() {
-        val backupRequest = PeriodicWorkRequestBuilder<BackupWorker>(
-            24, TimeUnit.HOURS
-        ).build()
+        val now = LocalDateTime.now()
+        val hour = backupPreferences.autoBackupHour
+        val minute = backupPreferences.autoBackupMinute
+        var nextRun = now.withHour(hour).withMinute(minute).withSecond(0).withNano(0)
+        if (!nextRun.isAfter(now)) {
+            nextRun = nextRun.plusDays(1)
+        }
+        val delayMs = java.time.Duration.between(now, nextRun).toMillis()
+
+        val backupRequest = PeriodicWorkRequestBuilder<BackupWorker>(24, TimeUnit.HOURS)
+            .setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
+            .build()
 
         WorkManager.getInstance(appContext).enqueueUniquePeriodicWork(
             BackupWorker.WORK_NAME,
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             backupRequest
         )
     }

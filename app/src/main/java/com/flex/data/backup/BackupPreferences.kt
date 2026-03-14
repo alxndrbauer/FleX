@@ -25,6 +25,14 @@ class BackupPreferences @Inject constructor(
         get() = prefs.getInt(KEY_MAX_LOCAL_BACKUPS, 5)
         set(value) = prefs.edit().putInt(KEY_MAX_LOCAL_BACKUPS, value).apply()
 
+    var autoBackupHour: Int
+        get() = prefs.getInt(KEY_AUTO_BACKUP_HOUR, 2)
+        set(value) = prefs.edit().putInt(KEY_AUTO_BACKUP_HOUR, value).apply()
+
+    var autoBackupMinute: Int
+        get() = prefs.getInt(KEY_AUTO_BACKUP_MINUTE, 0)
+        set(value) = prefs.edit().putInt(KEY_AUTO_BACKUP_MINUTE, value).apply()
+
     var autoBackupDirectoryUri: String?
         get() = prefs.getString(KEY_AUTO_BACKUP_DIR, null)
         set(value) {
@@ -40,5 +48,7 @@ class BackupPreferences @Inject constructor(
         private const val KEY_AUTO_BACKUP_ENABLED = "auto_backup_enabled"
         private const val KEY_MAX_LOCAL_BACKUPS = "max_local_backups"
         private const val KEY_AUTO_BACKUP_DIR = "auto_backup_directory_uri"
+        private const val KEY_AUTO_BACKUP_HOUR = "auto_backup_hour"
+        private const val KEY_AUTO_BACKUP_MINUTE = "auto_backup_minute"
     }
 }

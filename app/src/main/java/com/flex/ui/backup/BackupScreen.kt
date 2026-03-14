@@ -30,7 +30,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -211,6 +213,29 @@ fun BackupScreen(
                             enabled = uiState.autoBackupDirectoryUri != null && !uiState.isLoading
                         )
                     }
+                    if (uiState.isAutoBackupEnabled) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    "Uhrzeit",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    "%02d:%02d Uhr".format(uiState.autoBackupHour, uiState.autoBackupMinute),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            TextButton(onClick = { viewModel.showTimePicker() }) {
+                                Text("Ändern")
+                            }
+                        }
+                    }
                     if (uiState.localBackupCount > 0) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -224,6 +249,30 @@ fun BackupScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+
+    // Time picker dialog
+    if (uiState.showTimePicker) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = uiState.autoBackupHour,
+            initialMinute = uiState.autoBackupMinute,
+            is24Hour = true
+        )
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissTimePicker() },
+            title = { Text("Backup-Uhrzeit") },
+            text = { TimePicker(state = timePickerState) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.setBackupTime(timePickerState.hour, timePickerState.minute) }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissTimePicker() }) {
+                    Text("Abbrechen")
+                }
+            }
+        )
     }
 
     // Import mode dialog
