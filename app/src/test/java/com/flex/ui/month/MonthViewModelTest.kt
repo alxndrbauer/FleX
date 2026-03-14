@@ -18,7 +18,9 @@ import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.DayWorkTimeResult
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.domain.usecase.PrepareExportDataUseCase
 import com.flex.domain.events.DataChangeEventBus
+import com.flex.data.export.ExportService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -66,6 +68,12 @@ class MonthViewModelTest : BaseUnitTest() {
     @Mock
     private lateinit var dataChangeEventBus: DataChangeEventBus
 
+    @Mock
+    private lateinit var prepareExportData: PrepareExportDataUseCase
+
+    @Mock
+    private lateinit var exportService: ExportService
+
     private lateinit var viewModel: MonthViewModel
 
     @BeforeEach
@@ -88,7 +96,8 @@ class MonthViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -104,7 +113,8 @@ class MonthViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -124,7 +134,8 @@ class MonthViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -140,7 +151,8 @@ class MonthViewModelTest : BaseUnitTest() {
         // Given: ViewModel initialized
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -159,7 +171,8 @@ class MonthViewModelTest : BaseUnitTest() {
         // Given: ViewModel initialized
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -178,7 +191,8 @@ class MonthViewModelTest : BaseUnitTest() {
         // Given: ViewModel initialized
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -210,7 +224,8 @@ class MonthViewModelTest : BaseUnitTest() {
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -232,7 +247,8 @@ class MonthViewModelTest : BaseUnitTest() {
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -258,7 +274,8 @@ class MonthViewModelTest : BaseUnitTest() {
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -284,7 +301,8 @@ class MonthViewModelTest : BaseUnitTest() {
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -325,7 +343,8 @@ class MonthViewModelTest : BaseUnitTest() {
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -359,7 +378,8 @@ class MonthViewModelTest : BaseUnitTest() {
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -395,7 +415,8 @@ class MonthViewModelTest : BaseUnitTest() {
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -418,7 +439,8 @@ class MonthViewModelTest : BaseUnitTest() {
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -450,7 +472,8 @@ class MonthViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -473,7 +496,8 @@ class MonthViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -492,7 +516,8 @@ class MonthViewModelTest : BaseUnitTest() {
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 
@@ -524,7 +549,8 @@ class MonthViewModelTest : BaseUnitTest() {
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService
         )
         advanceUntilIdle()
 

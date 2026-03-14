@@ -113,6 +113,9 @@ fix(ui): Delete button now appears in month view dialog
 Co-Authored-By: Claude Haiku <noreply@anthreply.com>
 ```
 
+## Versioning
+
+Mit jeder Änderung soll die Version der App gemäß semver angepasst werden.
 ## Regeln
 
 ✅ **DO**
