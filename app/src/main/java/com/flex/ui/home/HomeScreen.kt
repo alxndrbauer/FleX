@@ -52,7 +52,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.flex.domain.model.DayType
@@ -555,7 +557,8 @@ fun ManualTimeEntryDialog(
                         onValueChange = { startText = formatTimeInput(it) },
                         label = { Text("Startzeit (HH:mm)") },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
@@ -563,7 +566,8 @@ fun ManualTimeEntryDialog(
                         onValueChange = { endText = formatTimeInput(it) },
                         label = { Text("Endzeit (HH:mm)") },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -572,14 +576,16 @@ fun ManualTimeEntryDialog(
                             onValueChange = { durationHours = it },
                             label = { Text("Stunden") },
                             modifier = Modifier.weight(1f),
-                            singleLine = true
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
                         OutlinedTextField(
                             value = durationMinutes,
                             onValueChange = { durationMinutes = it },
                             label = { Text("Minuten") },
                             modifier = Modifier.weight(1f),
-                            singleLine = true
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
                     }
                 }
@@ -649,7 +655,8 @@ fun EditTimeBlockDialog(
                         onValueChange = { startText = formatTimeInput(it) },
                         label = { Text("Start (HH:mm)") },
                         modifier = Modifier.weight(1f),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                     OutlinedTextField(
                         value = endText,
@@ -657,7 +664,8 @@ fun EditTimeBlockDialog(
                         label = { Text("Ende (HH:mm)") },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
-                        placeholder = { Text("laufend") }
+                        placeholder = { Text("laufend") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                 }
             }
