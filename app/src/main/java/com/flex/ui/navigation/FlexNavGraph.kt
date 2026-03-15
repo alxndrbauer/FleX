@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CalendarViewMonth
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.Home
@@ -32,6 +33,7 @@ import com.flex.ui.month.MonthScreen
 import com.flex.ui.planning.PlanningScreen
 import com.flex.ui.quota.QuotaScreen
 import com.flex.ui.settings.SettingsScreen
+import com.flex.ui.year.YearOverviewScreen
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
     data object Home : Screen("home", "Heute", Icons.Default.Home)
@@ -39,6 +41,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     data object Planning : Screen("planning", "Planung", Icons.Default.EditCalendar)
     data object Quota : Screen("quota", "Quote", Icons.Default.Dashboard)
     data object Analytics : Screen("analytics", "Analytics", Icons.Default.BarChart)
+    data object Year : Screen("year", "Jahr", Icons.Default.CalendarViewMonth)
     data object Settings : Screen("settings", "Einstellungen", Icons.Default.Settings)
     data object Backup : Screen("backup", "Datensicherung", Icons.Default.Settings)
 }
@@ -48,7 +51,7 @@ val bottomNavItems = listOf(
     Screen.Month,
     Screen.Planning,
     Screen.Quota,
-    Screen.Analytics,
+    Screen.Year,
     Screen.Settings
 )
 
@@ -91,6 +94,7 @@ fun FlexNavGraph() {
             composable(Screen.Planning.route) { PlanningScreen() }
             composable(Screen.Quota.route) { QuotaScreen() }
             composable(Screen.Analytics.route) { AnalyticsScreen() }
+            composable(Screen.Year.route) { YearOverviewScreen() }
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     onNavigateToBackup = { navController.navigate(Screen.Backup.route) }
