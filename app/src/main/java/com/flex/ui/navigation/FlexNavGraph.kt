@@ -10,19 +10,21 @@ import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,32 +63,59 @@ val bottomNavItems = listOf(
     Screen.Year
 )
 
-val drawerItems = listOf(
+val moreItems = listOf(
     Screen.Quota,
     Screen.Analytics,
     Screen.Settings
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FlexNavGraph() {
     val navController = rememberNavController()
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
+    var showBottomSheet by remember { mutableStateOf(false) }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
 
-                drawerItems.forEach { screen ->
-                    NavigationDrawerItem(
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            sheetState = sheetState
+        ) {
+            moreItems.forEach { screen ->
+                NavigationDrawerItem(
+                    icon = { Icon(screen.icon, contentDescription = screen.title) },
+                    label = { Text(screen.title) },
+                    selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                    onClick = {
+                        scope.launch { sheetState.hide() }.invokeOnCompletion {
+                            showBottomSheet = false
+                        }
+                        navController.navigate(screen.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                bottomNavItems.forEach { screen ->
+                    NavigationBarItem(
                         icon = { Icon(screen.icon, contentDescription = screen.title) },
-                        label = { Text(screen.title) },
+                        label = { Text(screen.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
                         selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                         onClick = {
-                            scope.launch { drawerState.close() }
                             navController.navigate(screen.route) {
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
@@ -97,62 +126,36 @@ fun FlexNavGraph() {
                         }
                     )
                 }
+
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.Menu, contentDescription = "Mehr") },
+                    label = { Text("Mehr", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
+                    selected = currentDestination?.hierarchy?.any { dest ->
+                        moreItems.any { it.route == dest.route }
+                    } == true,
+                    onClick = { showBottomSheet = true }
+                )
             }
         }
-    ) {
-        Scaffold(
-            bottomBar = {
-                NavigationBar {
-                    val navBackStackEntry by navController.currentBackStackEntryAsState()
-                    val currentDestination = navBackStackEntry?.destination
-
-                    bottomNavItems.forEach { screen ->
-                        NavigationBarItem(
-                            icon = { Icon(screen.icon, contentDescription = screen.title) },
-                            label = { Text(screen.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
-                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                            onClick = {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        )
-                    }
-
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Default.Menu, contentDescription = "Mehr") },
-                        label = { Text("Mehr", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
-                        selected = currentDestination?.hierarchy?.any { dest ->
-                            drawerItems.any { it.route == dest.route }
-                        } == true,
-                        onClick = { scope.launch { drawerState.open() } }
-                    )
-                }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Home.route,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable(Screen.Home.route) { HomeScreen() }
+            composable(Screen.Month.route) { MonthScreen() }
+            composable(Screen.Planning.route) { PlanningScreen() }
+            composable(Screen.Quota.route) { QuotaScreen() }
+            composable(Screen.Analytics.route) { AnalyticsScreen() }
+            composable(Screen.Year.route) { YearOverviewScreen() }
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    onNavigateToBackup = { navController.navigate(Screen.Backup.route) }
+                )
             }
-        ) { innerPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = Screen.Home.route,
-                modifier = Modifier.padding(innerPadding)
-            ) {
-                composable(Screen.Home.route) { HomeScreen() }
-                composable(Screen.Month.route) { MonthScreen() }
-                composable(Screen.Planning.route) { PlanningScreen() }
-                composable(Screen.Quota.route) { QuotaScreen() }
-                composable(Screen.Analytics.route) { AnalyticsScreen() }
-                composable(Screen.Year.route) { YearOverviewScreen() }
-                composable(Screen.Settings.route) {
-                    SettingsScreen(
-                        onNavigateToBackup = { navController.navigate(Screen.Backup.route) }
-                    )
-                }
-                composable(Screen.Backup.route) {
-                    BackupScreen(onNavigateBack = { navController.popBackStack() })
-                }
+            composable(Screen.Backup.route) {
+                BackupScreen(onNavigateBack = { navController.popBackStack() })
             }
         }
     }
