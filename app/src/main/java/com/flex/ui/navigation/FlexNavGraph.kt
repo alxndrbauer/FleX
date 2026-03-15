@@ -51,6 +51,7 @@ val bottomNavItems = listOf(
     Screen.Month,
     Screen.Planning,
     Screen.Quota,
+    Screen.Analytics,
     Screen.Year,
     Screen.Settings
 )

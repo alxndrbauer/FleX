@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.flex.domain.model.DayType
 import com.flex.domain.model.WorkLocation
-import com.flex.ui.analytics.AnalyticsScreen
 import com.flex.ui.theme.FlexDayColor
 import com.flex.ui.theme.HomeOfficeColor
 import com.flex.ui.theme.OfficeColor
@@ -134,11 +133,6 @@ fun YearOverviewScreen(
         // Summary card
         item {
             YearSummaryCard(summary = state.summary)
-        }
-
-        // Analytics content embedded below
-        item {
-            AnalyticsScreen()
         }
 
         item {
