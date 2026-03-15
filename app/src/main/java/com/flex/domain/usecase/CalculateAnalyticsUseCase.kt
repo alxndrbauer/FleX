@@ -85,7 +85,7 @@ class CalculateAnalyticsUseCase @Inject constructor(
                 val sortedDays = workDays.sortedBy { it.date }
                 var cumulativeOvertime = settings.initialOvertimeMinutes.toLong()
                 sortedDays.map { day ->
-                    cumulativeOvertime += calculateDayOvertime(day)
+                    cumulativeOvertime += calculateDayOvertime(day, settings)
                     TimeSeriesPoint(day.date, cumulativeOvertime)
                 }
             }
@@ -112,13 +112,15 @@ class CalculateAnalyticsUseCase @Inject constructor(
             }
             DayType.SATURDAY_BONUS -> calculateDayWorkTime(day.timeBlocks).netMinutes
             DayType.FLEX_DAY -> -settings.dailyWorkMinutes.toLong()
+            DayType.OVERTIME_DAY -> 0L
             DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY -> 0L
         }
     }
 
-    private fun calculateDayOvertime(day: WorkDay): Long {
+    private fun calculateDayOvertime(day: WorkDay, settings: Settings): Long {
         return when (day.dayType) {
             DayType.SATURDAY_BONUS -> (calculateDayWorkTime(day.timeBlocks).netMinutes * 0.5).roundToLong()
+            DayType.OVERTIME_DAY -> -settings.dailyWorkMinutes.toLong()
             else -> 0L
         }
     }

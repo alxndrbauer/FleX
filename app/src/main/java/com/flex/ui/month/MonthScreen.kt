@@ -530,6 +530,7 @@ fun WorkDayListItem(workDay: WorkDay, netMinutes: Long, onClick: () -> Unit) {
                     DayType.SPECIAL_VACATION -> "Sonderurlaub"
                     DayType.FLEX_DAY -> "Gleittag"
                     DayType.SICK_DAY -> "Krank"
+                    DayType.OVERTIME_DAY -> "Überstundentag"
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

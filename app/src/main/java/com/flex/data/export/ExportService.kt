@@ -228,6 +228,7 @@ class ExportService @Inject constructor() {
         DayType.FLEX_DAY -> "Gleittag"
         DayType.SATURDAY_BONUS -> "Samstag+"
         DayType.SICK_DAY -> "Krank"
+        DayType.OVERTIME_DAY -> "Überstundentag"
     }
 
     private fun locationLabel(location: WorkLocation): String = when (location) {

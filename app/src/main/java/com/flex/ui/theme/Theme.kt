@@ -25,6 +25,7 @@ val FlexDayColor = Color(0xFF9E9E9E)
 val SaturdayBonusColor = Color(0xFFE53935)
 val PublicHolidayColor = Color(0xFFE91E63)
 val SickDayColor = Color(0xFFFF8C00)
+val OvertimeDayColor = Color(0xFF9C27B0)
 
 private val LightColorScheme = lightColorScheme(
     primary = Blue,

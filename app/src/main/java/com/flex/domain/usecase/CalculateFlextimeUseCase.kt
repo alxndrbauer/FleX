@@ -41,6 +41,10 @@ class CalculateFlextimeUseCase @Inject constructor(
                 DayType.FLEX_DAY -> {
                     earnedMinutes += -settings.dailyWorkMinutes.toLong() // voller Tag wird abgezogen
                 }
+                DayType.OVERTIME_DAY -> {
+                    overtimeMinutes += -settings.dailyWorkMinutes.toLong()
+                    // earnedMinutes bleibt unberührt → Gleitzeit neutral
+                }
                 DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY -> {
                     // neutral
                 }

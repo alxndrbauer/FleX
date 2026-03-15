@@ -6,5 +6,6 @@ enum class DayType {
     SPECIAL_VACATION,
     FLEX_DAY,
     SATURDAY_BONUS,
-    SICK_DAY
+    SICK_DAY,
+    OVERTIME_DAY
 }
