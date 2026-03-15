@@ -20,6 +20,7 @@ import com.flex.domain.usecase.DayWorkTimeResult
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -95,7 +96,7 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun launchRemainingMinutesTicker() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.Default) {
             while (true) {
                 delay(30_000L)
                 _remainingMinutes.value = computeRemainingMinutes(_uiState.value)
