@@ -10,51 +10,73 @@ Eine Android-App zur Erfassung von Arbeitszeiten mit Fokus auf Büro/Home-Office
 
 ### 📊 Arbeitszeit-Tracking
 - Erfassung von Arbeitszeiten pro Tag (Start/Ende oder Gesamtdauer)
+- Ein-/Ausstempeln per Knopfdruck oder manuelle Eingabe
 - Unterscheidung zwischen Büro und Home-Office
-- Automatische Berechnung der Netto-Arbeitszeit
+- Automatische Berechnung der Netto-Arbeitszeit (inkl. Pausenabzug)
 - Notizen zu jedem Arbeitstag
+
+### 📍 Automatisches Stempeln (Geofencing)
+- Automatisch einstempeln beim Betreten des Büros
+- Automatisch ausstempeln beim Verlassen
+- Bürostandort per Adresse (Geocoding) oder aktuellem GPS-Standort konfigurieren
+- Benachrichtigung mit „Rückgängig"-Aktion bei automatischem Einstempeln
+- Opt-in, erfordert Standortberechtigung „Immer erlauben"
 
 ### 🏢 Büro-Quote Management
 - Konfigurierbares Soll-Quoten-Verhältnis (Standard: 40%)
 - Mindestanzahl Büro-Tage pro Monat
-- Zeitraum-basierte Quote-Regeln (mit Gültigkeitsdatum)
-- Prognose für laufende Monate
+- Zeitraum-basierte Quoten-Regeln (mit Gültigkeitsdatum)
+- Live-Fortschrittsanzeige (Stunden, Prozent, Tage)
 
 ### ⏱️ Gleitzeit & Überstunden
 - Automatische Berechnung des Gleitzeit-Saldos
-- **Samstags-Bonus**: 50% Aufschlag auf Arbeitszeit
-  - Tatsächliche Arbeitszeit → Gleitzeit
-  - 50% Bonus → Separates Überstundenkonto
+- Separates Überstundenkonto
+- **Samstags-Bonus**: Arbeitszeit → Gleitzeit + 50% Bonus auf Überstundenkonto
+- **Überstundentag**: Freier Tag auf Kosten des Überstundenkontos (Gleitzeit neutral)
+- **Gleittag**: Freier Tag auf Kosten des Gleitzeit-Kontos
 - Konfigurierbarer Anfangssaldo für beide Konten
-- Tagesweise Gleitzeit-Ansicht
 
 ### 🗓️ Urlaub & Spezialregelungen
 - Jahresurlaub mit Resturlaub aus Vorjahr
 - Sonderurlaub (verfällt 31. Oktober)
-- Gleittage (voller Tag Abzug)
-- Feiertage (Hamburg mit Gauss-Osteralgorithmus)
+- Kranktage
+- Feiertage (Hamburg mit Gauß-Osteralgorithmus)
 - Geplante vs. tatsächliche Tage
 
+### 📈 Analytics
+- Gleitzeit-Verlauf als Zeitreihen-Chart (Monat / Jahr / Gesamt)
+- Überstunden-Verlauf als Chart
+- Wöchentliche Arbeitsstunden
+- Monatliche Arbeitsstunden
+- Büro/Home-Office-Verteilung
+
+### 🗂️ Ansichten
+- **Home**: Heute auf einen Blick (Einstempeln, Tagestyp, Gleitzeit, Quote)
+- **Monatsansicht**: Kalenderübersicht mit Edit/Delete pro Tag
+- **Planung**: Zukünftige Tage vorkonfigurieren
+- **Jahresübersicht**: Alle Tage des Jahres auf einen Blick
+- **Analytics**: Charts und Auswertungen
+
 ### 🔒 Datenverwaltung
-- Lokale SQLite-Datenbank
+- Lokale SQLite-Datenbank (kein Cloud-Zwang)
 - JSON-Export/Import für Backups
 - Automatische Sicherungen via WorkManager (max. 5 lokale Backups)
+- PDF-Export
 
-### 📅 UI
-- **Home**: Heute auf einen Blick (Arbeitszeit, Tagestyp, Quote)
-- **Monats-Ansicht**: Kalender + Eintragsübersicht mit Edit/Delete
-- **Planungs-Modus**: Zukünftige Tage vorkonfigurieren
-- **Quoten-Dashboard**: Monatliche & jährliche Übersichten
-- **Einstellungen**: Arbeitszeiten, Quoten, Urlaub, Backups
+### 🎨 Design
+- Material 3
+- Dark Mode / Light Mode / System-Modus umschaltbar
 
 ## Tech Stack
 
-- **Language**: Kotlin 2.2.10
+- **Language**: Kotlin 2.3.10
 - **UI**: Jetpack Compose + Material 3
 - **Architecture**: MVVM + Clean Architecture
-- **Database**: Room 2.7.1
-- **DI**: Hilt 2.56.2
-- **Build**: Gradle 9.2.1, AGP 9.0.1
+- **Database**: Room 2.8.4
+- **DI**: Hilt 2.59.2
+- **Location**: Google Play Services Location 21.3.0
+- **Charts**: Vico 3.0.3
+- **Build**: Gradle 9.4.0, AGP 9.1.0
 
 ## Installation
 
@@ -92,12 +114,15 @@ Releases: https://github.com/alxndrbauer/flexs/releases
 | 3 | Time blocks `isDuration` flag |
 | 4 | Settings `monthlyWorkMinutes` |
 | 5 | Settings `initialOvertimeMinutes` |
+| 6 | Time blocks `location` field |
+| 7 | Settings: Geofence-Felder (enabled, lat, lon, radius) |
+| 8 | Settings: `geofenceAddress` |
 
 ## Entwicklung
 
 ### Struktur
 ```
-app/src/main/java/com/vrema/
+app/src/main/java/com/flex/
 ├── domain/          # Business Logic & Models
 │   ├── model/       # Data classes
 │   ├── repository/  # Interfaces
@@ -106,16 +131,18 @@ app/src/main/java/com/vrema/
 │   ├── local/       # Room entities & DAOs
 │   ├── repository/  # Repository impl
 │   └── backup/      # Backup logic
+├── geofence/        # Geofencing (Receiver, Manager, Notifications)
 ├── ui/              # Compose screens & ViewModels
 └── di/              # Hilt dependency injection
 ```
 
 ### Key Models
-- `WorkDay`: Ein Arbeitstag mit Typ, Ort, Zeitblöcke, Notizen
+- `WorkDay`: Ein Arbeitstag mit Typ, Ort, Zeitblöcken, Notizen
 - `TimeBlock`: Start/End oder Dauer für einen Arbeitstag
-- `Settings`: Arbeitszeitsoll, Quoten, Urlaub, Anfangssaldi
+- `Settings`: Arbeitszeitsoll, Quoten, Urlaub, Anfangssaldi, Geofence-Konfiguration
 - `FlextimeBalance`: Gleitzeit + Überstunden mit Saldo-Berechnung
 - `QuotaStatus`: Monatliche Quote (Stunden & Tage)
+- `DayType`: WORK, VACATION, SPECIAL_VACATION, FLEX_DAY, SATURDAY_BONUS, SICK_DAY, OVERTIME_DAY
 
 ## Lizenz
 
