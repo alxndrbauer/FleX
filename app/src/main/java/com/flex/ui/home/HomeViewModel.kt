@@ -357,6 +357,15 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun deleteDay() {
+        viewModelScope.launch {
+            val workDay = _uiState.value.workDay ?: return@launch
+            workDay.timeBlocks.forEach { workDayRepository.deleteTimeBlock(it) }
+            workDayRepository.deleteWorkDay(workDay)
+            _localDayTypeOverride.value = null
+        }
+    }
+
     fun refreshFlextimeData() {
         _refreshTrigger.value = Unit
     }

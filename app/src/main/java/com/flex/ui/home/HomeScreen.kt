@@ -325,6 +325,8 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                     val savedDayType = state.workDay?.dayType
                     val showSaveButton = state.selectedDayType in nonWorkSaveTypes &&
                         state.selectedDayType != savedDayType
+                    val showDeleteButton = savedDayType in nonWorkSaveTypes &&
+                        state.selectedDayType == savedDayType
                     if (showSaveButton) {
                         Spacer(modifier = Modifier.height(4.dp))
                         val typeLabel = when (state.selectedDayType) {
@@ -339,6 +341,18 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Als $typeLabel eintragen")
+                        }
+                    }
+                    if (showDeleteButton) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedButton(
+                            onClick = { viewModel.deleteDay() },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Eintrag löschen")
                         }
                     }
                 }
