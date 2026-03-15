@@ -64,15 +64,6 @@ fun AnalyticsScreen(
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Überstunden", style = MaterialTheme.typography.titleSmall)
-                        OvertimeLineChart(data = data.overtimeSeries)
-                    }
-                }
-            }
-
-            item {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
                         Text("Standort-Verteilung", style = MaterialTheme.typography.titleSmall)
                         LocationDistributionChart(distribution = data.locationDistribution)
                     }
@@ -93,6 +84,15 @@ fun AnalyticsScreen(
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Monatliche Arbeitszeit", style = MaterialTheme.typography.titleSmall)
                         MonthlyWorkHoursChart(data = data.monthlyHours)
+                    }
+                }
+            }
+
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Überstunden", style = MaterialTheme.typography.titleSmall)
+                        OvertimeLineChart(data = data.overtimeSeries)
                     }
                 }
             }
