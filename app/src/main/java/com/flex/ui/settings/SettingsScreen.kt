@@ -1,10 +1,9 @@
 package com.flex.ui.settings
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,12 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import android.Manifest
@@ -45,7 +43,8 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import com.flex.R
 import com.flex.domain.model.AppIconVariant
 import com.flex.domain.model.ThemeMode
 import androidx.compose.runtime.Composable
@@ -155,24 +154,16 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                AppIconVariant.entries.chunked(3).forEach { rowVariants ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        rowVariants.forEach { variant ->
-                            AppIconVariantItem(
-                                variant = variant,
-                                isSelected = appIconVariant == variant,
-                                onClick = { viewModel.setAppIconVariant(variant) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        repeat(3 - rowVariants.size) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    AppIconVariant.entries.forEach { variant ->
+                        AppIconVariantItem(
+                            variant = variant,
+                            isSelected = appIconVariant == variant,
+                            onClick = { viewModel.setAppIconVariant(variant) }
+                        )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
@@ -735,45 +726,35 @@ fun AddQuotaRuleDialog(
 private fun AppIconVariantItem(
     variant: AppIconVariant,
     isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onClick: () -> Unit
 ) {
+    val iconRes = when (variant) {
+        AppIconVariant.CLASSIC -> R.mipmap.ic_launcher
+        AppIconVariant.VREMA -> R.mipmap.ic_launcher_vrema
+    }
+    val shape = RoundedCornerShape(12.dp)
     Column(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = Modifier.clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
+        Image(
+            painter = painterResource(id = iconRes),
+            contentDescription = variant.displayName,
             modifier = Modifier
-                .size(52.dp)
-                .clip(CircleShape)
-                .background(Color(variant.backgroundColor))
+                .size(56.dp)
+                .clip(shape)
                 .then(
                     if (isSelected)
-                        Modifier.border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                        Modifier.border(3.dp, MaterialTheme.colorScheme.primary, shape)
                     else
                         Modifier
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
                 )
-            }
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = variant.displayName,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = variant.appLabel,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
     }
 }
