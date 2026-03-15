@@ -1,6 +1,10 @@
 package com.flex.ui.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,11 +12,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import android.Manifest
@@ -37,6 +44,9 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import com.flex.domain.model.AppIconVariant
 import com.flex.domain.model.ThemeMode
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -64,6 +74,7 @@ fun SettingsScreen(
     val settings by viewModel.settings.collectAsState()
     val quotaRules by viewModel.quotaRules.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
+    val appIconVariant by viewModel.appIconVariant.collectAsState()
 
     var dailyHours by remember(settings) { mutableStateOf((settings.dailyWorkMinutes / 60).toString()) }
     var dailyMinutes by remember(settings) { mutableStateOf((settings.dailyWorkMinutes % 60).toString()) }
@@ -130,6 +141,38 @@ fun SettingsScreen(
                             label = { Text(label) }
                         )
                     }
+                }
+            }
+        }
+
+        // App icon & name
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("App-Icon & Name", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "Änderung wird nach kurzer Zeit im Launcher sichtbar",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                AppIconVariant.entries.chunked(3).forEach { rowVariants ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        rowVariants.forEach { variant ->
+                            AppIconVariantItem(
+                                variant = variant,
+                                isSelected = appIconVariant == variant,
+                                onClick = { viewModel.setAppIconVariant(variant) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        repeat(3 - rowVariants.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
@@ -686,4 +729,51 @@ fun AddQuotaRuleDialog(
             }
         }
     )
+}
+
+@Composable
+private fun AppIconVariantItem(
+    variant: AppIconVariant,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(CircleShape)
+                .background(Color(variant.backgroundColor))
+                .then(
+                    if (isSelected)
+                        Modifier.border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                    else
+                        Modifier
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = variant.displayName,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+        )
+        Text(
+            text = variant.appLabel,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }

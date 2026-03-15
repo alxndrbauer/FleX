@@ -18,12 +18,112 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.FleX">
+            android:theme="@style/Theme.FleX" />
+
+        <!-- Classic (default, green, FleX) -->
+        <activity-alias
+            android:name=".MainActivityAliasClassic"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/app_name"
+            android:enabled="true"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+
+        <!-- Ocean (blue, FleX) -->
+        <activity-alias
+            android:name=".MainActivityAliasOcean"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_ocean"
+            android:roundIcon="@mipmap/ic_launcher_ocean"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Night (dark, FleX) -->
+        <activity-alias
+            android:name=".MainActivityAliasNight"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_night"
+            android:roundIcon="@mipmap/ic_launcher_night"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Warm (orange, FleX) -->
+        <activity-alias
+            android:name=".MainActivityAliasWarm"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_warm"
+            android:roundIcon="@mipmap/ic_launcher_warm"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Professional (navy, FlexTime) -->
+        <activity-alias
+            android:name=".MainActivityAliasProfessional"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_professional"
+            android:roundIcon="@mipmap/ic_launcher_professional"
+            android:label="@string/app_name_flextime"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Discreet (gray, Zeiterfassung) -->
+        <activity-alias
+            android:name=".MainActivityAliasDiscreet"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_discreet"
+            android:roundIcon="@mipmap/ic_launcher_discreet"
+            android:label="@string/app_name_zeiterfassung"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Vrema (custom logo & name) -->
+        <activity-alias
+            android:name=".MainActivityAliasVrema"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_vrema"
+            android:roundIcon="@mipmap/ic_launcher_vrema_round"
+            android:label="@string/app_name_vrema"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <receiver
             android:name=".geofence.GeofenceReceiver"

@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">FleX</string>
+    <string name="app_name_flextime">FlexTime</string>
+    <string name="app_name_zeiterfassung">Zeiterfassung</string>
+    <string name="app_name_vrema">Vrema</string>
 </resources>

@@ -5,7 +5,9 @@ import android.content.Context
 import android.location.Geocoder
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.flex.data.local.AppIconPreferences
 import com.flex.data.local.ThemePreferences
+import com.flex.domain.model.AppIconVariant
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.Settings
 import com.flex.domain.model.ThemeMode
@@ -28,6 +30,7 @@ class SettingsViewModel @Inject constructor(
     private val getSettings: GetSettingsUseCase,
     private val settingsRepository: SettingsRepository,
     private val themePreferences: ThemePreferences,
+    private val appIconPreferences: AppIconPreferences,
     private val geofenceManager: GeofenceManager
 ) : ViewModel() {
 
@@ -38,6 +41,7 @@ class SettingsViewModel @Inject constructor(
     val quotaRules: StateFlow<List<QuotaRule>> = _quotaRules.asStateFlow()
 
     val themeMode: StateFlow<ThemeMode> = themePreferences.themeModeFlow
+    val appIconVariant: StateFlow<AppIconVariant> = appIconPreferences.variantFlow
 
     init {
         viewModelScope.launch {
@@ -68,6 +72,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeMode(mode: ThemeMode) {
         themePreferences.setThemeMode(mode)
+    }
+
+    fun setAppIconVariant(variant: AppIconVariant) {
+        appIconPreferences.setVariant(variant)
     }
 
     // Returns Pair(lat, lon) or null if address not found
