@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
@@ -43,6 +44,8 @@ class GeofenceManager @Inject constructor(
 
         client.removeGeofences(listOf("office")).addOnCompleteListener {
             client.addGeofences(request, pendingIntent)
+                .addOnSuccessListener { Log.d("GeofenceManager", "Geofence registered: lat=$lat, lon=$lon, radius=$radiusMeters") }
+                .addOnFailureListener { e -> Log.e("GeofenceManager", "Failed to register geofence: ${e.message}") }
         }
     }
 
