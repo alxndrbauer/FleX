@@ -1,9 +1,11 @@
 package com.flex.ui.settings
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -43,6 +45,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import com.flex.R
 import com.flex.domain.model.AppIconVariant
@@ -723,33 +726,48 @@ fun AddQuotaRuleDialog(
 }
 
 @Composable
+// Maps variant to its foreground bitmap (plain WebP, not adaptive icon XML)
+// R.mipmap.ic_launcher would resolve to an adaptive-icon XML on API 26+,
+// which painterResource cannot render. The foreground mipmaps are plain bitmaps.
+private fun AppIconVariant.foregroundRes() = when (this) {
+    AppIconVariant.CLASSIC -> R.mipmap.ic_launcher_foreground
+    AppIconVariant.VREMA   -> R.mipmap.ic_launcher_vrema_foreground
+}
+
+private fun AppIconVariant.bgColor() = when (this) {
+    AppIconVariant.CLASSIC -> Color(0xFF3DDC84)
+    AppIconVariant.VREMA   -> Color(0xFF3DDC84)
+}
+
+@Composable
 private fun AppIconVariantItem(
     variant: AppIconVariant,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val iconRes = when (variant) {
-        AppIconVariant.CLASSIC -> R.mipmap.ic_launcher
-        AppIconVariant.VREMA -> R.mipmap.ic_launcher_vrema
-    }
     val shape = RoundedCornerShape(12.dp)
     Column(
         modifier = Modifier.clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Image(
-            painter = painterResource(id = iconRes),
-            contentDescription = variant.displayName,
+        Box(
             modifier = Modifier
                 .size(56.dp)
                 .clip(shape)
+                .background(variant.bgColor())
                 .then(
                     if (isSelected)
                         Modifier.border(3.dp, MaterialTheme.colorScheme.primary, shape)
                     else
                         Modifier
                 )
-        )
+        ) {
+            Image(
+                painter = painterResource(id = variant.foregroundRes()),
+                contentDescription = variant.displayName,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = variant.appLabel,
