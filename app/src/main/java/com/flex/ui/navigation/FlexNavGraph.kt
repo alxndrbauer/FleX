@@ -57,11 +57,11 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
 val bottomNavItems = listOf(
     Screen.Home,
     Screen.Month,
+    Screen.Planning,
     Screen.Year
 )
 
 val drawerItems = listOf(
-    Screen.Planning,
     Screen.Quota,
     Screen.Analytics,
     Screen.Settings
