@@ -1,5 +1,8 @@
 package com.flex.ui.settings
 
+import android.annotation.SuppressLint
+import android.content.Context
+import android.location.Geocoder
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.flex.data.local.ThemePreferences
@@ -9,15 +12,19 @@ import com.flex.domain.model.ThemeMode
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.geofence.GeofenceManager
+import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val getSettings: GetSettingsUseCase,
     private val settingsRepository: SettingsRepository,
     private val themePreferences: ThemePreferences,
@@ -63,14 +70,42 @@ class SettingsViewModel @Inject constructor(
         themePreferences.setThemeMode(mode)
     }
 
-    fun saveGeofenceSettings(enabled: Boolean, lat: Double, lon: Double, radius: Float) {
+    // Returns Pair(lat, lon) or null if address not found
+    fun geocodeAddress(address: String, onResult: (Double, Double) -> Unit, onError: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                @Suppress("DEPRECATION")
+                val results = Geocoder(context, Locale.getDefault()).getFromLocationName(address, 1)
+                val loc = results?.firstOrNull()
+                if (loc != null) onResult(loc.latitude, loc.longitude) else onError()
+            } catch (_: Exception) {
+                onError()
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun fetchCurrentLocation(onResult: (Double, Double) -> Unit, onError: () -> Unit) {
+        try {
+            LocationServices.getFusedLocationProviderClient(context).lastLocation
+                .addOnSuccessListener { loc ->
+                    if (loc != null) onResult(loc.latitude, loc.longitude) else onError()
+                }
+                .addOnFailureListener { onError() }
+        } catch (_: Exception) {
+            onError()
+        }
+    }
+
+    fun saveGeofenceSettings(enabled: Boolean, lat: Double, lon: Double, radius: Float, address: String = "") {
         viewModelScope.launch {
             settingsRepository.saveSettings(
                 _settings.value.copy(
                     geofenceEnabled = enabled,
                     geofenceLat = lat,
                     geofenceLon = lon,
-                    geofenceRadiusMeters = radius
+                    geofenceRadiusMeters = radius,
+                    geofenceAddress = address
                 )
             )
             if (enabled && lat != 0.0 && lon != 0.0) {

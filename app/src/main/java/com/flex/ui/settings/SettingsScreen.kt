@@ -89,9 +89,11 @@ fun SettingsScreen(
     var showAddRuleDialog by remember { mutableStateOf(false) }
 
     var geofenceEnabled by remember(settings) { mutableStateOf(settings.geofenceEnabled) }
-    var geofenceLat by remember(settings) { mutableStateOf(if (settings.geofenceLat == 0.0) "" else settings.geofenceLat.toString()) }
-    var geofenceLon by remember(settings) { mutableStateOf(if (settings.geofenceLon == 0.0) "" else settings.geofenceLon.toString()) }
+    var geofenceAddress by remember(settings) { mutableStateOf(settings.geofenceAddress) }
+    var geofenceLat by remember(settings) { mutableStateOf(if (settings.geofenceLat == 0.0) "" else "%.6f".format(settings.geofenceLat)) }
+    var geofenceLon by remember(settings) { mutableStateOf(if (settings.geofenceLon == 0.0) "" else "%.6f".format(settings.geofenceLon)) }
     var geofenceRadius by remember(settings) { mutableStateOf(settings.geofenceRadiusMeters.toInt().toString()) }
+    var geofenceError by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -428,23 +430,64 @@ fun SettingsScreen(
                 }
                 if (geofenceEnabled) {
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    // Address input + geocode button
                     OutlinedTextField(
-                        value = geofenceLat,
-                        onValueChange = { geofenceLat = it },
-                        label = { Text("Breitengrad (z.B. 48.137154)") },
+                        value = geofenceAddress,
+                        onValueChange = { geofenceAddress = it; geofenceError = false },
+                        label = { Text("Büro-Adresse") },
+                        placeholder = { Text("z.B. Musterstraße 1, München") },
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true
+                        singleLine = true,
+                        isError = geofenceError,
+                        supportingText = if (geofenceError) { { Text("Adresse nicht gefunden") } } else null
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    OutlinedTextField(
-                        value = geofenceLon,
-                        onValueChange = { geofenceLon = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Längengrad (z.B. 11.575382)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.geocodeAddress(
+                                    geofenceAddress,
+                                    onResult = { lat, lon ->
+                                        geofenceLat = "%.6f".format(lat)
+                                        geofenceLon = "%.6f".format(lon)
+                                        geofenceError = false
+                                    },
+                                    onError = { geofenceError = true }
+                                )
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = geofenceAddress.isNotBlank()
+                        ) {
+                            Text("Koordinaten suchen")
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.fetchCurrentLocation(
+                                    onResult = { lat, lon ->
+                                        geofenceLat = "%.6f".format(lat)
+                                        geofenceLon = "%.6f".format(lon)
+                                        geofenceError = false
+                                    },
+                                    onError = { geofenceError = true }
+                                )
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Standort jetzt")
+                        }
+                    }
+
+                    // Resolved coordinates (read-only display)
+                    if (geofenceLat.isNotBlank() && geofenceLon.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "Koordinaten: $geofenceLat, $geofenceLon",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(4.dp))
                     OutlinedTextField(
                         value = geofenceRadius,
@@ -460,9 +503,10 @@ fun SettingsScreen(
                             val lat = geofenceLat.toDoubleOrNull() ?: 0.0
                             val lon = geofenceLon.toDoubleOrNull() ?: 0.0
                             val radius = geofenceRadius.toFloatOrNull() ?: 150f
-                            viewModel.saveGeofenceSettings(true, lat, lon, radius)
+                            viewModel.saveGeofenceSettings(true, lat, lon, radius, geofenceAddress)
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = geofenceLat.isNotBlank() && geofenceLon.isNotBlank()
                     ) {
                         Text("Bürostandort speichern")
                     }

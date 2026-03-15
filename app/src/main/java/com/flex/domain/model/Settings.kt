@@ -15,5 +15,6 @@ data class Settings(
     val geofenceEnabled: Boolean = false,
     val geofenceLat: Double = 0.0,
     val geofenceLon: Double = 0.0,
-    val geofenceRadiusMeters: Float = 150f
+    val geofenceRadiusMeters: Float = 150f,
+    val geofenceAddress: String = ""
 )
