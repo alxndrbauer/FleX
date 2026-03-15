@@ -218,9 +218,11 @@ private fun YearHeatmap(
                 }
 
                 val monthLabel = if (showMonthLabel) {
-                    val firstDayInYear = (0..6).map { weekStart.plusDays(it.toLong()) }
-                        .firstOrNull { it.year == year }
-                    firstDayInYear?.month?.getDisplayName(TextStyle.SHORT, Locale.GERMAN)
+                    val inYearDays = (0..6).map { weekStart.plusDays(it.toLong()) }
+                        .filter { it.year == year }
+                    val firstOfMonth = inYearDays.firstOrNull { it.dayOfMonth == 1 }
+                    (firstOfMonth ?: inYearDays.firstOrNull())
+                        ?.month?.getDisplayName(TextStyle.SHORT, Locale.GERMAN)
                 } else null
 
                 Column(
