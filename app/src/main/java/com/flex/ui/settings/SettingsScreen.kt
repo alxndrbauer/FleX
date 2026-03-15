@@ -735,7 +735,7 @@ private fun AppIconVariant.foregroundRes() = when (this) {
 }
 
 private fun AppIconVariant.bgColor() = when (this) {
-    AppIconVariant.CLASSIC -> Color(0xFF3DDC84)
+    AppIconVariant.CLASSIC -> Color(0xFF000000)
     AppIconVariant.VREMA   -> Color(0xFF3DDC84)
 }
 
