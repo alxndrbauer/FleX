@@ -213,7 +213,7 @@ class PlanningViewModel @Inject constructor(
         settings: Settings
     ): OfficeHoursDetail {
         // Fixed monthly target, reduced by neutral days
-        val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY)
+        val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
         val neutralDayCount = prognosisDays.count { it.dayType in neutralTypes }
         val totalMinutes = (settings.monthlyWorkMinutes - neutralDayCount.toLong() * settings.dailyWorkMinutes).coerceAtLeast(0)
 

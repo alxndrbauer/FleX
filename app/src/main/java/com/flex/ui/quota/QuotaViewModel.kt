@@ -44,7 +44,8 @@ data class QuotaUiState(
     val effectiveQuotaPercent: Int = 40,
     val effectiveQuotaMinDays: Int = 8,
     val totalWorkMinutes: Long = 0,
-    val requiredOfficeMinutes: Long = 0
+    val requiredOfficeMinutes: Long = 0,
+    val sickDays: Int = 0
 )
 
 @HiltViewModel
@@ -85,7 +86,7 @@ class QuotaViewModel @Inject constructor(
                 val flextime = calculateFlextime(actualYearDays, settings, yearMonth)
 
                 // Fixed monthly target, reduced by neutral days
-                val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY)
+                val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
                 val neutralDayCount = monthDays.count { it.dayType in neutralTypes }
                 val totalMin = (settings.monthlyWorkMinutes - neutralDayCount.toLong() * settings.dailyWorkMinutes).coerceAtLeast(0)
                 val requiredMin = (totalMin * qPercent / 100.0).toLong()
@@ -101,6 +102,9 @@ class QuotaViewModel @Inject constructor(
                 }
                 val plannedSpecial = yearDays.count {
                     it.dayType == DayType.SPECIAL_VACATION && it.isPlanned
+                }
+                val sickDays = yearDays.count {
+                    it.dayType == DayType.SICK_DAY && !it.isPlanned
                 }
 
                 QuotaUiState(
@@ -120,7 +124,8 @@ class QuotaViewModel @Inject constructor(
                     effectiveQuotaPercent = qPercent,
                     effectiveQuotaMinDays = qDays,
                     totalWorkMinutes = totalMin,
-                    requiredOfficeMinutes = requiredMin
+                    requiredOfficeMinutes = requiredMin,
+                    sickDays = sickDays
                 )
             }.collect { state ->
                 _uiState.value = state

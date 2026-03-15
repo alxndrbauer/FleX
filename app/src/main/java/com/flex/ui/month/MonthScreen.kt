@@ -83,6 +83,7 @@ import com.flex.ui.theme.HomeOfficeColor
 import com.flex.ui.theme.OfficeColor
 import com.flex.ui.theme.PublicHolidayColor
 import com.flex.ui.theme.SaturdayBonusColor
+import com.flex.ui.theme.SickDayColor
 import com.flex.ui.theme.SpecialVacationColor
 import com.flex.ui.theme.VacationColor
 import java.time.LocalDate
@@ -334,6 +335,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             LegendItem(color = HomeOfficeColor, label = "HO")
             LegendItem(color = VacationColor, label = "Urlaub")
             LegendItem(color = FlexDayColor, label = "Gleittag")
+            LegendItem(color = SickDayColor, label = "Krank")
             LegendItem(color = PublicHolidayColor, label = "Feiertag")
         }
 
@@ -418,6 +420,7 @@ fun DayCell(
         workDay.dayType == DayType.SPECIAL_VACATION -> SpecialVacationColor.copy(alpha = 0.3f)
         workDay.dayType == DayType.FLEX_DAY -> FlexDayColor.copy(alpha = 0.3f)
         workDay.dayType == DayType.SATURDAY_BONUS -> SaturdayBonusColor.copy(alpha = 0.3f)
+        workDay.dayType == DayType.SICK_DAY -> SickDayColor.copy(alpha = 0.3f)
         else -> {
             val blocks = workDay.timeBlocks.filter { it.endTime != null }
             if (blocks.isEmpty()) {
@@ -526,6 +529,7 @@ fun WorkDayListItem(workDay: WorkDay, netMinutes: Long, onClick: () -> Unit) {
                     DayType.VACATION -> "Urlaub"
                     DayType.SPECIAL_VACATION -> "Sonderurlaub"
                     DayType.FLEX_DAY -> "Gleittag"
+                    DayType.SICK_DAY -> "Krank"
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -629,6 +633,10 @@ fun EditDayDialog(
                         selected = dayType == DayType.SATURDAY_BONUS,
                         onClick = { dayType = DayType.SATURDAY_BONUS },
                         label = { Text("Samstag+") })
+                    FilterChip(
+                        selected = dayType == DayType.SICK_DAY,
+                        onClick = { dayType = DayType.SICK_DAY },
+                        label = { Text("Krank") })
                 }
 
                 // Time entry — only for work day types

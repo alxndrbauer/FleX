@@ -21,7 +21,7 @@ class CalculateQuotaUseCase @Inject constructor(
         quotaPercent: Int = settings.officeQuotaPercent,
         quotaMinDays: Int = settings.officeQuotaMinDays
     ): QuotaStatus {
-        val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY)
+        val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
         val workingDays = workDays.filter { it.dayType !in neutralTypes }
 
         var officeMinutes = 0L

@@ -132,7 +132,7 @@ class MonthViewModel @Inject constructor(
                 val flextime = calculateFlextime(flextimeDays, settings, month)
 
                 // Fixed monthly target, reduced by neutral days (vacation, flex, etc.)
-                val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY)
+                val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
                 val neutralDayCount = prognosisDays.count { it.dayType in neutralTypes }
                 val totalMin = (settings.monthlyWorkMinutes - (neutralDayCount.toLong() * settings.dailyWorkMinutes)).coerceAtLeast(0)
                 val requiredMin = (totalMin * qPercent / 100.0).toLong()

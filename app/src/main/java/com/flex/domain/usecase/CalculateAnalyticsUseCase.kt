@@ -112,7 +112,7 @@ class CalculateAnalyticsUseCase @Inject constructor(
             }
             DayType.SATURDAY_BONUS -> calculateDayWorkTime(day.timeBlocks).netMinutes
             DayType.FLEX_DAY -> -settings.dailyWorkMinutes.toLong()
-            DayType.VACATION, DayType.SPECIAL_VACATION -> 0L
+            DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY -> 0L
         }
     }
 

@@ -123,7 +123,7 @@ class HomeViewModel @Inject constructor(
                         val quota = calculateQuota(actualMonthDays, settings, todayYearMonth, qPercent, qDays)
 
                         // Fixed monthly target, reduced by neutral days
-                        val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY)
+                        val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
                         val neutralDayCount = actualMonthDays.count { it.dayType in neutralTypes }
                         val totalMin = (settings.monthlyWorkMinutes - neutralDayCount.toLong() * settings.dailyWorkMinutes).coerceAtLeast(0)
                         val requiredMin = (totalMin * qPercent / 100.0).toLong()

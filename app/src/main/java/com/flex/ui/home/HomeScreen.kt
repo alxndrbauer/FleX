@@ -304,7 +304,8 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                             DayType.VACATION to "Urlaub",
                             DayType.SPECIAL_VACATION to "Sonderurlaub",
                             DayType.FLEX_DAY to "Gleittag",
-                            DayType.SATURDAY_BONUS to "Samstag+"
+                            DayType.SATURDAY_BONUS to "Samstag+",
+                            DayType.SICK_DAY to "Krank"
                         )
                         dayTypes.forEach { (type, label) ->
                             FilterChip(
@@ -319,7 +320,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                     // WORK type is committed implicitly when clocking in or adding time.
                     val nonWorkSaveTypes = setOf(
                         DayType.VACATION, DayType.SPECIAL_VACATION,
-                        DayType.FLEX_DAY, DayType.SATURDAY_BONUS
+                        DayType.FLEX_DAY, DayType.SATURDAY_BONUS, DayType.SICK_DAY
                     )
                     val savedDayType = state.workDay?.dayType
                     val showSaveButton = state.selectedDayType in nonWorkSaveTypes &&
@@ -330,6 +331,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                             DayType.VACATION -> "Urlaub"
                             DayType.SPECIAL_VACATION -> "Sonderurlaub"
                             DayType.FLEX_DAY -> "Gleittag"
+                            DayType.SICK_DAY -> "Kranktag"
                             else -> "Samstag+"
                         }
                         Button(
