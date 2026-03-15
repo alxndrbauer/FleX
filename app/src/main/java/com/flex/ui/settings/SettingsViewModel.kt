@@ -2,8 +2,10 @@ package com.flex.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.flex.data.local.ThemePreferences
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.Settings
+import com.flex.domain.model.ThemeMode
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.usecase.GetSettingsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,7 +18,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val getSettings: GetSettingsUseCase,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val themePreferences: ThemePreferences
 ) : ViewModel() {
 
     private val _settings = MutableStateFlow(Settings())
@@ -24,6 +27,8 @@ class SettingsViewModel @Inject constructor(
 
     private val _quotaRules = MutableStateFlow<List<QuotaRule>>(emptyList())
     val quotaRules: StateFlow<List<QuotaRule>> = _quotaRules.asStateFlow()
+
+    val themeMode: StateFlow<ThemeMode> = themePreferences.themeModeFlow
 
     init {
         viewModelScope.launch {
@@ -50,5 +55,9 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.deleteQuotaRule(rule)
         }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        themePreferences.setThemeMode(mode)
     }
 }
