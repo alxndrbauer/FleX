@@ -8,6 +8,7 @@ import com.flex.domain.model.Settings
 import com.flex.domain.repository.SettingsRepository
 import com.flex.data.local.ThemePreferences
 import com.flex.domain.model.ThemeMode
+import com.flex.geofence.GeofenceManager
 import com.flex.domain.usecase.GetSettingsUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +40,9 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Mock
     private lateinit var themePreferences: ThemePreferences
 
+    @Mock
+    private lateinit var geofenceManager: GeofenceManager
+
     private lateinit var viewModel: SettingsViewModel
 
     @BeforeEach
@@ -66,7 +70,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences, geofenceManager)
         advanceUntilIdle()
 
         // Then: Settings state should be loaded
@@ -80,7 +84,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences, geofenceManager)
         advanceUntilIdle()
 
         // Then: QuotaRules state should be empty
@@ -98,7 +102,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(expectedRules))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences, geofenceManager)
         advanceUntilIdle()
 
         // Then: QuotaRules state should be loaded
@@ -111,7 +115,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `updateSettings persists settings to repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences, geofenceManager)
         advanceUntilIdle()
 
         val updatedSettings = Settings(
@@ -132,7 +136,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `updateSettings with different values persists correctly`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences, geofenceManager)
         advanceUntilIdle()
 
         val newSettings = Settings(
@@ -160,7 +164,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `addQuotaRule persists rule to repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences, geofenceManager)
         advanceUntilIdle()
 
         val newRule = QuotaRule(
@@ -181,7 +185,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `addQuotaRule with different month persists correctly`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences, geofenceManager)
         advanceUntilIdle()
 
         val rule = QuotaRule(
@@ -204,7 +208,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `deleteQuotaRule removes rule from repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences, geofenceManager)
         advanceUntilIdle()
 
         val ruleToDelete = QuotaRule(
@@ -234,7 +238,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences, geofenceManager)
         advanceUntilIdle()
 
         // Then: State should reflect the latest settings
@@ -254,7 +258,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(initialRules, updatedRules))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences, geofenceManager)
         advanceUntilIdle()
 
         // Then: State should reflect the rules
@@ -271,7 +275,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences, geofenceManager)
         advanceUntilIdle()
 
         // Then: Settings should have default value
@@ -286,7 +290,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences, geofenceManager)
         advanceUntilIdle()
 
         // Then: QuotaRules should be empty list

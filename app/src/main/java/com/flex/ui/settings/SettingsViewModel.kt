@@ -8,6 +8,7 @@ import com.flex.domain.model.Settings
 import com.flex.domain.model.ThemeMode
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.geofence.GeofenceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +20,8 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val getSettings: GetSettingsUseCase,
     private val settingsRepository: SettingsRepository,
-    private val themePreferences: ThemePreferences
+    private val themePreferences: ThemePreferences,
+    private val geofenceManager: GeofenceManager
 ) : ViewModel() {
 
     private val _settings = MutableStateFlow(Settings())
@@ -59,5 +61,23 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeMode(mode: ThemeMode) {
         themePreferences.setThemeMode(mode)
+    }
+
+    fun saveGeofenceSettings(enabled: Boolean, lat: Double, lon: Double, radius: Float) {
+        viewModelScope.launch {
+            settingsRepository.saveSettings(
+                _settings.value.copy(
+                    geofenceEnabled = enabled,
+                    geofenceLat = lat,
+                    geofenceLon = lon,
+                    geofenceRadiusMeters = radius
+                )
+            )
+            if (enabled && lat != 0.0 && lon != 0.0) {
+                geofenceManager.registerGeofence(lat, lon, radius)
+            } else {
+                geofenceManager.removeGeofence()
+            }
+        }
     }
 }

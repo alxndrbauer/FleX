@@ -15,9 +15,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
+import android.Manifest
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Switch
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -80,6 +87,18 @@ fun SettingsScreen(
     var specialVacation by remember(settings) { mutableStateOf(settings.specialVacationDays.toString()) }
 
     var showAddRuleDialog by remember { mutableStateOf(false) }
+
+    var geofenceEnabled by remember(settings) { mutableStateOf(settings.geofenceEnabled) }
+    var geofenceLat by remember(settings) { mutableStateOf(if (settings.geofenceLat == 0.0) "" else settings.geofenceLat.toString()) }
+    var geofenceLon by remember(settings) { mutableStateOf(if (settings.geofenceLon == 0.0) "" else settings.geofenceLon.toString()) }
+    var geofenceRadius by remember(settings) { mutableStateOf(settings.geofenceRadiusMeters.toInt().toString()) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) geofenceEnabled = true
+    }
 
     Column(
         modifier = Modifier
@@ -376,6 +395,96 @@ fun SettingsScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
+            }
+        }
+
+        // Geofencing
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Automatisches Stempeln", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "Einstempeln beim Betreten, Ausstempeln beim Verlassen des Büros",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Geofencing aktivieren")
+                    Switch(
+                        checked = geofenceEnabled,
+                        onCheckedChange = { enabled ->
+                            if (enabled) {
+                                locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                            } else {
+                                geofenceEnabled = false
+                                viewModel.saveGeofenceSettings(false, 0.0, 0.0, 150f)
+                            }
+                        }
+                    )
+                }
+                if (geofenceEnabled) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = geofenceLat,
+                        onValueChange = { geofenceLat = it },
+                        label = { Text("Breitengrad (z.B. 48.137154)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = geofenceLon,
+                        onValueChange = { geofenceLon = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Längengrad (z.B. 11.575382)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = geofenceRadius,
+                        onValueChange = { geofenceRadius = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Radius in Metern") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            val lat = geofenceLat.toDoubleOrNull() ?: 0.0
+                            val lon = geofenceLon.toDoubleOrNull() ?: 0.0
+                            val radius = geofenceRadius.toFloatOrNull() ?: 150f
+                            viewModel.saveGeofenceSettings(true, lat, lon, radius)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Bürostandort speichern")
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Benötigt Standortberechtigung \"Immer erlauben\". Falls die Berechtigung fehlt, in den App-Einstellungen aktivieren.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = {
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                        }
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("App-Einstellungen öffnen")
+                }
             }
         }
 

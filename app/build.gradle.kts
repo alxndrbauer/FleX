@@ -15,7 +15,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 2
-        versionName = "1.4.0"
+        versionName = "1.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -154,6 +154,9 @@ dependencies {
 
     // DocumentFile (SAF)
     implementation(libs.androidx.documentfile)
+
+    // Google Play Services Location (Geofencing)
+    implementation(libs.play.services.location)
 
     // Java 8+ API desugaring (for LocalDate/LocalTime on older APIs)
     coreLibraryDesugaring(libs.desugar.jdk.libs)

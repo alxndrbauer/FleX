@@ -60,7 +60,11 @@ class SettingsRepositoryImpl @Inject constructor(
         annualVacationDays = annualVacationDays,
         carryOverVacationDays = carryOverVacationDays,
         specialVacationDays = specialVacationDays,
-        settingsYear = settingsYear
+        settingsYear = settingsYear,
+        geofenceEnabled = geofenceEnabled,
+        geofenceLat = geofenceLat,
+        geofenceLon = geofenceLon,
+        geofenceRadiusMeters = geofenceRadiusMeters
     )
 
     private fun Settings.toEntity() = SettingsEntity(
@@ -74,7 +78,11 @@ class SettingsRepositoryImpl @Inject constructor(
         annualVacationDays = annualVacationDays,
         carryOverVacationDays = carryOverVacationDays,
         specialVacationDays = specialVacationDays,
-        settingsYear = settingsYear
+        settingsYear = settingsYear,
+        geofenceEnabled = geofenceEnabled,
+        geofenceLat = geofenceLat,
+        geofenceLon = geofenceLon,
+        geofenceRadiusMeters = geofenceRadiusMeters
     )
 
     private fun QuotaRuleEntity.toDomain() = QuotaRule(

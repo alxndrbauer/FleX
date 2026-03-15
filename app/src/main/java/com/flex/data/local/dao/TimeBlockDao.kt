@@ -39,6 +39,9 @@ interface TimeBlockDao {
     @Query("SELECT * FROM time_blocks ORDER BY startTime")
     suspend fun getAllTimeBlocks(): List<TimeBlockEntity>
 
+    @Query("SELECT * FROM time_blocks WHERE id = :id LIMIT 1")
+    suspend fun getTimeBlockById(id: Long): TimeBlockEntity?
+
     @Query("DELETE FROM time_blocks")
     suspend fun deleteAll()
 

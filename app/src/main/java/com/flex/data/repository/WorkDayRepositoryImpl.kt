@@ -116,6 +116,10 @@ class WorkDayRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getTimeBlockById(id: Long): TimeBlock? {
+        return timeBlockDao.getTimeBlockById(id)?.toDomain()
+    }
+
     override suspend fun confirmPlannedDays(yearMonth: YearMonth) {
         val start = yearMonth.atDay(1).toString()
         val end = yearMonth.atEndOfMonth().toString()
