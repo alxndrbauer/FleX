@@ -77,6 +77,7 @@ import java.util.Locale
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
+    val remaining by viewModel.remainingMinutes.collectAsState()
     var showManualEntry by remember { mutableStateOf(false) }
     var editingBlock by remember { mutableStateOf<TimeBlock?>(null) }
 
@@ -441,6 +442,35 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+
+                    remaining?.let { rem ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (rem == 0) {
+                            Text(
+                                text = "Tagesziel erreicht ✓",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            val remH = rem / 60
+                            val remM = rem % 60
+                            val remText = if (remH > 0) "Noch ${remH}h ${remM}min" else "Noch ${remM}min"
+                            Text(
+                                text = remText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            val progress = 1f - rem.toFloat() / state.settings.dailyWorkMinutes.toFloat()
+                            LinearProgressIndicator(
+                                progress = { progress.coerceIn(0f, 1f) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .padding(top = 2.dp)
+                            )
+                        }
                     }
 
                     if (state.dayWorkTime.exceedsMaxHours) {

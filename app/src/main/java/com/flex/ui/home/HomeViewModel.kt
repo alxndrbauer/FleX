@@ -20,6 +20,7 @@ import com.flex.domain.usecase.DayWorkTimeResult
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -66,12 +67,40 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private val _remainingMinutes = MutableStateFlow<Int?>(null)
+    val remainingMinutes: StateFlow<Int?> = _remainingMinutes.asStateFlow()
+
+    private fun computeRemainingMinutes(state: HomeUiState): Int? {
+        val today = LocalDate.now()
+        if (state.selectedDate != today) return null
+        val workingTypes = setOf(DayType.WORK, DayType.SATURDAY_BONUS)
+        if (state.selectedDayType !in workingTypes) return null
+        if (state.timeBlocks.isEmpty()) return null
+
+        val now = LocalTime.now()
+        val blocksForCalc = state.timeBlocks.map { block ->
+            if (block.endTime == null) block.copy(endTime = now) else block
+        }
+        val result = calculateDayWorkTime(blocksForCalc)
+        return (state.settings.dailyWorkMinutes - result.netMinutes).toInt().coerceAtLeast(0)
+    }
+
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     private val _refreshTrigger = MutableStateFlow(Unit)
     private val _localDayTypeOverride = MutableStateFlow<DayType?>(null)
 
     init {
         loadDayData()
+        launchRemainingMinutesTicker()
+    }
+
+    private fun launchRemainingMinutesTicker() {
+        viewModelScope.launch {
+            while (true) {
+                delay(30_000L)
+                _remainingMinutes.value = computeRemainingMinutes(_uiState.value)
+            }
+        }
     }
 
     private fun loadDayData() {
@@ -166,6 +195,7 @@ class HomeViewModel @Inject constructor(
                 }
                 .collect { state ->
                     _uiState.value = state
+                    _remainingMinutes.value = computeRemainingMinutes(state)
                 }
         }
     }
