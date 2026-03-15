@@ -6,8 +6,11 @@ import com.flex.MainDispatcherExtension
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.Settings
 import com.flex.domain.repository.SettingsRepository
+import com.flex.data.local.ThemePreferences
+import com.flex.domain.model.ThemeMode
 import com.flex.domain.usecase.GetSettingsUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -33,6 +36,9 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Mock
     private lateinit var settingsRepository: SettingsRepository
 
+    @Mock
+    private lateinit var themePreferences: ThemePreferences
+
     private lateinit var viewModel: SettingsViewModel
 
     @BeforeEach
@@ -41,6 +47,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         // Default mock behavior
         whenever(getSettings()).thenReturn(flowOf(Settings()))
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
+        whenever(themePreferences.themeModeFlow).thenReturn(MutableStateFlow(ThemeMode.SYSTEM))
     }
 
     // ========== Initial State Tests ==========
@@ -59,7 +66,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(getSettings, settingsRepository)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
         advanceUntilIdle()
 
         // Then: Settings state should be loaded
@@ -73,7 +80,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(getSettings, settingsRepository)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
         advanceUntilIdle()
 
         // Then: QuotaRules state should be empty
@@ -91,7 +98,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(expectedRules))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(getSettings, settingsRepository)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
         advanceUntilIdle()
 
         // Then: QuotaRules state should be loaded
@@ -104,7 +111,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `updateSettings persists settings to repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(getSettings, settingsRepository)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
         advanceUntilIdle()
 
         val updatedSettings = Settings(
@@ -125,7 +132,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `updateSettings with different values persists correctly`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(getSettings, settingsRepository)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
         advanceUntilIdle()
 
         val newSettings = Settings(
@@ -153,7 +160,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `addQuotaRule persists rule to repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(getSettings, settingsRepository)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
         advanceUntilIdle()
 
         val newRule = QuotaRule(
@@ -174,7 +181,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `addQuotaRule with different month persists correctly`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(getSettings, settingsRepository)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
         advanceUntilIdle()
 
         val rule = QuotaRule(
@@ -197,7 +204,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `deleteQuotaRule removes rule from repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(getSettings, settingsRepository)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
         advanceUntilIdle()
 
         val ruleToDelete = QuotaRule(
@@ -227,7 +234,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(getSettings, settingsRepository)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
         advanceUntilIdle()
 
         // Then: State should reflect the latest settings
@@ -247,7 +254,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(initialRules, updatedRules))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(getSettings, settingsRepository)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
         advanceUntilIdle()
 
         // Then: State should reflect the rules
@@ -264,7 +271,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(getSettings, settingsRepository)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
         advanceUntilIdle()
 
         // Then: Settings should have default value
@@ -279,7 +286,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(getSettings, settingsRepository)
+        viewModel = SettingsViewModel(getSettings, settingsRepository, themePreferences)
         advanceUntilIdle()
 
         // Then: QuotaRules should be empty list
