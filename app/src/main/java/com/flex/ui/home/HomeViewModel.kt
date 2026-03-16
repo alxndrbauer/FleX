@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.YearMonth
 import javax.inject.Inject
@@ -91,6 +92,23 @@ class HomeViewModel @Inject constructor(
     init {
         loadDayData()
         launchRemainingMinutesTicker()
+        launchMidnightRefresh()
+    }
+
+    private fun launchMidnightRefresh() {
+        viewModelScope.launch(Dispatchers.Default) {
+            while (true) {
+                val currentDate = LocalDate.now()
+                val millisUntilMidnight = java.time.Duration.between(
+                    java.time.LocalDateTime.now(),
+                    currentDate.plusDays(1).atStartOfDay()
+                ).toMillis()
+                delay(millisUntilMidnight + 500)
+                if (_selectedDate.value == currentDate) {
+                    _selectedDate.value = LocalDate.now()
+                }
+            }
+        }
     }
 
     private fun launchRemainingMinutesTicker() {
@@ -103,8 +121,6 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun loadDayData() {
-        val today = LocalDate.now()
-
         viewModelScope.launch {
             combine(
                 dataChangeEventBus.events.onStart { emit(DataChangeEvent.WorkDayChanged) },
@@ -113,6 +129,7 @@ class HomeViewModel @Inject constructor(
                 _localDayTypeOverride
             ) { _, _, date, override -> Pair(date, override) }
                 .flatMapLatest { (date, override) ->
+                    val today = LocalDate.now()
                     val yearMonth = YearMonth.from(date)
                     val todayYearMonth = YearMonth.from(today)
                     combine(
