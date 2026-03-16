@@ -74,8 +74,6 @@ class HomeViewModel @Inject constructor(
     private fun computeRemainingMinutes(state: HomeUiState): Int? {
         val today = LocalDate.now()
         if (state.selectedDate != today) return null
-        val workingTypes = setOf(DayType.WORK, DayType.SATURDAY_BONUS)
-        if (state.selectedDayType !in workingTypes) return null
         if (state.timeBlocks.isEmpty()) return null
 
         val now = LocalTime.now()
