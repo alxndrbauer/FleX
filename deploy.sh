@@ -50,17 +50,34 @@ if [[ "$TARGET" == "wear" || "$TARGET" == "both" ]]; then
 fi
 
 # Install
+INSTALL_FAILED=0
+
 if [[ "$TARGET" == "wear" || "$TARGET" == "both" ]]; then
   echo "Connecting to watch at $WATCH_DEVICE..."
-  adb connect "$WATCH_DEVICE"
-  echo "Installing wear APK..."
-  #adb -s "$WATCH_DEVICE" uninstall com.flex 2>/dev/null || true
-  adb -s "$WATCH_DEVICE" install wear/build/outputs/apk/release/wear-release.apk
+  if adb connect "$WATCH_DEVICE" 2>&1 | grep -q "connected"; then
+    echo "Installing wear APK..."
+    #adb -s "$WATCH_DEVICE" uninstall com.flex 2>/dev/null || true
+    if ! adb -s "$WATCH_DEVICE" install wear/build/outputs/apk/release/wear-release.apk; then
+      echo "⚠️  Wear installation failed (device: $WATCH_DEVICE)"
+      INSTALL_FAILED=1
+    fi
+  else
+    echo "⚠️  Watch not reachable at $WATCH_DEVICE — skipping wear install"
+    INSTALL_FAILED=1
+  fi
 fi
 
 if [[ "$TARGET" == "app" || "$TARGET" == "both" ]]; then
   echo "Installing phone APK..."
-  adb -s "$PHONE_DEVICE" install -r app/build/outputs/apk/release/app-release.apk
+  if ! adb -s "$PHONE_DEVICE" install -r app/build/outputs/apk/release/app-release.apk; then
+    echo "⚠️  Phone installation failed (device: $PHONE_DEVICE)"
+    INSTALL_FAILED=1
+  fi
 fi
 
-echo "Done!"
+if [[ $INSTALL_FAILED -eq 0 ]]; then
+  echo "✅ Done!"
+else
+  echo "⚠️  Done with skipped installs. Check messages above."
+  exit 1
+fi
