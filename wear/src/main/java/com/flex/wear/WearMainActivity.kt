@@ -57,7 +57,7 @@ private fun WearApp(
     onClockIn: () -> Unit,
     onClockOut: () -> Unit
 ) {
-    val pageCount = 3
+    val pageCount = 2
     val pagerState = rememberPagerState(pageCount = { pageCount })
 
     val pageIndicatorState = object : PageIndicatorState {
@@ -71,7 +71,6 @@ private fun WearApp(
             when (page) {
                 0 -> QuotaScreen(status = status, onClockIn = onClockIn, onClockOut = onClockOut)
                 1 -> FlextimeScreen(status = status)
-                2 -> QuotaDetailScreen(status = status)
             }
         }
         HorizontalPageIndicator(
