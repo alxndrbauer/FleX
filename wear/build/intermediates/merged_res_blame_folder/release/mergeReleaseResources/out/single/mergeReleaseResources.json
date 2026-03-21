@@ -1,6 +1,0 @@
-[
-    {
-        "merged": "com.flex.wear-release-47:/xml_wear_capabilities.xml.flat",
-        "source": "com.flex.wear-main-48:/xml/wear_capabilities.xml"
-    }
-]

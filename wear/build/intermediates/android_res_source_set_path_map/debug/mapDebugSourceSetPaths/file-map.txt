@@ -1,8 +1,0 @@
-com.flex.wear-pngs-0 /Users/abauer/dev/flex/wear/build/generated/res/pngs/debug
-com.flex.wear-resValues-1 /Users/abauer/dev/flex/wear/build/generated/res/resValues/debug
-com.flex.wear-updated_navigation_xml-2 /Users/abauer/dev/flex/wear/build/generated/updated_navigation_xml/debug
-com.flex.wear-packageDebugResources-3 /Users/abauer/dev/flex/wear/build/intermediates/incremental/debug/packageDebugResources/merged.dir
-com.flex.wear-packageDebugResources-4 /Users/abauer/dev/flex/wear/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
-com.flex.wear-debug-5 /Users/abauer/dev/flex/wear/build/intermediates/merged_res/debug/mergeDebugResources
-com.flex.wear-debug-6 /Users/abauer/dev/flex/wear/src/debug/res
-com.flex.wear-main-7 /Users/abauer/dev/flex/wear/src/main/res

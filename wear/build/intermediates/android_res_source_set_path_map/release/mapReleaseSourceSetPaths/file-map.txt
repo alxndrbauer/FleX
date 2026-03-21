@@ -1,8 +1,0 @@
-com.flex.wear-pngs-0 /Users/abauer/dev/flex/wear/build/generated/res/pngs/release
-com.flex.wear-resValues-1 /Users/abauer/dev/flex/wear/build/generated/res/resValues/release
-com.flex.wear-updated_navigation_xml-2 /Users/abauer/dev/flex/wear/build/generated/updated_navigation_xml/release
-com.flex.wear-packageReleaseResources-3 /Users/abauer/dev/flex/wear/build/intermediates/incremental/release/packageReleaseResources/merged.dir
-com.flex.wear-packageReleaseResources-4 /Users/abauer/dev/flex/wear/build/intermediates/incremental/release/packageReleaseResources/stripped.dir
-com.flex.wear-release-5 /Users/abauer/dev/flex/wear/build/intermediates/merged_res/release/mergeReleaseResources
-com.flex.wear-main-6 /Users/abauer/dev/flex/wear/src/main/res
-com.flex.wear-release-7 /Users/abauer/dev/flex/wear/src/release/res
