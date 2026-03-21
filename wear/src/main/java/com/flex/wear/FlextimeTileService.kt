@@ -7,7 +7,6 @@ import androidx.wear.tiles.DimensionBuilders.sp
 import androidx.wear.tiles.LayoutElementBuilders
 import androidx.wear.tiles.LayoutElementBuilders.FONT_WEIGHT_BOLD
 import androidx.wear.tiles.LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER
-import androidx.wear.tiles.ModifiersBuilders
 import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.ResourceBuilders
 import androidx.wear.tiles.TileBuilders
@@ -72,15 +71,14 @@ class FlextimeTileService : TileService() {
 
         return TileBuilders.Tile.Builder()
             .setResourcesVersion("1")
-            .setFreshnessIntervalMillis(300_000L) // 5 min
+            .setFreshnessIntervalMillis(300_000L)
             .setTimeline(
                 TimelineBuilders.Timeline.Builder()
                     .addTimelineEntry(
                         TimelineBuilders.TimelineEntry.Builder()
                             .setLayout(
                                 LayoutElementBuilders.Layout.Builder()
-                                    .setRoot(layout)
-                                    .build()
+                                    .setRoot(layout).build()
                             ).build()
                     ).build()
             ).build()
@@ -91,9 +89,7 @@ class FlextimeTileService : TileService() {
             .setText(text)
             .setFontStyle(
                 LayoutElementBuilders.FontStyle.Builder()
-                    .setSize(sp(11f))
-                    .setColor(argb(color))
-                    .build()
+                    .setSize(sp(11f)).setColor(argb(color)).build()
             ).build()
 
     private fun bigValue(text: String, color: Int) =
@@ -101,10 +97,7 @@ class FlextimeTileService : TileService() {
             .setText(text)
             .setFontStyle(
                 LayoutElementBuilders.FontStyle.Builder()
-                    .setSize(sp(26f))
-                    .setWeight(FONT_WEIGHT_BOLD)
-                    .setColor(argb(color))
-                    .build()
+                    .setSize(sp(26f)).setWeight(FONT_WEIGHT_BOLD).setColor(argb(color)).build()
             ).build()
 
     private fun spacer(height: Float) =

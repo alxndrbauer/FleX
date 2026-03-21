@@ -7,14 +7,11 @@ import androidx.wear.tiles.DimensionBuilders.sp
 import androidx.wear.tiles.LayoutElementBuilders
 import androidx.wear.tiles.LayoutElementBuilders.FONT_WEIGHT_BOLD
 import androidx.wear.tiles.LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER
-import androidx.wear.tiles.ModifiersBuilders
 import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.ResourceBuilders
 import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
 import androidx.wear.tiles.TimelineBuilders
-import androidx.wear.tiles.material.CircularProgressIndicator
-import androidx.wear.tiles.material.ProgressIndicatorColors
 import com.google.android.gms.wearable.Wearable
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
@@ -58,74 +55,26 @@ class QuotaTileService : TileService() {
     }
 
     private fun buildTile(status: WearStatus): TileBuilders.Tile {
-        val quotaColor = if (status.quotaMet) 0xFF4CAF50.toInt() else 0xFFFFC107.toInt()
-        val trackColor = 0xFF333333.toInt()
-        val progress = (status.officePercent / 100.0).coerceIn(0.0, 1.0).toFloat()
+        val green = 0xFF4CAF50.toInt()
+        val amber = 0xFFFFC107.toInt()
+        val quotaColor = if (status.quotaMet) green else amber
 
-        val progressIndicator = CircularProgressIndicator.Builder()
-            .setProgress(progress)
-            .setCircularProgressIndicatorColors(
-                ProgressIndicatorColors(argb(quotaColor), argb(trackColor))
-            )
-            .build()
+        val remainingDays = (status.requiredOfficeDays - status.officeDays).coerceAtLeast(0)
 
-        val centerContent = LayoutElementBuilders.Column.Builder()
+        val layout = LayoutElementBuilders.Column.Builder()
             .setHorizontalAlignment(HORIZONTAL_ALIGN_CENTER)
+            .addContent(label("Büroquote", 0xFFAAAAAA.toInt()))
+            .addContent(spacer(2f))
+            .addContent(bigValue(status.officePctFormatted, quotaColor))
+            .addContent(spacer(2f))
+            .addContent(label("${status.officeDays}d von ${status.requiredOfficeDays}d", quotaColor))
+            .addContent(spacer(8f))
             .addContent(
-                LayoutElementBuilders.Text.Builder()
-                    .setText(status.officePctFormatted)
-                    .setFontStyle(
-                        LayoutElementBuilders.FontStyle.Builder()
-                            .setSize(sp(20f))
-                            .setWeight(FONT_WEIGHT_BOLD)
-                            .setColor(argb(quotaColor))
-                            .build()
-                    ).build()
+                label(
+                    if (status.quotaMet) "Quote erfüllt" else "$remainingDays Tage fehlen",
+                    quotaColor
+                )
             )
-            .addContent(
-                LayoutElementBuilders.Spacer.Builder().setHeight(dp(2f)).build()
-            )
-            .addContent(
-                LayoutElementBuilders.Text.Builder()
-                    .setText("${status.officeDays}d Büro")
-                    .setFontStyle(
-                        LayoutElementBuilders.FontStyle.Builder()
-                            .setSize(sp(11f))
-                            .setColor(argb(0xFFAAAAAA.toInt()))
-                            .build()
-                    ).build()
-            )
-            .addContent(
-                LayoutElementBuilders.Spacer.Builder().setHeight(dp(2f)).build()
-            )
-            .addContent(
-                LayoutElementBuilders.Text.Builder()
-                    .setText(
-                        if (status.quotaMet) "erfüllt ✓"
-                        else "noch ${status.requiredOfficeDays}d"
-                    )
-                    .setFontStyle(
-                        LayoutElementBuilders.FontStyle.Builder()
-                            .setSize(sp(11f))
-                            .setColor(argb(quotaColor))
-                            .build()
-                    ).build()
-            )
-            .build()
-
-        val arc = androidx.wear.tiles.LayoutElementBuilders.Arc.Builder()
-            .addContent(
-                androidx.wear.tiles.LayoutElementBuilders.ArcAdapter.Builder()
-                    .setContent(progressIndicator)
-                    .build()
-            )
-            .build()
-
-        val root = LayoutElementBuilders.Box.Builder()
-            .setVerticalAlignment(LayoutElementBuilders.VERTICAL_ALIGN_CENTER)
-            .setHorizontalAlignment(HORIZONTAL_ALIGN_CENTER)
-            .addContent(arc)
-            .addContent(centerContent)
             .build()
 
         return TileBuilders.Tile.Builder()
@@ -137,10 +86,28 @@ class QuotaTileService : TileService() {
                         TimelineBuilders.TimelineEntry.Builder()
                             .setLayout(
                                 LayoutElementBuilders.Layout.Builder()
-                                    .setRoot(root)
-                                    .build()
+                                    .setRoot(layout).build()
                             ).build()
                     ).build()
             ).build()
     }
+
+    private fun label(text: String, color: Int) =
+        LayoutElementBuilders.Text.Builder()
+            .setText(text)
+            .setFontStyle(
+                LayoutElementBuilders.FontStyle.Builder()
+                    .setSize(sp(11f)).setColor(argb(color)).build()
+            ).build()
+
+    private fun bigValue(text: String, color: Int) =
+        LayoutElementBuilders.Text.Builder()
+            .setText(text)
+            .setFontStyle(
+                LayoutElementBuilders.FontStyle.Builder()
+                    .setSize(sp(26f)).setWeight(FONT_WEIGHT_BOLD).setColor(argb(color)).build()
+            ).build()
+
+    private fun spacer(height: Float) =
+        LayoutElementBuilders.Spacer.Builder().setHeight(dp(height)).build()
 }
