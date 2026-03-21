@@ -32,7 +32,7 @@
         <!-- Transparent bridge activity for Tile tap actions -->
         <activity
             android:name=".TileActionActivity"
-            android:exported="false"
+            android:exported="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
             android:taskAffinity=""
             android:excludeFromRecents="true" />
