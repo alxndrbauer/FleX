@@ -334,6 +334,7 @@ class HomeViewModel @Inject constructor(
                 TimeBlock(workDayId = workDayId, startTime = startTime, endTime = endTime, location = location)
             )
             _localDayTypeOverride.value = null
+            wearSyncHelper.push()
         }
     }
 
@@ -371,6 +372,7 @@ class HomeViewModel @Inject constructor(
                 TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = location)
             )
             _localDayTypeOverride.value = null
+            wearSyncHelper.push()
         }
     }
 
