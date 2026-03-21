@@ -7,7 +7,6 @@ import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.repository.WorkDayRepository
 import kotlinx.coroutines.flow.first
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 import javax.inject.Inject
@@ -18,8 +17,6 @@ class AutoClockInUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(): Long? {
         val today = LocalDate.now()
-        if (today.dayOfWeek == DayOfWeek.SATURDAY || today.dayOfWeek == DayOfWeek.SUNDAY) return null
-
         val existingDay = workDayRepository.getWorkDay(today).first()
         if (existingDay?.timeBlocks?.any { it.endTime == null } == true) return null
 
