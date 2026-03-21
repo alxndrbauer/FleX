@@ -19,6 +19,7 @@ import com.flex.domain.usecase.DayWorkTimeResult
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.events.DataChangeEventBus
+import com.flex.wearable.WearSyncHelper
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
@@ -66,6 +67,9 @@ class HomeViewModelTest : BaseUnitTest() {
     @Mock
     private lateinit var dataChangeEventBus: DataChangeEventBus
 
+    @Mock
+    private lateinit var wearSyncHelper: WearSyncHelper
+
     private lateinit var viewModel: HomeViewModel
 
     @BeforeEach
@@ -90,7 +94,7 @@ class HomeViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -113,7 +117,7 @@ class HomeViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -132,7 +136,7 @@ class HomeViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -161,7 +165,7 @@ class HomeViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -193,7 +197,7 @@ class HomeViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -218,7 +222,7 @@ class HomeViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -243,7 +247,7 @@ class HomeViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -262,7 +266,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -284,7 +288,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -305,7 +309,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -334,7 +338,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -361,7 +365,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -384,7 +388,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -404,7 +408,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -426,7 +430,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -448,7 +452,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -470,7 +474,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -492,7 +496,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -511,7 +515,7 @@ class HomeViewModelTest : BaseUnitTest() {
         // Given: ViewModel initialized
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -539,7 +543,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -560,7 +564,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -585,7 +589,7 @@ class HomeViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
@@ -604,7 +608,7 @@ class HomeViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = HomeViewModel(
             workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper
         )
         advanceUntilIdle()
 
