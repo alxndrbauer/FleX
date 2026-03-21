@@ -16,6 +16,15 @@ android {
         versionName = "1.1.6"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("../android.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -23,6 +32,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -39,6 +49,17 @@ android {
 
 kotlin {
     jvmToolchain(17)
+}
+
+tasks.register<Sync>("renameWearReleaseApk") {
+    dependsOn("assembleRelease")
+    from(layout.buildDirectory.dir("outputs/apk/release"))
+    into(layout.buildDirectory.dir("outputs/apk/release/renamed"))
+    include("wear-release.apk")
+    val versionName = project.extensions
+        .getByType<com.android.build.api.dsl.ApplicationExtension>()
+        .defaultConfig.versionName
+    rename { "flex-wear-v$versionName.apk" }
 }
 
 dependencies {

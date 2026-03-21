@@ -6,6 +6,8 @@ on:
     paths:
       - 'app/src/**'
       - 'app/build.gradle.kts'
+      - 'wear/src/**'
+      - 'wear/build.gradle.kts'
       - 'build.gradle.kts'
       - 'gradle.properties'
       - 'gradle/wrapper/**'
@@ -41,7 +43,7 @@ jobs:
         run: xvfb-run ./gradlew testDebugUnitTest
 
       - name: Build Release APK
-        run: xvfb-run ./gradlew assembleRelease renameReleaseApk --no-daemon
+        run: xvfb-run ./gradlew assembleRelease renameReleaseApk :wear:assembleRelease :wear:renameWearReleaseApk --no-daemon
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -59,5 +61,7 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Release ${{ steps.version.outputs.tag }}
-          files: app/build/outputs/apk/release/renamed/*.apk
+          files: |
+            app/build/outputs/apk/release/renamed/*.apk
+            wear/build/outputs/apk/release/renamed/*.apk
           generate_release_notes: true
