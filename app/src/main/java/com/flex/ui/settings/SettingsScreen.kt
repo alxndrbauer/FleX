@@ -598,6 +598,34 @@ fun SettingsScreen(
                 ) {
                     Text("App-Einstellungen öffnen")
                 }
+                val powerManager = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+                val isIgnoringBatteryOpt = powerManager.isIgnoringBatteryOptimizations(context.packageName)
+                Spacer(modifier = Modifier.height(4.dp))
+                if (isIgnoringBatteryOpt) {
+                    Text(
+                        "Akku-Optimierung ist deaktiviert ✓",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Text(
+                        "Falls Geofencing trotzdem nicht zuverlässig funktioniert: Akku-Optimierung für diese App deaktivieren.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedButton(
+                        onClick = {
+                            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Akku-Optimierung deaktivieren")
+                    }
+                }
             }
         }
 
