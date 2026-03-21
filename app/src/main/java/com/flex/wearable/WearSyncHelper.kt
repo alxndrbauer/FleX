@@ -4,6 +4,7 @@ import android.content.Context
 import com.flex.domain.model.WorkDay
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
+import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
@@ -25,7 +26,8 @@ class WearSyncHelper @Inject constructor(
     private val getSettings: GetSettingsUseCase,
     private val getMonthWorkDays: GetMonthWorkDaysUseCase,
     private val calculateDayWorkTime: CalculateDayWorkTimeUseCase,
-    private val calculateQuota: CalculateQuotaUseCase
+    private val calculateQuota: CalculateQuotaUseCase,
+    private val calculateFlextime: CalculateFlextimeUseCase
 ) {
 
     suspend fun push() {
@@ -52,6 +54,7 @@ class WearSyncHelper @Inject constructor(
             val yearMonth = YearMonth.now()
             val monthDays = getMonthWorkDays(yearMonth).first().filter { !it.isPlanned }
             val quota = calculateQuota(monthDays, settings, yearMonth)
+            val flextime = calculateFlextime(monthDays, settings, yearMonth)
 
             val request = PutDataMapRequest.create(WearContract.DATA_PATH).apply {
                 dataMap.putBoolean(WearContract.KEY_IS_RUNNING, isRunning)
@@ -60,6 +63,9 @@ class WearSyncHelper @Inject constructor(
                 dataMap.putInt(WearContract.KEY_OFFICE_DAYS, quota.officeDays)
                 dataMap.putBoolean(WearContract.KEY_QUOTA_MET, quota.quotaMet)
                 dataMap.putInt(WearContract.KEY_CLOCK_START, clockStartMinutes)
+                dataMap.putLong(WearContract.KEY_FLEXTIME_MIN, flextime.totalMinutes)
+                dataMap.putLong(WearContract.KEY_OVERTIME_MIN, flextime.overtimeMinutes)
+                dataMap.putInt(WearContract.KEY_REQUIRED_OFFICE_DAYS, quota.requiredOfficeDaysForQuota)
             }.asPutDataRequest().setUrgent()
 
             Wearable.getDataClient(context).putDataItem(request).await()

@@ -47,6 +47,26 @@
             </intent-filter>
         </service>
 
+        <!-- Tile: shows flextime and overtime balance -->
+        <service
+            android:name=".FlextimeTileService"
+            android:exported="true"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+        </service>
+
+        <!-- Tile: shows office quota with progress arc -->
+        <service
+            android:name=".QuotaTileService"
+            android:exported="true"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+        </service>
+
         <!-- Data listener: triggers tile refresh when phone pushes new status -->
         <service
             android:name=".WearListenerService"

@@ -10,7 +10,10 @@ data class WearStatus(
     val officePercent: Double = 0.0,
     val officeDays: Int = 0,
     val quotaMet: Boolean = false,
-    val clockStartMinutes: Int = -1
+    val clockStartMinutes: Int = -1,
+    val flextimeMinutes: Long = 0,
+    val overtimeMinutes: Long = 0,
+    val requiredOfficeDays: Int = 0
 ) {
     val todayFormatted: String
         get() {
@@ -21,6 +24,24 @@ data class WearStatus(
 
     val officePctFormatted: String
         get() = "%.1f%%".format(officePercent)
+
+    val flextimeFormatted: String
+        get() {
+            val abs = kotlin.math.abs(flextimeMinutes)
+            val h = abs / 60
+            val m = abs % 60
+            val sign = if (flextimeMinutes >= 0) "+" else "-"
+            return "%s%d:%02d".format(sign, h, m)
+        }
+
+    val overtimeFormatted: String
+        get() {
+            val abs = kotlin.math.abs(overtimeMinutes)
+            val h = abs / 60
+            val m = abs % 60
+            val sign = if (overtimeMinutes >= 0) "+" else "-"
+            return "%s%d:%02d".format(sign, h, m)
+        }
 }
 
 fun DataItem.toWearStatus(): WearStatus {
@@ -31,7 +52,10 @@ fun DataItem.toWearStatus(): WearStatus {
         officePercent = map.getDouble(WearContract.KEY_OFFICE_PCT),
         officeDays = map.getInt(WearContract.KEY_OFFICE_DAYS),
         quotaMet = map.getBoolean(WearContract.KEY_QUOTA_MET),
-        clockStartMinutes = map.getInt(WearContract.KEY_CLOCK_START, -1)
+        clockStartMinutes = map.getInt(WearContract.KEY_CLOCK_START, -1),
+        flextimeMinutes = map.getLong(WearContract.KEY_FLEXTIME_MIN),
+        overtimeMinutes = map.getLong(WearContract.KEY_OVERTIME_MIN),
+        requiredOfficeDays = map.getInt(WearContract.KEY_REQUIRED_OFFICE_DAYS)
     )
 }
 
