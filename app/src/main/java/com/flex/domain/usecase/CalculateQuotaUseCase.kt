@@ -63,7 +63,7 @@ class CalculateQuotaUseCase @Inject constructor(
             (officeMinutes.toDouble() / fixedTarget) * 100
         } else 0.0
 
-        val percentQuotaMet = officePercent >= quotaPercent
+        val percentQuotaMet = officePercent + 0.05 >= quotaPercent
         val daysQuotaMet = officeDays >= quotaMinDays
 
         val today = LocalDate.now()
