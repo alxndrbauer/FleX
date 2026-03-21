@@ -379,6 +379,7 @@ class HomeViewModel @Inject constructor(
             workDayRepository.saveTimeBlock(
                 block.copy(startTime = startTime, endTime = endTime, location = location)
             )
+            wearSyncHelper.push()
         }
     }
 
@@ -389,6 +390,7 @@ class HomeViewModel @Inject constructor(
             if (workDay != null && workDay.timeBlocks.all { it.id == timeBlock.id }) {
                 workDayRepository.deleteWorkDay(workDay)
             }
+            wearSyncHelper.push()
         }
     }
 
@@ -404,6 +406,7 @@ class HomeViewModel @Inject constructor(
                 )
             )
             _localDayTypeOverride.value = null
+            wearSyncHelper.push()
         }
     }
 
@@ -413,6 +416,7 @@ class HomeViewModel @Inject constructor(
             workDay.timeBlocks.forEach { workDayRepository.deleteTimeBlock(it) }
             workDayRepository.deleteWorkDay(workDay)
             _localDayTypeOverride.value = null
+            wearSyncHelper.push()
         }
     }
 
