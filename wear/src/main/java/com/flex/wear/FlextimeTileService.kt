@@ -1,17 +1,17 @@
 package com.flex.wear
 
 import android.net.Uri
-import androidx.wear.tiles.ColorBuilders.argb
-import androidx.wear.tiles.DimensionBuilders.dp
-import androidx.wear.tiles.DimensionBuilders.sp
-import androidx.wear.tiles.LayoutElementBuilders
-import androidx.wear.tiles.LayoutElementBuilders.FONT_WEIGHT_BOLD
-import androidx.wear.tiles.LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER
+import androidx.wear.protolayout.ColorBuilders.argb
+import androidx.wear.protolayout.DimensionBuilders.dp
+import androidx.wear.protolayout.DimensionBuilders.sp
+import androidx.wear.protolayout.LayoutElementBuilders
+import androidx.wear.protolayout.LayoutElementBuilders.FONT_WEIGHT_BOLD
+import androidx.wear.protolayout.LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER
+import androidx.wear.protolayout.TimelineBuilders
 import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.ResourceBuilders
 import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
-import androidx.wear.tiles.TimelineBuilders
 import com.google.android.gms.wearable.Wearable
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
@@ -72,7 +72,7 @@ class FlextimeTileService : TileService() {
         return TileBuilders.Tile.Builder()
             .setResourcesVersion("1")
             .setFreshnessIntervalMillis(300_000L)
-            .setTimeline(
+            .setTileTimeline(
                 TimelineBuilders.Timeline.Builder()
                     .addTimelineEntry(
                         TimelineBuilders.TimelineEntry.Builder()

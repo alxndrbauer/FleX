@@ -31,6 +31,7 @@ playServicesLocation = "21.3.0"
 playServicesWearable = "18.2.0"
 wearCompose = "1.4.1"
 wearTiles = "1.4.1"
+wearProtolayout = "1.2.1"
 
 [libraries]
 # Core
@@ -110,6 +111,7 @@ wear-compose-ui-tooling = { group = "androidx.wear.compose", name = "compose-ui-
 wear-tiles = { group = "androidx.wear.tiles", name = "tiles", version.ref = "wearTiles" }
 wear-tiles-material = { group = "androidx.wear.tiles", name = "tiles-material", version.ref = "wearTiles" }
 wear-tiles-tooling = { group = "androidx.wear.tiles", name = "tiles-tooling", version.ref = "wearTiles" }
+wear-protolayout = { group = "androidx.wear.protolayout", name = "protolayout", version.ref = "wearProtolayout" }
 kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutines" }
 kotlinx-coroutines-guava = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-guava", version.ref = "coroutines" }
 

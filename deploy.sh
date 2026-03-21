@@ -24,20 +24,28 @@ GRADLE_SIGN=(
   -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
 )
 
-GRADLE="ANDROID_HOME=/Users/abauer/Library/Android/sdk JAVA_TOOL_OPTIONS=-Djava.awt.headless=true ./gradlew"
+# Validate required environment variables
+if [ -z "$ANDROID_HOME" ]; then
+  echo "Error: ANDROID_HOME not set in .env"
+  exit 1
+fi
+if [ -z "$JAVA_TOOL_OPTIONS" ]; then
+  echo "Error: JAVA_TOOL_OPTIONS not set in .env"
+  exit 1
+fi
 
 # Build
 if [[ "$TARGET" == "app" || "$TARGET" == "both" ]]; then
   echo "Building :app release..."
-  ANDROID_HOME=/Users/abauer/Library/Android/sdk \
-  JAVA_TOOL_OPTIONS=-Djava.awt.headless=true \
+  ANDROID_HOME="$ANDROID_HOME" \
+  JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS" \
   ./gradlew :app:assembleRelease "${GRADLE_SIGN[@]}"
 fi
 
 if [[ "$TARGET" == "wear" || "$TARGET" == "both" ]]; then
   echo "Building :wear release..."
-  ANDROID_HOME=/Users/abauer/Library/Android/sdk \
-  JAVA_TOOL_OPTIONS=-Djava.awt.headless=true \
+  ANDROID_HOME="$ANDROID_HOME" \
+  JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS" \
   ./gradlew :wear:assembleRelease "${GRADLE_SIGN[@]}"
 fi
 

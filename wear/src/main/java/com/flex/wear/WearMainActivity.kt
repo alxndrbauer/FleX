@@ -3,7 +3,6 @@ package com.flex.wear
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
@@ -50,20 +49,18 @@ class WearMainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WearApp(
     status: WearStatus,
     onClockIn: () -> Unit,
     onClockOut: () -> Unit
 ) {
-    val pageCount = 2
-    val pagerState = rememberPagerState(pageCount = { pageCount })
+    val pagerState = rememberPagerState(pageCount = { 2 })
 
     val pageIndicatorState = object : PageIndicatorState {
         override val pageOffset: Float get() = pagerState.currentPageOffsetFraction
         override val selectedPage: Int get() = pagerState.currentPage
-        override val pageCount: Int get() = pageCount
+        override val pageCount: Int get() = 2
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

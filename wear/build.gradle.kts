@@ -53,6 +53,7 @@ dependencies {
     // Tiles
     implementation(libs.wear.tiles)
     implementation(libs.wear.tiles.material)
+    implementation(libs.wear.protolayout)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.play.services)
