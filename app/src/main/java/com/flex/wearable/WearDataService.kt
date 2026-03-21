@@ -26,7 +26,7 @@ class WearDataService : WearableListenerService() {
                 WearContract.MSG_CLOCK_IN -> wearClockIn()
                 WearContract.MSG_CLOCK_OUT -> autoClockOut()
             }
-            wearSyncHelper.push()
+            wearSyncHelper.push() // always push fresh status after any message
         }
     }
 }

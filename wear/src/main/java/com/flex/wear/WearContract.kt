@@ -11,4 +11,5 @@ object WearContract {
     const val KEY_OFFICE_DAYS = "officeDays"
     const val KEY_QUOTA_MET = "quotaMet"
     const val KEY_CLOCK_START = "clockStartMinutes"
+    const val MSG_REQUEST_STATUS = "/flex/status_request"
 }

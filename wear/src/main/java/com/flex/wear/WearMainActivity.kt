@@ -23,6 +23,8 @@ class WearMainActivity : ComponentActivity() {
                 )
             }
         }
+        // Request fresh status from phone on open
+        sendMessage(WearContract.MSG_REQUEST_STATUS)
     }
 
     private fun sendMessage(path: String) {
