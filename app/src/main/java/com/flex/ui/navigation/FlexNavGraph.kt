@@ -35,6 +35,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.flex.ui.about.AboutScreen
 import com.flex.ui.analytics.AnalyticsScreen
 import com.flex.ui.backup.BackupScreen
 import com.flex.ui.home.HomeScreen
@@ -54,6 +55,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     data object Year : Screen("year", "Jahr", Icons.Default.CalendarViewMonth)
     data object Settings : Screen("settings", "Einstellungen", Icons.Default.Settings)
     data object Backup : Screen("backup", "Datensicherung", Icons.Default.Settings)
+    data object About : Screen("about", "Info", Icons.Default.Settings)
 }
 
 val bottomNavItems = listOf(
@@ -151,11 +153,15 @@ fun FlexNavGraph() {
             composable(Screen.Year.route) { YearOverviewScreen() }
             composable(Screen.Settings.route) {
                 SettingsScreen(
-                    onNavigateToBackup = { navController.navigate(Screen.Backup.route) }
+                    onNavigateToBackup = { navController.navigate(Screen.Backup.route) },
+                    onNavigateToAbout = { navController.navigate(Screen.About.route) }
                 )
             }
             composable(Screen.Backup.route) {
                 BackupScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(Screen.About.route) {
+                AboutScreen(onNavigateBack = { navController.popBackStack() })
             }
         }
     }
