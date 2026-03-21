@@ -8,8 +8,8 @@ import androidx.wear.protolayout.LayoutElementBuilders
 import androidx.wear.protolayout.LayoutElementBuilders.FONT_WEIGHT_BOLD
 import androidx.wear.protolayout.LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER
 import androidx.wear.protolayout.TimelineBuilders
+import androidx.wear.protolayout.ResourceBuilders
 import androidx.wear.tiles.RequestBuilders
-import androidx.wear.tiles.ResourceBuilders
 import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
 import com.google.android.gms.wearable.Wearable
@@ -36,7 +36,7 @@ class FlextimeTileService : TileService() {
         buildTile(fetchWearStatus())
     }
 
-    override fun onResourcesRequest(
+    override fun onTileResourcesRequest(
         requestParams: RequestBuilders.ResourcesRequest
     ): ListenableFuture<ResourceBuilders.Resources> = scope.future {
         ResourceBuilders.Resources.Builder().setVersion(requestParams.version).build()
