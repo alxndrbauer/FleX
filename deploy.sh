@@ -46,7 +46,7 @@ if [[ "$TARGET" == "wear" || "$TARGET" == "both" ]]; then
   echo "Connecting to watch at $WATCH_DEVICE..."
   adb connect "$WATCH_DEVICE"
   echo "Installing wear APK..."
-  adb -s "$WATCH_DEVICE" uninstall com.flex 2>/dev/null || true
+  #adb -s "$WATCH_DEVICE" uninstall com.flex 2>/dev/null || true
   adb -s "$WATCH_DEVICE" install wear/build/outputs/apk/release/wear-release.apk
 fi
 
