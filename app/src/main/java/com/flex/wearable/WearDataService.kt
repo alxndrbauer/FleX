@@ -1,7 +1,7 @@
 package com.flex.wearable
 
-import com.flex.domain.usecase.AutoClockInUseCase
 import com.flex.domain.usecase.AutoClockOutUseCase
+import com.flex.domain.usecase.WearClockInUseCase
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import dagger.hilt.android.AndroidEntryPoint
@@ -14,7 +14,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class WearDataService : WearableListenerService() {
 
-    @Inject lateinit var autoClockIn: AutoClockInUseCase
+    @Inject lateinit var wearClockIn: WearClockInUseCase
     @Inject lateinit var autoClockOut: AutoClockOutUseCase
     @Inject lateinit var wearSyncHelper: WearSyncHelper
 
@@ -23,7 +23,7 @@ class WearDataService : WearableListenerService() {
     override fun onMessageReceived(event: MessageEvent) {
         scope.launch {
             when (event.path) {
-                WearContract.MSG_CLOCK_IN -> autoClockIn()
+                WearContract.MSG_CLOCK_IN -> wearClockIn()
                 WearContract.MSG_CLOCK_OUT -> autoClockOut()
             }
             wearSyncHelper.push()
