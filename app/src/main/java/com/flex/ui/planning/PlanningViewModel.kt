@@ -311,7 +311,7 @@ class PlanningViewModel @Inject constructor(
             }
 
             val existing = state.workDays.find { it.date == date }
-            workDayRepository.saveWorkDay(
+            val workDayId = workDayRepository.saveWorkDay(
                 WorkDay(
                     id = existing?.id ?: 0,
                     date = date,
@@ -320,6 +320,15 @@ class PlanningViewModel @Inject constructor(
                     isPlanned = true
                 )
             )
+
+            if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)) {
+                existing?.timeBlocks?.forEach { workDayRepository.deleteTimeBlock(it) }
+                val start = LocalTime.of(8, 0)
+                val end = start.plusMinutes(state.settings.dailyWorkMinutes.toLong())
+                workDayRepository.saveTimeBlock(
+                    TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = location)
+                )
+            }
         }
     }
 
@@ -393,19 +402,26 @@ class PlanningViewModel @Inject constructor(
                 else -> return@launch
             }
 
+            val settings = state.settings
             for (day in 1..month.lengthOfMonth()) {
                 val date = month.atDay(day)
                 if (date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY) continue
                 if (PublicHolidays.isHoliday(date)) continue
                 if (date in existingDates) continue
 
-                workDayRepository.saveWorkDay(
+                val workDayId = workDayRepository.saveWorkDay(
                     WorkDay(
                         date = date,
                         location = location,
                         dayType = dayType,
                         isPlanned = true
                     )
+                )
+
+                val start = LocalTime.of(8, 0)
+                val end = start.plusMinutes(settings.dailyWorkMinutes.toLong())
+                workDayRepository.saveTimeBlock(
+                    TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = location)
                 )
             }
         }
