@@ -28,6 +28,9 @@ testRunner = "1.7.0"
 testCore = "1.7.0"
 archCoreTesting = "2.2.0"
 playServicesLocation = "21.3.0"
+playServicesWearable = "18.2.0"
+wearCompose = "1.4.1"
+wearTiles = "1.4.1"
 
 [libraries]
 # Core
@@ -100,6 +103,15 @@ androidx-test-runner = { group = "androidx.test", name = "runner", version.ref =
 androidx-test-core = { group = "androidx.test", name = "core", version.ref = "testCore" }
 androidx-test-core-ktx = { group = "androidx.test", name = "core-ktx", version.ref = "testCore" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
+wear-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "wearCompose" }
+wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }
+wear-compose-ui-tooling = { group = "androidx.wear.compose", name = "compose-ui-tooling", version.ref = "wearCompose" }
+wear-tiles = { group = "androidx.wear.tiles", name = "tiles", version.ref = "wearTiles" }
+wear-tiles-material = { group = "androidx.wear.tiles", name = "tiles-material", version.ref = "wearTiles" }
+wear-tiles-tooling = { group = "androidx.wear.tiles", name = "tiles-tooling", version.ref = "wearTiles" }
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutines" }
+kotlinx-coroutines-guava = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-guava", version.ref = "coroutines" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

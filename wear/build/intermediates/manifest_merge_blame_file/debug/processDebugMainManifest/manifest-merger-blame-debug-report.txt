@@ -1,0 +1,243 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.flex"
+4    android:versionCode="1"
+5    android:versionName="1.1.6" >
+6
+7    <uses-sdk
+7-->INJECTED
+8        android:minSdkVersion="26"
+8-->INJECTED
+9        android:targetSdkVersion="36" />
+9-->INJECTED
+10
+11    <uses-feature android:name="android.hardware.type.watch" />
+11-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:4:5-64
+11-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:4:19-61
+12
+13    <queries>
+13-->[androidx.wear.tiles:tiles:1.4.1] /Users/abauer/.gradle/caches/9.4.0/transforms/d035748b9c7d77de3da3495afdb54c39/transformed/tiles-1.4.1/AndroidManifest.xml:7:5-11:15
+14        <intent>
+14-->[androidx.wear.tiles:tiles:1.4.1] /Users/abauer/.gradle/caches/9.4.0/transforms/d035748b9c7d77de3da3495afdb54c39/transformed/tiles-1.4.1/AndroidManifest.xml:8:9-10:18
+15            <action android:name="androidx.wear.tiles.action.BIND_UPDATE_REQUESTER" />
+15-->[androidx.wear.tiles:tiles:1.4.1] /Users/abauer/.gradle/caches/9.4.0/transforms/d035748b9c7d77de3da3495afdb54c39/transformed/tiles-1.4.1/AndroidManifest.xml:9:13-87
+15-->[androidx.wear.tiles:tiles:1.4.1] /Users/abauer/.gradle/caches/9.4.0/transforms/d035748b9c7d77de3da3495afdb54c39/transformed/tiles-1.4.1/AndroidManifest.xml:9:21-84
+16        </intent>
+17    </queries>
+18
+19    <permission
+19-->[androidx.core:core:1.18.0] /Users/abauer/.gradle/caches/9.4.0/transforms/a6f2bc98570f5339cfd98283b626b71b/transformed/core-1.18.0/AndroidManifest.xml:22:5-24:47
+20        android:name="com.flex.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+20-->[androidx.core:core:1.18.0] /Users/abauer/.gradle/caches/9.4.0/transforms/a6f2bc98570f5339cfd98283b626b71b/transformed/core-1.18.0/AndroidManifest.xml:23:9-81
+21        android:protectionLevel="signature" />
+21-->[androidx.core:core:1.18.0] /Users/abauer/.gradle/caches/9.4.0/transforms/a6f2bc98570f5339cfd98283b626b71b/transformed/core-1.18.0/AndroidManifest.xml:24:9-44
+22
+23    <uses-permission android:name="com.flex.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+23-->[androidx.core:core:1.18.0] /Users/abauer/.gradle/caches/9.4.0/transforms/a6f2bc98570f5339cfd98283b626b71b/transformed/core-1.18.0/AndroidManifest.xml:26:5-97
+23-->[androidx.core:core:1.18.0] /Users/abauer/.gradle/caches/9.4.0/transforms/a6f2bc98570f5339cfd98283b626b71b/transformed/core-1.18.0/AndroidManifest.xml:26:22-94
+24
+25    <application
+25-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:6:5-60:19
+26        android:name="com.flex.wear.WearApplication"
+26-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:7:9-40
+27        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+27-->[androidx.core:core:1.18.0] /Users/abauer/.gradle/caches/9.4.0/transforms/a6f2bc98570f5339cfd98283b626b71b/transformed/core-1.18.0/AndroidManifest.xml:28:18-86
+28        android:debuggable="true"
+29        android:extractNativeLibs="false"
+29-->INJECTED
+30        android:label="@string/app_name"
+30-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:8:9-41
+31        android:theme="@android:style/Theme.DeviceDefault" >
+31-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:9:9-59
+32        <uses-library
+32-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:11:9-13:39
+33            android:name="com.google.android.wearable"
+33-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:12:13-55
+34            android:required="true" />
+34-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:13:13-36
+35
+36        <meta-data
+36-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:15:9-17:37
+37            android:name="com.google.android.wearable.standalone"
+37-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:16:13-66
+38            android:value="false" />
+38-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:17:13-34
+39
+40        <!-- Main app screen: Quota status + clock-in/out -->
+41        <activity
+41-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:20:9-27:20
+42            android:name="com.flex.wear.WearMainActivity"
+42-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:21:13-45
+43            android:exported="true" >
+43-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:22:13-36
+44            <intent-filter>
+44-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:23:13-26:29
+45                <action android:name="android.intent.action.MAIN" />
+45-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:24:17-69
+45-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:24:25-66
+46
+47                <category android:name="android.wear.intent.category.WEARABLE_LAUNCHER" />
+47-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:25:17-91
+47-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:25:27-88
+48            </intent-filter>
+49        </activity>
+50
+51        <!-- Transparent bridge activity for Tile tap actions -->
+52        <activity
+52-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:30:9-35:49
+53            android:name="com.flex.wear.TileActionActivity"
+53-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:31:13-47
+54            android:excludeFromRecents="true"
+54-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:35:13-46
+55            android:exported="false"
+55-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:32:13-37
+56            android:taskAffinity=""
+56-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:34:13-36
+57            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+57-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:33:13-72
+58
+59        <!-- Tile: shows today's time + clock-in/out button -->
+60        <service
+60-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:38:9-45:19
+61            android:name="com.flex.wear.FlexTileService"
+61-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:39:13-44
+62            android:exported="true"
+62-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:40:13-36
+63            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER" >
+63-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:41:13-91
+64            <intent-filter>
+64-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:42:13-44:29
+65                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+65-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:43:17-88
+65-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:43:25-85
+66            </intent-filter>
+67        </service>
+68
+69        <!-- Data listener: triggers tile refresh when phone pushes new status -->
+70        <service
+70-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:48:9-58:19
+71            android:name="com.flex.wear.WearListenerService"
+71-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:49:13-48
+72            android:exported="true" >
+72-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:50:13-36
+73            <intent-filter>
+73-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:51:13-57:29
+74                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+74-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:52:17-87
+74-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:52:25-84
+75
+76                <data
+76-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:53:17-56:51
+77                    android:host="*"
+77-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:55:21-37
+78                    android:pathPrefix="/flex/"
+78-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:56:21-48
+79                    android:scheme="wear" />
+79-->/Users/abauer/dev/flex/wear/src/main/AndroidManifest.xml:54:21-42
+80            </intent-filter>
+81        </service>
+82
+83        <uses-library
+83-->[androidx.wear.compose:compose-foundation:1.4.1] /Users/abauer/.gradle/caches/9.4.0/transforms/c42bdbe245e90257e4ff778b5a5bad11/transformed/compose-foundation-1.4.1/AndroidManifest.xml:23:9-25:40
+84            android:name="wear-sdk"
+84-->[androidx.wear.compose:compose-foundation:1.4.1] /Users/abauer/.gradle/caches/9.4.0/transforms/c42bdbe245e90257e4ff778b5a5bad11/transformed/compose-foundation-1.4.1/AndroidManifest.xml:24:13-36
+85            android:required="false" />
+85-->[androidx.wear.compose:compose-foundation:1.4.1] /Users/abauer/.gradle/caches/9.4.0/transforms/c42bdbe245e90257e4ff778b5a5bad11/transformed/compose-foundation-1.4.1/AndroidManifest.xml:25:13-37
+86
+87        <activity
+87-->[com.google.android.gms:play-services-base:18.5.0] /Users/abauer/.gradle/caches/9.4.0/transforms/c0dd848613ba908f7f8444a8446f1135/transformed/play-services-base-18.5.0/AndroidManifest.xml:5:9-173
+88            android:name="com.google.android.gms.common.api.GoogleApiActivity"
+88-->[com.google.android.gms:play-services-base:18.5.0] /Users/abauer/.gradle/caches/9.4.0/transforms/c0dd848613ba908f7f8444a8446f1135/transformed/play-services-base-18.5.0/AndroidManifest.xml:5:19-85
+89            android:exported="false"
+89-->[com.google.android.gms:play-services-base:18.5.0] /Users/abauer/.gradle/caches/9.4.0/transforms/c0dd848613ba908f7f8444a8446f1135/transformed/play-services-base-18.5.0/AndroidManifest.xml:5:146-170
+90            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+90-->[com.google.android.gms:play-services-base:18.5.0] /Users/abauer/.gradle/caches/9.4.0/transforms/c0dd848613ba908f7f8444a8446f1135/transformed/play-services-base-18.5.0/AndroidManifest.xml:5:86-145
+91
+92        <meta-data
+92-->[com.google.android.gms:play-services-basement:18.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/65ce81f20ebbb39b4993431a2b4d3bbe/transformed/play-services-basement-18.4.0/AndroidManifest.xml:6:9-122
+93            android:name="com.google.android.gms.version"
+93-->[com.google.android.gms:play-services-basement:18.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/65ce81f20ebbb39b4993431a2b4d3bbe/transformed/play-services-basement-18.4.0/AndroidManifest.xml:6:20-65
+94            android:value="@integer/google_play_services_version" />
+94-->[com.google.android.gms:play-services-basement:18.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/65ce81f20ebbb39b4993431a2b4d3bbe/transformed/play-services-basement-18.4.0/AndroidManifest.xml:6:66-119
+95
+96        <provider
+96-->[androidx.emoji2:emoji2:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6cd45e6e91a0f48052c0312197eeb4/transformed/emoji2-1.4.0/AndroidManifest.xml:24:9-32:20
+97            android:name="androidx.startup.InitializationProvider"
+97-->[androidx.emoji2:emoji2:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6cd45e6e91a0f48052c0312197eeb4/transformed/emoji2-1.4.0/AndroidManifest.xml:25:13-67
+98            android:authorities="com.flex.androidx-startup"
+98-->[androidx.emoji2:emoji2:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6cd45e6e91a0f48052c0312197eeb4/transformed/emoji2-1.4.0/AndroidManifest.xml:26:13-68
+99            android:exported="false" >
+99-->[androidx.emoji2:emoji2:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6cd45e6e91a0f48052c0312197eeb4/transformed/emoji2-1.4.0/AndroidManifest.xml:27:13-37
+100            <meta-data
+100-->[androidx.emoji2:emoji2:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6cd45e6e91a0f48052c0312197eeb4/transformed/emoji2-1.4.0/AndroidManifest.xml:29:13-31:52
+101                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+101-->[androidx.emoji2:emoji2:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6cd45e6e91a0f48052c0312197eeb4/transformed/emoji2-1.4.0/AndroidManifest.xml:30:17-75
+102                android:value="androidx.startup" />
+102-->[androidx.emoji2:emoji2:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6cd45e6e91a0f48052c0312197eeb4/transformed/emoji2-1.4.0/AndroidManifest.xml:31:17-49
+103            <meta-data
+103-->[androidx.lifecycle:lifecycle-process:2.9.4] /Users/abauer/.gradle/caches/9.4.0/transforms/6e31ee85bd5cd9d122ee2347b3e56486/transformed/lifecycle-process-2.9.4/AndroidManifest.xml:29:13-31:52
+104                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+104-->[androidx.lifecycle:lifecycle-process:2.9.4] /Users/abauer/.gradle/caches/9.4.0/transforms/6e31ee85bd5cd9d122ee2347b3e56486/transformed/lifecycle-process-2.9.4/AndroidManifest.xml:30:17-78
+105                android:value="androidx.startup" />
+105-->[androidx.lifecycle:lifecycle-process:2.9.4] /Users/abauer/.gradle/caches/9.4.0/transforms/6e31ee85bd5cd9d122ee2347b3e56486/transformed/lifecycle-process-2.9.4/AndroidManifest.xml:31:17-49
+106            <meta-data
+106-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:29:13-31:52
+107                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+107-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:30:17-85
+108                android:value="androidx.startup" />
+108-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:31:17-49
+109        </provider>
+110
+111        <uses-library
+111-->[androidx.window:window:1.5.0] /Users/abauer/.gradle/caches/9.4.0/transforms/ba7ce9cbf8022f241bd7f348773bd10c/transformed/window-1.5.0/AndroidManifest.xml:23:9-25:40
+112            android:name="androidx.window.extensions"
+112-->[androidx.window:window:1.5.0] /Users/abauer/.gradle/caches/9.4.0/transforms/ba7ce9cbf8022f241bd7f348773bd10c/transformed/window-1.5.0/AndroidManifest.xml:24:13-54
+113            android:required="false" />
+113-->[androidx.window:window:1.5.0] /Users/abauer/.gradle/caches/9.4.0/transforms/ba7ce9cbf8022f241bd7f348773bd10c/transformed/window-1.5.0/AndroidManifest.xml:25:13-37
+114        <uses-library
+114-->[androidx.window:window:1.5.0] /Users/abauer/.gradle/caches/9.4.0/transforms/ba7ce9cbf8022f241bd7f348773bd10c/transformed/window-1.5.0/AndroidManifest.xml:26:9-28:40
+115            android:name="androidx.window.sidecar"
+115-->[androidx.window:window:1.5.0] /Users/abauer/.gradle/caches/9.4.0/transforms/ba7ce9cbf8022f241bd7f348773bd10c/transformed/window-1.5.0/AndroidManifest.xml:27:13-51
+116            android:required="false" />
+116-->[androidx.window:window:1.5.0] /Users/abauer/.gradle/caches/9.4.0/transforms/ba7ce9cbf8022f241bd7f348773bd10c/transformed/window-1.5.0/AndroidManifest.xml:28:13-37
+117
+118        <receiver
+118-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:34:9-52:20
+119            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+119-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:35:13-76
+120            android:directBootAware="false"
+120-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:36:13-44
+121            android:enabled="true"
+121-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:37:13-35
+122            android:exported="true"
+122-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:38:13-36
+123            android:permission="android.permission.DUMP" >
+123-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:39:13-57
+124            <intent-filter>
+124-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:40:13-42:29
+125                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+125-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:41:17-91
+125-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:41:25-88
+126            </intent-filter>
+127            <intent-filter>
+127-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:43:13-45:29
+128                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+128-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:44:17-85
+128-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:44:25-82
+129            </intent-filter>
+130            <intent-filter>
+130-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:46:13-48:29
+131                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+131-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:47:17-88
+131-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:47:25-85
+132            </intent-filter>
+133            <intent-filter>
+133-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:49:13-51:29
+134                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+134-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:50:17-95
+134-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/abauer/.gradle/caches/9.4.0/transforms/2b6d9849f2c111c2104beda1e2bba8ec/transformed/profileinstaller-1.4.0/AndroidManifest.xml:50:25-92
+135            </intent-filter>
+136        </receiver>
+137    </application>
+138
+139</manifest>

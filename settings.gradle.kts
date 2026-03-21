@@ -19,3 +19,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "FleX"
 include(":app")
+include(":wear")

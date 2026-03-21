@@ -19,6 +19,7 @@ import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.DayWorkTimeResult
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.wearable.WearSyncHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -63,7 +64,8 @@ class HomeViewModel @Inject constructor(
     private val calculateDayWorkTime: CalculateDayWorkTimeUseCase,
     private val calculateFlextime: CalculateFlextimeUseCase,
     private val calculateQuota: CalculateQuotaUseCase,
-    private val dataChangeEventBus: DataChangeEventBus
+    private val dataChangeEventBus: DataChangeEventBus,
+    private val wearSyncHelper: WearSyncHelper
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -269,6 +271,7 @@ class HomeViewModel @Inject constructor(
                 TimeBlock(workDayId = workDayId, startTime = now, location = state.selectedLocation)
             )
             _localDayTypeOverride.value = null
+            wearSyncHelper.push()
         }
     }
 
@@ -281,6 +284,7 @@ class HomeViewModel @Inject constructor(
             workDayRepository.saveTimeBlock(
                 runningBlock.copy(endTime = now)
             )
+            wearSyncHelper.push()
         }
     }
 
