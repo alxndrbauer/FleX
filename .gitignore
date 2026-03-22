@@ -36,4 +36,4 @@ Thumbs.db
 # Misc
 .env
 *.jks
-/.claude
+/.claude/settings.local.json

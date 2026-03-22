@@ -1,36 +1,62 @@
 package com.flex.ui.home
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.BeachAccess
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -38,7 +64,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,6 +78,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -65,15 +94,21 @@ import com.flex.ui.components.TOOLTIP_FLEXTIME
 import com.flex.ui.components.TOOLTIP_FLEXTIME_TITLE
 import com.flex.ui.components.TOOLTIP_OFFICE_QUOTA
 import com.flex.ui.components.TOOLTIP_OFFICE_QUOTA_TITLE
-import com.flex.ui.components.TOOLTIP_WORK_TIME
-import com.flex.ui.components.TOOLTIP_WORK_TIME_TITLE
 import com.flex.ui.components.formatTimeInput
+import com.flex.ui.theme.FlexDayColor
+import com.flex.ui.theme.HomeOfficeColor
+import com.flex.ui.theme.OfficeColor
+import com.flex.ui.theme.OvertimeDayColor
 import com.flex.ui.theme.PublicHolidayColor
+import com.flex.ui.theme.SaturdayBonusColor
+import com.flex.ui.theme.SickDayColor
+import com.flex.ui.theme.SpecialVacationColor
+import com.flex.ui.theme.VacationColor
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
@@ -82,318 +117,247 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     var editingBlock by remember { mutableStateOf<TimeBlock?>(null) }
 
     val isToday = state.selectedDate == state.today
+    val holidayName = PublicHolidays.getHolidayName(state.selectedDate)
+    val isWorkDay = state.selectedDayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Date navigation header
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { viewModel.goToPreviousDay() }) {
-                    Icon(Icons.Default.ChevronLeft, contentDescription = "Vorheriger Tag")
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = if (isToday) "Heute" else state.selectedDate.format(
-                            DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)
-                        ),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = state.selectedDate.format(
-                            DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = { viewModel.goToNextDay() }) {
-                    Icon(Icons.Default.ChevronRight, contentDescription = "Nächster Tag")
-                }
-            }
-            if (!isToday) {
-                TextButton(
-                    onClick = { viewModel.goToToday() },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Zurück zu Heute")
-                }
-            }
-        }
-
-        // Holiday card
-        val holidayName = PublicHolidays.getHolidayName(state.selectedDate)
-        if (holidayName != null) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = PublicHolidayColor.copy(alpha = 0.15f)
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Feiertag",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = PublicHolidayColor
+    Scaffold(
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
+        floatingActionButton = {
+            if (isWorkDay && holidayName == null && isToday) {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        if (state.isClockRunning) viewModel.clockOut() else viewModel.clockIn()
+                    },
+                    icon = {
+                        Icon(
+                            if (state.isClockRunning) Icons.Default.Stop else Icons.Default.PlayArrow,
+                            contentDescription = null
                         )
-                        Text(
-                            text = holidayName,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = PublicHolidayColor
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "An Feiertagen sind keine Einträge möglich.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
-
-        // Flextime balance card
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (state.flextimeBalance.isPositive)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.errorContainer
+                    },
+                    text = { Text(if (state.isClockRunning) "Ausstempeln" else "Einstempeln") },
+                    containerColor = if (state.isClockRunning)
+                        MaterialTheme.colorScheme.errorContainer
+                    else MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = if (state.isClockRunning)
+                        MaterialTheme.colorScheme.onErrorContainer
+                    else MaterialTheme.colorScheme.onPrimaryContainer
                 )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = "Gleitzeit-Saldo (Soll: ${state.flextimeBalance.formatTarget()})",
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                        InfoTooltip(title = TOOLTIP_FLEXTIME_TITLE, text = TOOLTIP_FLEXTIME)
-                    }
-                    Text(
-                        text = state.flextimeBalance.formatDisplay(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
         }
-
-        // Quota progress bar
-        item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text("Büro-Quote", style = MaterialTheme.typography.labelMedium)
-                        InfoTooltip(title = TOOLTIP_OFFICE_QUOTA_TITLE, text = TOOLTIP_OFFICE_QUOTA)
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    val quota = state.quotaStatus
-
-                    // Office hours
-                    val officeH = state.officeMinutes / 60
-                    val officeM = state.officeMinutes % 60
-                    val reqH = state.requiredOfficeMinutes / 60
-                    val reqM = state.requiredOfficeMinutes % 60
-                    Text(
-                        "Büro-Stunden: ${officeH}h ${officeM}min / ${reqH}h ${reqM}min",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    val hoursProgress = if (state.requiredOfficeMinutes > 0)
-                        (state.officeMinutes.toFloat() / state.requiredOfficeMinutes).coerceIn(0f, 1f)
-                    else 0f
-                    LinearProgressIndicator(
-                    progress = { hoursProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = ProgressIndicatorDefaults.linearColor,
-                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
-                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    val pctProgress = (quota.officePercent / state.effectiveQuotaPercent.toDouble()).toFloat().coerceIn(0f, 1f)
-                    Text(
-                        "${"%.1f".format(quota.officePercent)}% Büro (Ziel: ${state.effectiveQuotaPercent}%)",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    LinearProgressIndicator(
-                    progress = { pctProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = ProgressIndicatorDefaults.linearColor,
-                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
-                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    val dayProgress = quota.officeDays.toFloat() / state.effectiveQuotaMinDays.toFloat()
-                    Text(
-                        "${quota.officeDays} / ${state.effectiveQuotaMinDays} Büro-Tage",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    LinearProgressIndicator(
-                    progress = { dayProgress.coerceIn(0f, 1f) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = ProgressIndicatorDefaults.linearColor,
-                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
-                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    val statusText = if (quota.quotaMet) "Quote erfüllt" else "Quote noch nicht erfüllt"
-                    val statusColor = if (quota.quotaMet) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.error
-                    Text(statusText, color = statusColor, fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-
-        if (holidayName == null) {
-            // Location selector (default for new blocks)
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
+        ) {
+            // Hero card
             item {
-                Text("Arbeitsort (Standard)", style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = state.selectedLocation == WorkLocation.OFFICE,
-                        onClick = { viewModel.setLocation(WorkLocation.OFFICE) },
-                        label = { Text("Büro") }
-                    )
-                    FilterChip(
-                        selected = state.selectedLocation == WorkLocation.HOME_OFFICE,
-                        onClick = { viewModel.setLocation(WorkLocation.HOME_OFFICE) },
-                        label = { Text("Home-Office") }
-                    )
-                }
+                HeroCard(
+                    state = state,
+                    remaining = remaining,
+                    isToday = isToday,
+                    onPreviousDay = { viewModel.goToPreviousDay() },
+                    onNextDay = { viewModel.goToNextDay() },
+                    onGoToToday = { viewModel.goToToday() }
+                )
             }
 
-            // Day type selector
-            item {
-                Column {
-                    Text("Tagestyp", style = MaterialTheme.typography.labelLarge)
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        val dayTypes = listOf(
-                            DayType.WORK to "Arbeitstag",
-                            DayType.VACATION to "Urlaub",
-                            DayType.SPECIAL_VACATION to "Sonderurlaub",
-                            DayType.FLEX_DAY to "Gleittag",
-                            DayType.SATURDAY_BONUS to "Samstag+",
-                            DayType.SICK_DAY to "Krank",
-                            DayType.OVERTIME_DAY to "Überstundentag"
+            // Holiday card
+            if (holidayName != null) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = PublicHolidayColor.copy(alpha = 0.15f)
                         )
-                        dayTypes.forEach { (type, label) ->
-                            FilterChip(
-                                selected = state.selectedDayType == type,
-                                onClick = { viewModel.setDayType(type) },
-                                label = { Text(label) }
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Feiertag",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = PublicHolidayColor
+                            )
+                            Text(
+                                text = holidayName,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = PublicHolidayColor
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "An Feiertagen sind keine Einträge möglich.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
+                }
+            }
 
-                    // Explicit save button for types that don't require time blocks.
-                    // WORK type is committed implicitly when clocking in or adding time.
-                    val nonWorkSaveTypes = setOf(
-                        DayType.VACATION, DayType.SPECIAL_VACATION,
-                        DayType.FLEX_DAY, DayType.SATURDAY_BONUS, DayType.SICK_DAY, DayType.OVERTIME_DAY
+            // Compact quota card
+            item {
+                CompactQuotaCard(state = state)
+            }
+
+            if (holidayName == null) {
+                // Location selector
+                item {
+                    Text(
+                        "Arbeitsort (Standard)",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(bottom = 6.dp)
                     )
-                    val savedDayType = state.workDay?.dayType
-                    val showSaveButton = state.selectedDayType in nonWorkSaveTypes &&
-                        state.selectedDayType != savedDayType
-                    val showDeleteButton = savedDayType in nonWorkSaveTypes &&
-                        state.selectedDayType == savedDayType
-                    if (showSaveButton) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        val typeLabel = when (state.selectedDayType) {
-                            DayType.VACATION -> "Urlaub"
-                            DayType.SPECIAL_VACATION -> "Sonderurlaub"
-                            DayType.FLEX_DAY -> "Gleittag"
-                            DayType.SICK_DAY -> "Kranktag"
-                            DayType.OVERTIME_DAY -> "Überstundentag"
-                            else -> "Samstag+"
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = state.selectedLocation == WorkLocation.OFFICE,
+                            onClick = { viewModel.setLocation(WorkLocation.OFFICE) },
+                            shape = SegmentedButtonDefaults.itemShape(0, 2),
+                            icon = {
+                                Icon(Icons.Default.Business, contentDescription = null,
+                                    modifier = Modifier.size(18.dp))
+                            }
+                        ) {
+                            Text("Büro")
                         }
-                        Button(
-                            onClick = { viewModel.saveDayType(state.selectedDayType) },
+                        SegmentedButton(
+                            selected = state.selectedLocation == WorkLocation.HOME_OFFICE,
+                            onClick = { viewModel.setLocation(WorkLocation.HOME_OFFICE) },
+                            shape = SegmentedButtonDefaults.itemShape(1, 2),
+                            icon = {
+                                Icon(Icons.Default.Home, contentDescription = null,
+                                    modifier = Modifier.size(18.dp))
+                            }
+                        ) {
+                            Text("Home-Office")
+                        }
+                    }
+                }
+
+                // Day type selector
+                item {
+                    Column {
+                        Text("Tagestyp", style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(bottom = 6.dp))
+
+                        val dayTypes = listOf(
+                            DayType.WORK             to Triple("Arbeitstag",    Icons.Default.Work,          MaterialTheme.colorScheme.primary),
+                            DayType.VACATION         to Triple("Urlaub",         Icons.Default.BeachAccess,   VacationColor),
+                            DayType.SPECIAL_VACATION to Triple("Sonderurlaub",   Icons.Default.Star,          SpecialVacationColor),
+                            DayType.FLEX_DAY         to Triple("Gleittag",       Icons.Default.Schedule,      FlexDayColor),
+                            DayType.SATURDAY_BONUS   to Triple("Samstag+",       Icons.Default.Timer,         SaturdayBonusColor),
+                            DayType.SICK_DAY         to Triple("Krank",          Icons.Default.LocalHospital, SickDayColor),
+                            DayType.OVERTIME_DAY     to Triple("Überstunden",    Icons.Default.ArrowDownward, OvertimeDayColor),
+                        )
+                        val currentEntry = dayTypes.find { it.first == state.selectedDayType }
+                        val (currentLabel, currentIcon, currentColor) = currentEntry?.second
+                            ?: Triple("Arbeitstag", Icons.Default.Work, MaterialTheme.colorScheme.primary)
+
+                        var dayTypeExpanded by remember { mutableStateOf(false) }
+
+                        ExposedDropdownMenuBox(
+                            expanded = dayTypeExpanded,
+                            onExpandedChange = { dayTypeExpanded = it },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Als $typeLabel eintragen")
-                        }
-                    }
-                    if (showDeleteButton) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        OutlinedButton(
-                            onClick = { viewModel.deleteDay() },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Text("Eintrag löschen")
-                        }
-                    }
-                }
-            }
-
-            // Clock in/out button — only for today
-            item {
-                val isWorkDay = state.selectedDayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
-                if (isWorkDay) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        if (isToday) {
-                            Button(
-                                onClick = {
-                                    if (state.isClockRunning) viewModel.clockOut() else viewModel.clockIn()
+                            OutlinedTextField(
+                                value = currentLabel,
+                                onValueChange = {},
+                                readOnly = true,
+                                leadingIcon = {
+                                    Icon(
+                                        currentIcon,
+                                        contentDescription = null,
+                                        tint = currentColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 },
-                                modifier = Modifier.weight(1f),
-                                colors = if (state.isClockRunning) {
-                                    ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                                } else {
-                                    ButtonDefaults.buttonColors()
-                                }
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayTypeExpanded)
+                                },
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                                    focusedLeadingIconColor = currentColor,
+                                    unfocusedLeadingIconColor = currentColor
+                                ),
+                                modifier = Modifier
+                                    .menuAnchor(androidx.compose.material3.MenuAnchorType.PrimaryNotEditable)
+                                    .fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = dayTypeExpanded,
+                                onDismissRequest = { dayTypeExpanded = false }
                             ) {
-                                Icon(
-                                    if (state.isClockRunning) Icons.Default.Stop else Icons.Default.PlayArrow,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(if (state.isClockRunning) "Ausstempeln" else "Einstempeln")
+                                dayTypes.forEach { (type, info) ->
+                                    val (label, icon, color) = info
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        leadingIcon = {
+                                            Icon(
+                                                icon,
+                                                contentDescription = null,
+                                                tint = color,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        },
+                                        onClick = {
+                                            viewModel.setDayType(type)
+                                            dayTypeExpanded = false
+                                        },
+                                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                    )
+                                }
                             }
                         }
 
+                        val nonWorkSaveTypes = setOf(
+                            DayType.VACATION, DayType.SPECIAL_VACATION,
+                            DayType.FLEX_DAY, DayType.SATURDAY_BONUS, DayType.SICK_DAY, DayType.OVERTIME_DAY
+                        )
+                        val savedDayType = state.workDay?.dayType
+                        val showSaveButton = state.selectedDayType in nonWorkSaveTypes &&
+                            state.selectedDayType != savedDayType
+                        val showDeleteButton = savedDayType in nonWorkSaveTypes &&
+                            state.selectedDayType == savedDayType
+                        if (showSaveButton) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val typeLabel = when (state.selectedDayType) {
+                                DayType.VACATION -> "Urlaub"
+                                DayType.SPECIAL_VACATION -> "Sonderurlaub"
+                                DayType.FLEX_DAY -> "Gleittag"
+                                DayType.SICK_DAY -> "Kranktag"
+                                DayType.OVERTIME_DAY -> "Überstundentag"
+                                else -> "Samstag+"
+                            }
+                            Button(
+                                onClick = { viewModel.saveDayType(state.selectedDayType) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Als $typeLabel eintragen")
+                            }
+                        }
+                        if (showDeleteButton) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            OutlinedButton(
+                                onClick = { viewModel.deleteDay() },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text("Eintrag löschen")
+                            }
+                        }
+                    }
+                }
+
+                // Manuell button (clock-in is now FAB)
+                item {
+                    if (isWorkDay) {
                         OutlinedButton(
                             onClick = { showManualEntry = true },
-                            modifier = if (isToday) Modifier else Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(modifier = Modifier.width(4.dp))
@@ -402,143 +366,19 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                     }
                 }
             }
-        }
 
-        // Selected day's work time
-        item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            if (isToday) "Heutige Arbeitszeit" else "Arbeitszeit",
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                        InfoTooltip(title = TOOLTIP_WORK_TIME_TITLE, text = TOOLTIP_WORK_TIME)
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    val hours = state.dayWorkTime.netMinutes / 60
-                    val mins = state.dayWorkTime.netMinutes % 60
-                    Text(
-                        text = "${hours}h ${mins}min (netto)",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    val targetHours = state.settings.dailyWorkMinutes / 60
-                    val targetMins = state.settings.dailyWorkMinutes % 60
-                    Text(
-                        text = "Soll: ${targetHours}h ${targetMins}min",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    if (state.dayWorkTime.breakMinutes > 0) {
-                        Text(
-                            text = "Pause: ${state.dayWorkTime.breakMinutes}min",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    remaining?.let { rem ->
-                        Spacer(modifier = Modifier.height(8.dp))
-                        if (rem == 0) {
-                            Text(
-                                text = "Tagesziel erreicht ✓",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        } else {
-                            val remH = rem / 60
-                            val remM = rem % 60
-                            val remText = if (remH > 0) "Noch ${remH}h ${remM}min" else "Noch ${remM}min"
-                            Text(
-                                text = remText,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            val progress = 1f - rem.toFloat() / state.settings.dailyWorkMinutes.toFloat()
-                            LinearProgressIndicator(
-                                progress = { progress.coerceIn(0f, 1f) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(4.dp)
-                                    .padding(top = 2.dp)
-                            )
-                        }
-                    }
-
-                    if (state.dayWorkTime.exceedsMaxHours) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Achtung: Max. 10h Arbeitszeit überschritten!",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+            // Time blocks list
+            if (state.timeBlocks.isNotEmpty()) {
+                item {
+                    Text("Zeitblöcke", style = MaterialTheme.typography.labelLarge)
                 }
-            }
-        }
 
-        // Time blocks list
-        if (state.timeBlocks.isNotEmpty()) {
-            item {
-                Text("Zeitblöcke", style = MaterialTheme.typography.labelLarge)
-            }
-
-            items(state.timeBlocks) { block ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { editingBlock = block }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            val startStr = block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
-                            val endStr = block.endTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "laufend…"
-                            Text(
-                                text = "$startStr – $endStr",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            val locationLabel = when (block.location) {
-                                WorkLocation.OFFICE -> "Büro"
-                                WorkLocation.HOME_OFFICE -> "Home-Office"
-                            }
-                            Text(
-                                text = locationLabel,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Row {
-                            IconButton(onClick = { editingBlock = block }) {
-                                Icon(
-                                    Icons.Default.Edit,
-                                    contentDescription = "Bearbeiten",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            IconButton(onClick = { viewModel.deleteTimeBlock(block) }) {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = "Löschen",
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
-                    }
+                items(state.timeBlocks) { block ->
+                    TimelineBlockItem(
+                        block = block,
+                        onEdit = { editingBlock = it },
+                        onDelete = { viewModel.deleteTimeBlock(it) }
+                    )
                 }
             }
         }
@@ -579,6 +419,452 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
 }
 
 @Composable
+private fun HeroCard(
+    state: HomeUiState,
+    remaining: Int?,
+    isToday: Boolean,
+    onPreviousDay: () -> Unit,
+    onNextDay: () -> Unit,
+    onGoToToday: () -> Unit,
+) {
+    val rawDailyProgress = if (state.settings.dailyWorkMinutes > 0)
+        (state.dayWorkTime.netMinutes.toFloat() / state.settings.dailyWorkMinutes).coerceIn(0f, 1f)
+    else 0f
+    val animatedDailyProgress by animateFloatAsState(
+        targetValue = rawDailyProgress,
+        animationSpec = tween(800),
+        label = "dailyProgress"
+    )
+
+    val hours = state.dayWorkTime.netMinutes / 60
+    val mins = state.dayWorkTime.netMinutes % 60
+    val netTimeText = if (hours > 0) "${hours}h ${mins}m" else "${mins}min"
+
+    val dailyGoalReached = state.dayWorkTime.netMinutes >= state.settings.dailyWorkMinutes
+    val statusLabel = when {
+        state.isClockRunning -> "Läuft"
+        dailyGoalReached -> "Fertig"
+        state.timeBlocks.isNotEmpty() -> "Pausiert"
+        else -> null
+    }
+    val statusColor = when {
+        state.isClockRunning -> MaterialTheme.colorScheme.primary
+        remaining == 0 -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val progressColor = if (dailyGoalReached) MaterialTheme.colorScheme.secondary
+        else MaterialTheme.colorScheme.primary
+
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Date + navigation
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onPreviousDay) {
+                    Icon(Icons.Default.ChevronLeft, contentDescription = "Vorheriger Tag")
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = if (isToday) "Heute" else state.selectedDate.format(
+                            DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)
+                        ),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isToday) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = state.selectedDate.format(
+                            DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (!isToday) {
+                        TextButton(
+                            onClick = onGoToToday,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                        ) {
+                            Text("Zurück zu Heute", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+                IconButton(onClick = onNextDay) {
+                    Icon(Icons.Default.ChevronRight, contentDescription = "Nächster Tag")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Circular progress
+            Box(contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    progress = { animatedDailyProgress },
+                    modifier = Modifier.size(120.dp),
+                    strokeWidth = 10.dp,
+                    strokeCap = StrokeCap.Round,
+                    color = progressColor,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = netTimeText,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (statusLabel != null) {
+                        Text(
+                            text = statusLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = statusColor
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Stats row: Soll | Pause | Verbleibend
+            val tH = state.settings.dailyWorkMinutes / 60
+            val tM = state.settings.dailyWorkMinutes % 60
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Soll", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${tH}h ${tM}min", style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Pause", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        if (state.dayWorkTime.breakMinutes > 0) "${state.dayWorkTime.breakMinutes}min" else "–",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Verbleibend", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    when {
+                        remaining == 0 -> Text(
+                            "Erreicht ✓",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                        remaining != null -> {
+                            val rH = remaining / 60
+                            val rM = remaining % 60
+                            Text(
+                                if (rH > 0) "${rH}h ${rM}min" else "${rM}min",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        else -> Text("–", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+
+            // Progress bar for remaining time
+            remaining?.let { rem ->
+                if (rem > 0) {
+                    val animProg by animateFloatAsState(
+                        targetValue = (1f - rem.toFloat() / state.settings.dailyWorkMinutes).coerceIn(0f, 1f),
+                        animationSpec = tween(600),
+                        label = "remainingProgress"
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { animProg },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                    )
+                }
+            }
+
+            if (state.dayWorkTime.exceedsMaxHours) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Achtung: Max. 10h Arbeitszeit überschritten!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Gleitzeit: gesamt + dieser Monat
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Gleitzeit gesamt",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = state.flextimeBalance.formatDisplay(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = if (state.flextimeBalance.isPositive)
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.error
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Dieser Monat",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        val monthlyEarned = state.monthlyFlextimeBalance.earnedMinutes
+                        val monthlySign = if (monthlyEarned >= 0) "+" else "-"
+                        val monthlyH = kotlin.math.abs(monthlyEarned) / 60
+                        val monthlyM = kotlin.math.abs(monthlyEarned) % 60
+                        Text(
+                            text = "$monthlySign${monthlyH}h ${monthlyM}min",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = if (monthlyEarned >= 0)
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+                InfoTooltip(title = TOOLTIP_FLEXTIME_TITLE, text = TOOLTIP_FLEXTIME)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompactQuotaCard(state: HomeUiState) {
+    val quota = state.quotaStatus
+
+    val officeH = state.officeMinutes / 60
+    val officeM = state.officeMinutes % 60
+    val reqH = state.requiredOfficeMinutes / 60
+    val reqM = state.requiredOfficeMinutes % 60
+
+    val rawHoursProgress = if (state.requiredOfficeMinutes > 0)
+        (state.officeMinutes.toFloat() / state.requiredOfficeMinutes).coerceIn(0f, 1f)
+    else 0f
+    val rawPctProgress = (quota.officePercent / state.effectiveQuotaPercent.toDouble())
+        .toFloat().coerceIn(0f, 1f)
+    val rawDayProgress = (quota.officeDays.toFloat() / state.effectiveQuotaMinDays.toFloat())
+        .coerceIn(0f, 1f)
+
+    val animHours by animateFloatAsState(rawHoursProgress, tween(600), label = "hoursProgress")
+    val animPct by animateFloatAsState(rawPctProgress, tween(600), label = "pctProgress")
+    val animDays by animateFloatAsState(rawDayProgress, tween(600), label = "dayProgress")
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text("Büro-Quote", style = MaterialTheme.typography.labelMedium)
+                    InfoTooltip(title = TOOLTIP_OFFICE_QUOTA_TITLE, text = TOOLTIP_OFFICE_QUOTA)
+                }
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = if (quota.quotaMet)
+                        MaterialTheme.colorScheme.secondaryContainer
+                    else MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.wrapContentSize()
+                ) {
+                    Text(
+                        text = if (quota.quotaMet) "Erfüllt" else "Ausstehend",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (quota.quotaMet)
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            CompactProgressRow(
+                label = "${officeH}h ${officeM}min",
+                sublabel = "von ${reqH}h ${reqM}min Büro",
+                progress = animHours,
+                isMet = rawHoursProgress >= 1f
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            CompactProgressRow(
+                label = "${"%.1f".format(quota.officePercent)}%",
+                sublabel = "von ${state.effectiveQuotaPercent}% Ziel",
+                progress = animPct,
+                isMet = quota.officePercent >= state.effectiveQuotaPercent
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            CompactProgressRow(
+                label = "${quota.officeDays} Tage",
+                sublabel = "von ${state.effectiveQuotaMinDays} Büro-Tagen",
+                progress = animDays,
+                isMet = quota.officeDays >= state.effectiveQuotaMinDays
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompactProgressRow(
+    label: String,
+    sublabel: String,
+    progress: Float,
+    isMet: Boolean
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+            Text(
+                sublabel,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp)),
+            color = if (isMet) MaterialTheme.colorScheme.secondary
+            else MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun TimelineBlockItem(
+    block: TimeBlock,
+    onEdit: (TimeBlock) -> Unit,
+    onDelete: (TimeBlock) -> Unit
+) {
+    val locationColor = when (block.location) {
+        WorkLocation.OFFICE -> OfficeColor
+        WorkLocation.HOME_OFFICE -> HomeOfficeColor
+    }
+    val locationLabel = when (block.location) {
+        WorkLocation.OFFICE -> "Büro"
+        WorkLocation.HOME_OFFICE -> "Home-Office"
+    }
+    val startStr = block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
+    val endStr = block.endTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "laufend…"
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .clickable { onEdit(block) },
+        verticalAlignment = Alignment.Top
+    ) {
+        // Left: colored timeline indicator
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.width(20.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(locationColor)
+            )
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .fillMaxHeight()
+                    .background(locationColor.copy(alpha = 0.3f))
+            )
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Right: content card
+        Card(
+            modifier = Modifier.weight(1f),
+            colors = CardDefaults.cardColors(
+                containerColor = locationColor.copy(alpha = 0.08f)
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "$startStr – $endStr",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = locationColor.copy(alpha = 0.15f),
+                        modifier = Modifier.wrapContentSize()
+                    ) {
+                        Text(
+                            text = locationLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = locationColor,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                IconButton(onClick = { onDelete(block) }) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Löschen",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ManualTimeEntryDialog(
     dailyWorkMinutes: Int = 426,
     selectedLocation: WorkLocation = WorkLocation.OFFICE,
@@ -613,7 +899,6 @@ fun ManualTimeEntryDialog(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Location selector
                 Text("Arbeitsort", style = MaterialTheme.typography.labelMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
@@ -712,7 +997,6 @@ fun EditTimeBlockDialog(
         title = { Text("Zeitblock bearbeiten") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Location selector
                 Text("Arbeitsort", style = MaterialTheme.typography.labelMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(

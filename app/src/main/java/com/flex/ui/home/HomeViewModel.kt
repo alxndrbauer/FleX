@@ -46,6 +46,7 @@ data class HomeUiState(
     val selectedDayType: DayType = DayType.WORK,
     val dayWorkTime: DayWorkTimeResult = DayWorkTimeResult(0, 0, 0, false),
     val flextimeBalance: FlextimeBalance = FlextimeBalance(),
+    val monthlyFlextimeBalance: FlextimeBalance = FlextimeBalance(),
     val quotaStatus: QuotaStatus = QuotaStatus(),
     val settings: Settings = Settings(),
     val effectiveQuotaPercent: Int = 40,
@@ -167,6 +168,7 @@ class HomeViewModel @Inject constructor(
                             if (day.date == today && workDay != null && date == today) workDay else day
                         }
                         val flextime = calculateFlextime(actualYearDays, settings, todayYearMonth)
+                        val monthlyFlextime = calculateFlextime(actualMonthDays, settings, todayYearMonth)
                         val quota = calculateQuota(actualMonthDays, settings, todayYearMonth, qPercent, qDays)
 
                         // Fixed monthly target, reduced by neutral days
@@ -202,6 +204,7 @@ class HomeViewModel @Inject constructor(
                             selectedDayType = override ?: workDay?.dayType ?: DayType.WORK,
                             dayWorkTime = dayResult,
                             flextimeBalance = flextime,
+                            monthlyFlextimeBalance = monthlyFlextime,
                             quotaStatus = quota,
                             settings = settings,
                             effectiveQuotaPercent = qPercent,
