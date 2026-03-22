@@ -50,7 +50,14 @@ class SettingsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            getSettings().collect { _settings.value = it }
+            getSettings().collect { s ->
+                _settings.value = s
+                if (_geofenceStatus.value == GeofenceStatus.UNKNOWN &&
+                    s.geofenceEnabled && s.geofenceLat != 0.0 && s.geofenceLon != 0.0
+                ) {
+                    _geofenceStatus.value = GeofenceStatus.REGISTERED
+                }
+            }
         }
         viewModelScope.launch {
             settingsRepository.getQuotaRules().collect { _quotaRules.value = it }
