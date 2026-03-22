@@ -2,10 +2,11 @@ package com.flex.ui.year
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,21 +17,23 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Card
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -76,6 +79,7 @@ private fun cellColor(entry: DayHeatmapEntry?, dailyWorkMinutes: Int, isSurface:
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun YearOverviewScreen(
     viewModel: YearOverviewViewModel = hiltViewModel()
@@ -148,7 +152,6 @@ private fun YearHeatmap(
     dailyWorkMinutes: Int,
     today: LocalDate
 ) {
-    // Determine start: Monday on or before Jan 1
     val jan1 = LocalDate.of(year, 1, 1)
     val dec31 = LocalDate.of(year, 12, 31)
 
@@ -202,8 +205,6 @@ private fun YearHeatmap(
             items(totalWeeks) { weekIndex ->
                 val weekStart = startDay.plusWeeks(weekIndex.toLong())
 
-                // Month label: show if first day of this week column is a new month
-                // or if the previous week column has a different month
                 val prevWeekStart = if (weekIndex > 0) startDay.plusWeeks((weekIndex - 1).toLong()) else null
                 val showMonthLabel = if (prevWeekStart == null) {
                     true
@@ -228,7 +229,6 @@ private fun YearHeatmap(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(CELL_SPACING)
                 ) {
-                    // Month label
                     Box(
                         modifier = Modifier
                             .width(CELL_SIZE)
@@ -246,7 +246,6 @@ private fun YearHeatmap(
                         }
                     }
 
-                    // 7 day cells
                     for (dayOffset in 0..6) {
                         val date = weekStart.plusDays(dayOffset.toLong())
                         val isInYear = date.year == year
@@ -288,38 +287,40 @@ private fun YearHeatmap(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HeatmapLegend() {
     val legendItems = listOf(
         "Büro" to OfficeColor,
-        "Home" to HomeOfficeColor,
+        "Home-Office" to HomeOfficeColor,
         "Urlaub" to VacationColor,
-        "SU" to SpecialVacationColor,
-        "Gleit" to FlexDayColor,
+        "Sonderurlaub" to SpecialVacationColor,
+        "Gleittag" to FlexDayColor,
         "Krank" to SickDayColor,
-        "Sa+" to SaturdayBonusColor,
+        "Samstag+" to SaturdayBonusColor,
         "Feiertag" to PublicHolidayColor
     )
 
-    Row(
+    FlowRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         legendItems.forEach { (label, color) ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(10.dp)
-                        .background(color = color.copy(alpha = 0.8f), shape = RoundedCornerShape(2.dp))
+                        .width(12.dp)
+                        .height(8.dp)
+                        .background(color.copy(alpha = 0.8f), shape = RoundedCornerShape(2.dp))
                 )
                 Text(
                     text = label,
-                    fontSize = 9.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -336,69 +337,85 @@ private fun YearSummaryCard(summary: YearSummary) {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = "Jahresübersicht ${summary.year}",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            // Row 1
+            // Header with total work days badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                SummaryItem(
-                    label = "Arbeitstage",
-                    value = summary.totalWorkDays.toString(),
-                    modifier = Modifier.weight(1f)
+                Text(
+                    text = "Jahresübersicht ${summary.year}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                ) {
+                    Text(
+                        text = "${summary.totalWorkDays} Tage",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            // Group 1: Absences
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 SummaryItem(
                     label = "Urlaub",
                     value = summary.vacationDays.toString(),
+                    accentColor = VacationColor,
                     modifier = Modifier.weight(1f)
                 )
                 SummaryItem(
                     label = "Krank",
                     value = summary.sickDays.toString(),
+                    accentColor = SickDayColor,
                     modifier = Modifier.weight(1f)
                 )
-            }
-
-            // Row 2
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
                 SummaryItem(
                     label = "Gleittage",
                     value = summary.flexDays.toString(),
+                    accentColor = FlexDayColor,
                     modifier = Modifier.weight(1f)
                 )
                 SummaryItem(
                     label = "Feiertage",
                     value = summary.publicHolidayCount.toString(),
+                    accentColor = PublicHolidayColor,
                     modifier = Modifier.weight(1f)
                 )
                 SummaryItem(
                     label = "Samstag+",
                     value = summary.saturdayBonusDays.toString(),
+                    accentColor = SaturdayBonusColor,
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            // Row 3
+            HorizontalDivider()
+
+            // Group 2: Work breakdown
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 SummaryItem(
                     label = "Büro",
                     value = summary.officeWorkDays.toString(),
+                    accentColor = OfficeColor,
                     modifier = Modifier.weight(1f)
                 )
                 SummaryItem(
                     label = "Home-Office",
                     value = summary.homeOfficeWorkDays.toString(),
+                    accentColor = HomeOfficeColor,
                     modifier = Modifier.weight(1f)
                 )
                 SummaryItem(
@@ -415,12 +432,23 @@ private fun YearSummaryCard(summary: YearSummary) {
 private fun SummaryItem(
     label: String,
     value: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    accentColor: Color? = null
 ) {
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        if (accentColor != null) {
+            Box(
+                modifier = Modifier
+                    .width(12.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(accentColor)
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+        }
         Text(
             text = value,
             style = MaterialTheme.typography.titleSmall,
@@ -430,7 +458,7 @@ private fun SummaryItem(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             maxLines = 1
         )
