@@ -1,17 +1,10 @@
 package com.flex.wear
 
 import android.net.Uri
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -19,16 +12,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.wear.compose.material.Button
-import androidx.wear.compose.material.ButtonDefaults
-import androidx.wear.compose.material.CircularProgressIndicator
-import androidx.wear.compose.material.MaterialTheme
-import androidx.wear.compose.material.Text
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.wear.compose.material3.ButtonDefaults
+import androidx.wear.compose.material3.EdgeButton
+import androidx.wear.compose.material3.EdgeButtonSize
+import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.ScreenScaffold
+import androidx.wear.compose.material3.Text
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
@@ -41,7 +35,6 @@ fun rememberWearStatus(): State<WearStatus> {
     val status = remember { mutableStateOf(WearStatus()) }
 
     LaunchedEffect(Unit) {
-        // Load current value from DataClient
         try {
             val items = Wearable.getDataClient(context)
                 .getDataItems(Uri.parse("wear://*${WearContract.DATA_PATH}"))
@@ -52,7 +45,6 @@ fun rememberWearStatus(): State<WearStatus> {
             items.release()
         } catch (_: Exception) {}
 
-        // Listen for updates
         val listener = DataClient.OnDataChangedListener { events: DataEventBuffer ->
             events.filter {
                 it.type == DataEvent.TYPE_CHANGED && it.dataItem.matchesFlexPath()
@@ -73,75 +65,97 @@ fun QuotaScreen(
     onClockIn: () -> Unit,
     onClockOut: () -> Unit
 ) {
-    val green = Color(0xFF4CAF50)
-    val amber = Color(0xFFFFC107)
-    val quotaColor = if (status.quotaMet) green else amber
+    val quotaColor = if (status.quotaMet) {
+        MaterialTheme.colorScheme.secondary
+    } else {
+        MaterialTheme.colorScheme.tertiary
+    }
+    val chipContainerColor = if (status.isClockRunning) {
+        MaterialTheme.colorScheme.error
+    } else {
+        MaterialTheme.colorScheme.secondary
+    }
+    val chipContentColor = if (status.isClockRunning) {
+        MaterialTheme.colorScheme.onError
+    } else {
+        MaterialTheme.colorScheme.onSecondary
+    }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colors.background),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(12.dp)
-        ) {
-            // Today's work time
-            Text(
-                text = status.todayFormatted,
-                fontSize = 28.sp,
-                color = MaterialTheme.colors.onSurface,
-                textAlign = TextAlign.Center
-            )
+    val listState = rememberScalingLazyListState()
 
-            Text(
-                text = if (status.isClockRunning) "läuft" else "gestoppt",
-                fontSize = 11.sp,
-                color = if (status.isClockRunning) green else MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Quota info
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = status.officePctFormatted,
-                    fontSize = 14.sp,
-                    color = quotaColor
-                )
-                Text(
-                    text = "  •  ${status.officeDays}d",
-                    fontSize = 14.sp,
-                    color = quotaColor
-                )
-            }
-
-            Text(
-                text = if (status.quotaMet) "Quote erfüllt" else "Quote offen",
-                fontSize = 11.sp,
-                color = quotaColor,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Clock button
-            Button(
+    ScreenScaffold(
+        scrollState = listState,
+        edgeButton = {
+            EdgeButton(
                 onClick = if (status.isClockRunning) onClockOut else onClockIn,
-                modifier = Modifier.fillMaxWidth(0.8f),
+                buttonSize = EdgeButtonSize.Large,
                 colors = ButtonDefaults.buttonColors(
-                    backgroundColor = if (status.isClockRunning) Color(0xFFE53935) else green
+                    containerColor = chipContainerColor,
+                    contentColor = chipContentColor
                 )
             ) {
                 Text(
                     text = if (status.isClockRunning) "Ausstempeln" else "Einstempeln",
-                    fontSize = 12.sp
+                    style = MaterialTheme.typography.labelMedium,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    ) { contentPadding ->
+        ScalingLazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = listState,
+            contentPadding = contentPadding,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+        ) {
+            item {
+                Text(
+                    text = status.todayFormatted,
+                    style = MaterialTheme.typography.displaySmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
+                Text(
+                    text = if (status.isClockRunning) "läuft" else "gestoppt",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (status.isClockRunning) {
+                        MaterialTheme.colorScheme.secondary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
+                Text(
+                    text = status.officePctFormatted,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = quotaColor,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
+                Text(
+                    text = "${status.officeDays}d / ${status.requiredOfficeDays}d",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = quotaColor,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
+                Text(
+                    text = if (status.quotaMet) "Quote erfüllt ✓" else "Quote offen",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = quotaColor,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }

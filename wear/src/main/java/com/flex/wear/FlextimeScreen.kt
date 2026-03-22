@@ -1,68 +1,78 @@
 package com.flex.wear
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.wear.compose.material.MaterialTheme
-import androidx.wear.compose.material.Text
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.ScreenScaffold
+import androidx.wear.compose.material3.Text
 
 @Composable
 fun FlextimeScreen(status: WearStatus) {
-    val green = Color(0xFF4CAF50)
-    val red = Color(0xFFE53935)
-    val flextimeColor = if (status.flextimeMinutes >= 0) green else red
-    val overtimeColor = if (status.overtimeMinutes >= 0) green else red
+    val flextimeColor = if (status.flextimeMinutes >= 0) {
+        MaterialTheme.colorScheme.secondary
+    } else {
+        MaterialTheme.colorScheme.error
+    }
+    val overtimeColor = if (status.overtimeMinutes >= 0) {
+        MaterialTheme.colorScheme.secondary
+    } else {
+        MaterialTheme.colorScheme.error
+    }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colors.background),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
+    val listState = rememberScalingLazyListState()
+
+    ScreenScaffold(scrollState = listState) { contentPadding ->
+        ScalingLazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = listState,
+            contentPadding = contentPadding,
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(12.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
         ) {
-            Text(
-                text = "Flexzeit",
-                fontSize = 11.sp,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = status.flextimeFormatted,
-                fontSize = 28.sp,
-                color = flextimeColor,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "Überstunden",
-                fontSize = 11.sp,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = status.overtimeFormatted,
-                fontSize = 28.sp,
-                color = overtimeColor,
-                textAlign = TextAlign.Center
-            )
+            item {
+                Text(
+                    text = "Flexzeit",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
+                Text(
+                    text = status.flextimeFormatted,
+                    style = MaterialTheme.typography.displaySmall,
+                    color = flextimeColor,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
+                Text(
+                    text = "Überstunden",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
+                Text(
+                    text = status.overtimeFormatted,
+                    style = MaterialTheme.typography.displaySmall,
+                    color = overtimeColor,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }

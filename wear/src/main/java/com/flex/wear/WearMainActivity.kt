@@ -3,16 +3,15 @@ package com.flex.wear
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
-import androidx.wear.compose.material.HorizontalPageIndicator
-import androidx.wear.compose.material.PageIndicatorState
+import androidx.wear.compose.foundation.pager.HorizontalPager
+import androidx.wear.compose.foundation.pager.rememberPagerState
+import androidx.wear.compose.material3.AppScaffold
+import androidx.wear.compose.material3.HorizontalPagerScaffold
+import androidx.wear.compose.material3.TimeText
 import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.launch
@@ -57,22 +56,17 @@ private fun WearApp(
 ) {
     val pagerState = rememberPagerState(pageCount = { 2 })
 
-    val pageIndicatorState = object : PageIndicatorState {
-        override val pageOffset: Float get() = pagerState.currentPageOffsetFraction
-        override val selectedPage: Int get() = pagerState.currentPage
-        override val pageCount: Int get() = 2
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        HorizontalPager(state = pagerState) { page ->
-            when (page) {
-                0 -> QuotaScreen(status = status, onClockIn = onClockIn, onClockOut = onClockOut)
-                1 -> FlextimeScreen(status = status)
+    AppScaffold(timeText = { TimeText() }) {
+        HorizontalPagerScaffold(pagerState = pagerState) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                when (page) {
+                    0 -> QuotaScreen(status = status, onClockIn = onClockIn, onClockOut = onClockOut)
+                    1 -> FlextimeScreen(status = status)
+                }
             }
         }
-        HorizontalPageIndicator(
-            pageIndicatorState = pageIndicatorState,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
     }
 }

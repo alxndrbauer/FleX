@@ -54,7 +54,11 @@ class WearSyncHelper @Inject constructor(
             val yearMonth = YearMonth.now()
             val monthDays = getMonthWorkDays(yearMonth).first().filter { !it.isPlanned }
             val quota = calculateQuota(monthDays, settings, yearMonth)
-            val flextime = calculateFlextime(monthDays, settings, yearMonth)
+            // Cumulative year-to-date flextime (same as HomeScreen), with today replaced by live data
+            val yearDays = workDayRepository.getWorkDaysForYear(today.year).first()
+                .filter { !it.isPlanned }
+                .map { day -> if (day.date == today && workDay != null) workDay else day }
+            val flextime = calculateFlextime(yearDays, settings, yearMonth)
 
             val request = PutDataMapRequest.create(WearContract.DATA_PATH).apply {
                 dataMap.putBoolean(WearContract.KEY_IS_RUNNING, isRunning)

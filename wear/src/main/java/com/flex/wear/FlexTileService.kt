@@ -2,15 +2,18 @@ package com.flex.wear
 
 import android.net.Uri
 import androidx.wear.protolayout.ActionBuilders
-import androidx.wear.protolayout.ColorBuilders.argb
-import androidx.wear.protolayout.DimensionBuilders.dp
-import androidx.wear.protolayout.DimensionBuilders.sp
 import androidx.wear.protolayout.LayoutElementBuilders
-import androidx.wear.protolayout.LayoutElementBuilders.FONT_WEIGHT_BOLD
-import androidx.wear.protolayout.LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER
 import androidx.wear.protolayout.ModifiersBuilders
-import androidx.wear.protolayout.TimelineBuilders
 import androidx.wear.protolayout.ResourceBuilders
+import androidx.wear.protolayout.TimelineBuilders
+import androidx.wear.protolayout.material3.ButtonColors
+import androidx.wear.protolayout.material3.Typography
+import androidx.wear.protolayout.material3.materialScope
+import androidx.wear.protolayout.material3.primaryLayout
+import androidx.wear.protolayout.material3.text
+import androidx.wear.protolayout.material3.textEdgeButton
+import androidx.wear.protolayout.types.argb
+import androidx.wear.protolayout.types.layoutString
 import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
@@ -36,39 +39,21 @@ class FlexTileService : TileService() {
         requestParams: RequestBuilders.TileRequest
     ): ListenableFuture<TileBuilders.Tile> = scope.future {
         val status = fetchWearStatus()
-        buildTile(status)
-    }
-
-    override fun onTileResourcesRequest(
-        requestParams: RequestBuilders.ResourcesRequest
-    ): ListenableFuture<ResourceBuilders.Resources> = scope.future {
-        ResourceBuilders.Resources.Builder()
-            .setVersion(requestParams.version)
-            .build()
-    }
-
-    private suspend fun fetchWearStatus(): WearStatus {
-        return try {
-            val items = Wearable.getDataClient(this)
-                .getDataItems(Uri.parse("wear://*${WearContract.DATA_PATH}"))
-                .await()
-            var result = WearStatus()
-            items.forEach { item ->
-                if (item.matchesFlexPath()) result = item.toWearStatus()
-            }
-            items.release()
-            result
-        } catch (_: Exception) {
-            WearStatus()
-        }
-    }
-
-    private fun buildTile(status: WearStatus): TileBuilders.Tile {
         val actionPath = if (status.isClockRunning) WearContract.MSG_CLOCK_OUT else WearContract.MSG_CLOCK_IN
         val buttonLabel = if (status.isClockRunning) "Ausstempeln" else "Einstempeln"
         val statusLabel = if (status.isClockRunning) "läuft" else "gestoppt"
 
+        val green = 0xFF34A853.toInt().argb
+        val red = 0xFFE53935.toInt().argb
+        val white = 0xFFFFFFFF.toInt().argb
+        val muted = 0xFF9E9FA8.toInt().argb
+        val light = 0xFFE0E0E0.toInt().argb
+
+        val statusColor = if (status.isClockRunning) green else muted
+        val chipContainerColor = if (status.isClockRunning) red else green
+
         val clickable = ModifiersBuilders.Clickable.Builder()
+            .setId("clock_action")
             .setOnClick(
                 ActionBuilders.LaunchAction.Builder()
                     .setAndroidActivity(
@@ -87,82 +72,46 @@ class FlexTileService : TileService() {
             )
             .build()
 
-        val timeText = LayoutElementBuilders.Text.Builder()
-            .setText(status.todayFormatted)
-            .setFontStyle(
-                LayoutElementBuilders.FontStyle.Builder()
-                    .setSize(sp(28f))
-                    .setWeight(FONT_WEIGHT_BOLD)
-                    .setColor(argb(0xFFFFFFFF.toInt()))
-                    .build()
-            )
-            .build()
-
-        val statusText = LayoutElementBuilders.Text.Builder()
-            .setText(statusLabel)
-            .setFontStyle(
-                LayoutElementBuilders.FontStyle.Builder()
-                    .setSize(sp(12f))
-                    .setColor(
-                        argb(if (status.isClockRunning) 0xFF4CAF50.toInt() else 0x99FFFFFF.toInt())
+        val layout = materialScope(
+            context = this@FlexTileService,
+            deviceConfiguration = requestParams.deviceConfiguration
+        ) {
+            primaryLayout(
+                titleSlot = {
+                    text(
+                        text = status.todayFormatted.layoutString,
+                        typography = Typography.NUMERAL_LARGE,
+                        color = light
                     )
-                    .build()
-            )
-            .build()
-
-        val buttonText = LayoutElementBuilders.Text.Builder()
-            .setText(buttonLabel)
-            .setFontStyle(
-                LayoutElementBuilders.FontStyle.Builder()
-                    .setSize(sp(13f))
-                    .setColor(argb(0xFFFFFFFF.toInt()))
-                    .build()
-            )
-            .build()
-
-        val buttonBgColor = if (status.isClockRunning) 0xFFE53935.toInt() else 0xFF4CAF50.toInt()
-
-        val buttonModifiers = ModifiersBuilders.Modifiers.Builder()
-            .setClickable(clickable)
-            .setBackground(
-                ModifiersBuilders.Background.Builder()
-                    .setColor(argb(buttonBgColor))
-                    .setCorner(
-                        ModifiersBuilders.Corner.Builder()
-                            .setRadius(dp(16f))
-                            .build()
+                },
+                mainSlot = {
+                    text(
+                        text = statusLabel.layoutString,
+                        typography = Typography.BODY_SMALL,
+                        color = statusColor
                     )
-                    .build()
+                },
+                bottomSlot = {
+                    textEdgeButton(
+                        onClick = clickable,
+                        colors = ButtonColors(
+                            containerColor = chipContainerColor,
+                            iconColor = white,
+                            labelColor = white,
+                            secondaryLabelColor = white
+                        ),
+                        labelContent = {
+                            text(
+                                text = buttonLabel.layoutString,
+                                typography = Typography.LABEL_SMALL
+                            )
+                        }
+                    )
+                }
             )
-            .setPadding(
-                ModifiersBuilders.Padding.Builder()
-                    .setStart(dp(12f))
-                    .setEnd(dp(12f))
-                    .setTop(dp(8f))
-                    .setBottom(dp(8f))
-                    .build()
-            )
-            .build()
+        }
 
-        val button = LayoutElementBuilders.Box.Builder()
-            .setModifiers(buttonModifiers)
-            .addContent(buttonText)
-            .build()
-
-        val layout = LayoutElementBuilders.Column.Builder()
-            .setHorizontalAlignment(HORIZONTAL_ALIGN_CENTER)
-            .addContent(timeText)
-            .addContent(
-                LayoutElementBuilders.Spacer.Builder().setHeight(dp(2f)).build()
-            )
-            .addContent(statusText)
-            .addContent(
-                LayoutElementBuilders.Spacer.Builder().setHeight(dp(8f)).build()
-            )
-            .addContent(button)
-            .build()
-
-        return TileBuilders.Tile.Builder()
+        TileBuilders.Tile.Builder()
             .setResourcesVersion("1")
             .setFreshnessIntervalMillis(60_000L)
             .setTileTimeline(
@@ -171,13 +120,31 @@ class FlexTileService : TileService() {
                         TimelineBuilders.TimelineEntry.Builder()
                             .setLayout(
                                 LayoutElementBuilders.Layout.Builder()
-                                    .setRoot(layout)
-                                    .build()
-                            )
-                            .build()
-                    )
-                    .build()
-            )
-            .build()
+                                    .setRoot(layout).build()
+                            ).build()
+                    ).build()
+            ).build()
+    }
+
+    override fun onTileResourcesRequest(
+        requestParams: RequestBuilders.ResourcesRequest
+    ): ListenableFuture<ResourceBuilders.Resources> = scope.future {
+        ResourceBuilders.Resources.Builder().setVersion(requestParams.version).build()
+    }
+
+    private suspend fun fetchWearStatus(): WearStatus {
+        return try {
+            val items = Wearable.getDataClient(this)
+                .getDataItems(Uri.parse("wear://*${WearContract.DATA_PATH}"))
+                .await()
+            var result = WearStatus()
+            items.forEach { item ->
+                if (item.matchesFlexPath()) result = item.toWearStatus()
+            }
+            items.release()
+            result
+        } catch (_: Exception) {
+            WearStatus()
+        }
     }
 }

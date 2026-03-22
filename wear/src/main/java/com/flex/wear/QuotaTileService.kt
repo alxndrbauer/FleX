@@ -1,14 +1,15 @@
 package com.flex.wear
 
 import android.net.Uri
-import androidx.wear.protolayout.ColorBuilders.argb
-import androidx.wear.protolayout.DimensionBuilders.dp
-import androidx.wear.protolayout.DimensionBuilders.sp
 import androidx.wear.protolayout.LayoutElementBuilders
-import androidx.wear.protolayout.LayoutElementBuilders.FONT_WEIGHT_BOLD
-import androidx.wear.protolayout.LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER
-import androidx.wear.protolayout.TimelineBuilders
 import androidx.wear.protolayout.ResourceBuilders
+import androidx.wear.protolayout.TimelineBuilders
+import androidx.wear.protolayout.material3.Typography
+import androidx.wear.protolayout.material3.materialScope
+import androidx.wear.protolayout.material3.primaryLayout
+import androidx.wear.protolayout.material3.text
+import androidx.wear.protolayout.types.argb
+import androidx.wear.protolayout.types.layoutString
 import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
@@ -33,7 +34,63 @@ class QuotaTileService : TileService() {
     override fun onTileRequest(
         requestParams: RequestBuilders.TileRequest
     ): ListenableFuture<TileBuilders.Tile> = scope.future {
-        buildTile(fetchWearStatus())
+        val status = fetchWearStatus()
+        val green = 0xFF34A853.toInt().argb
+        val amber = 0xFFFFC107.toInt().argb
+        val muted = 0xFF9E9FA8.toInt().argb
+        val quotaColor = if (status.quotaMet) green else amber
+        val remainingDays = (status.requiredOfficeDays - status.officeDays).coerceAtLeast(0)
+        val statusText = if (status.quotaMet) "Quote erfüllt ✓" else "$remainingDays Tage fehlen"
+
+        val layout = materialScope(
+            context = this@QuotaTileService,
+            deviceConfiguration = requestParams.deviceConfiguration
+        ) {
+            primaryLayout(
+                titleSlot = {
+                    text(
+                        text = "Büroquote".layoutString,
+                        typography = Typography.LABEL_SMALL,
+                        color = muted
+                    )
+                },
+                mainSlot = {
+                    text(
+                        text = status.officePctFormatted.layoutString,
+                        typography = Typography.NUMERAL_LARGE,
+                        color = quotaColor
+                    )
+                },
+                labelForBottomSlot = {
+                    text(
+                        text = "${status.officeDays}d / ${status.requiredOfficeDays}d".layoutString,
+                        typography = Typography.LABEL_SMALL,
+                        color = quotaColor
+                    )
+                },
+                bottomSlot = {
+                    text(
+                        text = statusText.layoutString,
+                        typography = Typography.BODY_SMALL,
+                        color = quotaColor
+                    )
+                }
+            )
+        }
+
+        TileBuilders.Tile.Builder()
+            .setResourcesVersion("1")
+            .setFreshnessIntervalMillis(300_000L)
+            .setTileTimeline(
+                TimelineBuilders.Timeline.Builder()
+                    .addTimelineEntry(
+                        TimelineBuilders.TimelineEntry.Builder()
+                            .setLayout(
+                                LayoutElementBuilders.Layout.Builder()
+                                    .setRoot(layout).build()
+                            ).build()
+                    ).build()
+            ).build()
     }
 
     override fun onTileResourcesRequest(
@@ -53,61 +110,4 @@ class QuotaTileService : TileService() {
             result
         } catch (_: Exception) { WearStatus() }
     }
-
-    private fun buildTile(status: WearStatus): TileBuilders.Tile {
-        val green = 0xFF4CAF50.toInt()
-        val amber = 0xFFFFC107.toInt()
-        val quotaColor = if (status.quotaMet) green else amber
-
-        val remainingDays = (status.requiredOfficeDays - status.officeDays).coerceAtLeast(0)
-
-        val layout = LayoutElementBuilders.Column.Builder()
-            .setHorizontalAlignment(HORIZONTAL_ALIGN_CENTER)
-            .addContent(label("Büroquote", 0xFFAAAAAA.toInt()))
-            .addContent(spacer(2f))
-            .addContent(bigValue(status.officePctFormatted, quotaColor))
-            .addContent(spacer(2f))
-            .addContent(label("${status.officeDays}d von ${status.requiredOfficeDays}d", quotaColor))
-            .addContent(spacer(8f))
-            .addContent(
-                label(
-                    if (status.quotaMet) "Quote erfüllt" else "$remainingDays Tage fehlen",
-                    quotaColor
-                )
-            )
-            .build()
-
-        return TileBuilders.Tile.Builder()
-            .setResourcesVersion("1")
-            .setFreshnessIntervalMillis(300_000L)
-            .setTileTimeline(
-                TimelineBuilders.Timeline.Builder()
-                    .addTimelineEntry(
-                        TimelineBuilders.TimelineEntry.Builder()
-                            .setLayout(
-                                LayoutElementBuilders.Layout.Builder()
-                                    .setRoot(layout).build()
-                            ).build()
-                    ).build()
-            ).build()
-    }
-
-    private fun label(text: String, color: Int) =
-        LayoutElementBuilders.Text.Builder()
-            .setText(text)
-            .setFontStyle(
-                LayoutElementBuilders.FontStyle.Builder()
-                    .setSize(sp(11f)).setColor(argb(color)).build()
-            ).build()
-
-    private fun bigValue(text: String, color: Int) =
-        LayoutElementBuilders.Text.Builder()
-            .setText(text)
-            .setFontStyle(
-                LayoutElementBuilders.FontStyle.Builder()
-                    .setSize(sp(26f)).setWeight(FONT_WEIGHT_BOLD).setColor(argb(color)).build()
-            ).build()
-
-    private fun spacer(height: Float) =
-        LayoutElementBuilders.Spacer.Builder().setHeight(dp(height)).build()
 }

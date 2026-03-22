@@ -13,7 +13,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "1.1.6"
+        versionName = "1.2.0"
     }
 
     signingConfigs {
@@ -69,12 +69,14 @@ dependencies {
     // Wear Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.wear.compose.material)
+    implementation(libs.wear.compose.material3)
     implementation(libs.wear.compose.foundation)
 
     // Tiles
     implementation(libs.wear.tiles)
     implementation(libs.wear.tiles.material)
     implementation(libs.wear.protolayout)
+    implementation(libs.wear.protolayout.material3)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.play.services)
