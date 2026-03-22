@@ -43,7 +43,7 @@ class GeofenceNotificationHelper @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle("FleX")
             .setContentText("Automatisch eingestempelt um $time")
             .addAction(0, "Rückgängig", undoPending)
@@ -57,7 +57,7 @@ class GeofenceNotificationHelper @Inject constructor(
     fun showClockOutNotification() {
         val time = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle("FleX")
             .setContentText("Automatisch ausgestempelt um $time")
             .setAutoCancel(true)
