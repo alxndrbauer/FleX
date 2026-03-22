@@ -21,24 +21,26 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -69,6 +71,7 @@ import com.flex.ui.theme.HomeOfficeColor
 import com.flex.ui.theme.OfficeColor
 import com.flex.ui.theme.PublicHolidayColor
 import com.flex.ui.theme.SaturdayBonusColor
+import com.flex.ui.theme.SickDayColor
 import com.flex.ui.theme.SpecialVacationColor
 import com.flex.ui.theme.VacationColor
 import java.time.DayOfWeek
@@ -91,11 +94,10 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Month navigation
+        // Month navigation — title centered between chevrons
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { viewModel.previousMonth() }) {
@@ -103,13 +105,12 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                 }
                 Text(
                     text = state.yearMonth.format(
-                        DateTimeFormatter.ofPattern(
-                            "MMMM yyyy",
-                            Locale.GERMAN
-                        )
+                        DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN)
                     ),
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center
                 )
                 IconButton(onClick = { viewModel.nextMonth() }) {
                     Icon(Icons.Default.ChevronRight, contentDescription = "Weiter")
@@ -117,7 +118,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             }
         }
 
-        // Plan type selector
+        // Plan type selector with color indicators
         item {
             Text("Planungstyp", style = MaterialTheme.typography.labelLarge)
             FlowRow(
@@ -126,10 +127,26 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 PlanType.entries.forEach { type ->
+                    val chipColor = when (type) {
+                        PlanType.OFFICE -> OfficeColor
+                        PlanType.HOME_OFFICE -> HomeOfficeColor
+                        PlanType.VACATION -> VacationColor
+                        PlanType.SPECIAL_VACATION -> SpecialVacationColor
+                        PlanType.FLEX_DAY -> FlexDayColor
+                        PlanType.SATURDAY_BONUS -> SaturdayBonusColor
+                    }
                     FilterChip(
                         selected = state.selectedPlanType == type,
                         onClick = { viewModel.setSelectedPlanType(type) },
-                        label = { Text(type.label) }
+                        label = { Text(type.label) },
+                        leadingIcon = {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(chipColor)
+                            )
+                        }
                     )
                 }
             }
@@ -154,9 +171,13 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             val daysInMonth = state.yearMonth.lengthOfMonth()
             val workDayMap = state.workDays.associateBy { it.date }
 
+            val totalCells = startOffset + daysInMonth
+            val rowCount = (totalCells + 6) / 7
+            val gridHeight = (rowCount * 40 + (rowCount - 1) * 2).dp
+
             LazyVerticalGrid(
                 columns = GridCells.Fixed(7),
-                modifier = Modifier.height(280.dp),
+                modifier = Modifier.height(gridHeight),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
@@ -174,10 +195,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                         isHoliday -> PublicHolidayColor.copy(alpha = 0.3f)
                         workDay == null -> if (isWeekend) Color.LightGray.copy(alpha = 0.2f) else Color.Transparent
                         workDay.dayType == DayType.VACATION -> VacationColor.copy(alpha = 0.3f)
-                        workDay.dayType == DayType.SPECIAL_VACATION -> SpecialVacationColor.copy(
-                            alpha = 0.3f
-                        )
-
+                        workDay.dayType == DayType.SPECIAL_VACATION -> SpecialVacationColor.copy(alpha = 0.3f)
                         workDay.dayType == DayType.FLEX_DAY -> FlexDayColor.copy(alpha = 0.3f)
                         workDay.dayType == DayType.SATURDAY_BONUS -> SaturdayBonusColor.copy(alpha = 0.3f)
                         workDay.location == WorkLocation.OFFICE -> OfficeColor.copy(alpha = 0.3f)
@@ -235,19 +253,32 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             }
         }
 
-        // Quick actions
+        // Quick actions — adaptive to selected plan type + clear all
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalButton(onClick = { viewModel.planRemainingAs(PlanType.HOME_OFFICE) }) {
-                    Text("Rest als HO")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                FilledTonalButton(
+                    onClick = { viewModel.planRemainingAs(state.selectedPlanType) },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Rest als ${state.selectedPlanType.label}")
                 }
-                FilledTonalButton(onClick = { viewModel.planRemainingAs(PlanType.OFFICE) }) {
-                    Text("Rest als Büro")
+                FilledTonalButton(
+                    onClick = { viewModel.clearAllPlanned() },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                ) {
+                    Text("Alle löschen")
                 }
             }
         }
 
-        // Quota preview with office hours
+        // Quota preview — redesigned with two sections like MonthScreen prognosis card
         item {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -269,69 +300,84 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
 
                     val quota = state.quotaStatus
                     val oh = state.officeHours
-
-                    // Office hours: planned vs required
-                    Text(
-                        "Büro-Stunden", style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        "Geplant: ${oh.plannedOfficeHours}  |  Benötigt: ${oh.requiredOfficeHours} (${oh.plannedTotalHours} gesamt)",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    val hoursProgress = if (oh.requiredOfficeMinutes > 0)
-                        (oh.plannedOfficeMinutes.toFloat() / oh.requiredOfficeMinutes).coerceIn(
-                            0f,
-                            1.5f
-                        )
-                    else 0f
-                    LinearProgressIndicator(
-                        progress = { hoursProgress.coerceAtMost(1f) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp),
-                        color = ProgressIndicatorDefaults.linearColor,
-                        trackColor = ProgressIndicatorDefaults.linearTrackColor,
-                        strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Days + percentage
-                    Text(
-                        "Büro-Tage: ${quota.officeDays} | HO-Tage: ${quota.homeOfficeDays}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        "Büro-Anteil: ${"%.1f".format(quota.officePercent)}% (Ziel: ${state.settings.officeQuotaPercent}%)",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    LinearProgressIndicator(
-                        progress = {
-                            (quota.officePercent / state.settings.officeQuotaPercent.toDouble()).toFloat()
-                                .coerceIn(0f, 1f)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp),
-                        color = ProgressIndicatorDefaults.linearColor,
-                        trackColor = ProgressIndicatorDefaults.linearTrackColor,
-                        strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    val statusText = if (quota.quotaMet) "Quote erfüllt" else "Quote nicht erfüllt"
                     val statusColor =
                         if (quota.quotaMet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                    Text(statusText, color = statusColor, fontWeight = FontWeight.Bold)
+
+                    // Section A: Office hours + status badge
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                "${oh.plannedOfficeHours} Büro",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "von ${oh.requiredOfficeHours} gefordert",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = statusColor.copy(alpha = 0.12f)
+                        ) {
+                            Text(
+                                if (quota.quotaMet) "Quote erfüllt" else "nicht erfüllt",
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = statusColor
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    val hoursProgress = if (oh.requiredOfficeMinutes > 0)
+                        (oh.plannedOfficeMinutes.toFloat() / oh.requiredOfficeMinutes).coerceIn(0f, 1f)
+                    else 0f
+                    LinearProgressIndicator(
+                        progress = { hoursProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp),
+                        color = OfficeColor,
+                        trackColor = ProgressIndicatorDefaults.linearTrackColor,
+                        strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "${quota.officeDays} Büro · ${quota.homeOfficeDays} HO · ${"%.0f".format(quota.officePercent)}% (Ziel ${state.settings.officeQuotaPercent}%)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Section B: Total hours context
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "Gesamt: ${oh.plannedTotalHours}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "Büro-Anteil: ${"%.1f".format(quota.officePercent)}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
 
-        // Flextime preview
+        // Flextime preview — Soll-Wert aus Titel in Untertitel
         item {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -340,7 +386,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            "Gleitzeit-Prognose (Soll: ${state.flextimeBalance.formatTarget()})",
+                            "Gleitzeit-Prognose",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -349,6 +395,11 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                             text = TOOLTIP_FLEXTIME_PROGNOSIS
                         )
                     }
+                    Text(
+                        "Soll: ${state.flextimeBalance.formatTarget()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = state.flextimeBalance.formatDisplay(),
@@ -413,6 +464,8 @@ fun MonthSummaryCard(
     val monthName = summary.yearMonth.month.getDisplayName(TextStyle.FULL, Locale.GERMAN)
     val year = summary.yearMonth.year
     val oh = summary.officeHours
+    val statusColor =
+        if (summary.quotaMet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
 
     Card(
         onClick = onClick,
@@ -432,16 +485,18 @@ fun MonthSummaryCard(
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
-                // Quota status indicator
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (summary.quotaMet) Color(0xFF4CAF50)
-                            else Color(0xFFFF5722)
-                        )
-                )
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = statusColor.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        if (summary.quotaMet) "✓" else "✗",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = statusColor
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -465,7 +520,6 @@ fun MonthSummaryCard(
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            // Office hours detail
             Text(
                 "Büro-Std.: ${oh.plannedOfficeHours} / ${oh.requiredOfficeHours}",
                 style = MaterialTheme.typography.bodySmall,
@@ -480,8 +534,8 @@ fun MonthSummaryCard(
                 progress = { hoursProgress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp),
-                color = ProgressIndicatorDefaults.linearColor,
+                    .height(6.dp),
+                color = OfficeColor,
                 trackColor = ProgressIndicatorDefaults.linearTrackColor,
                 strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
             )

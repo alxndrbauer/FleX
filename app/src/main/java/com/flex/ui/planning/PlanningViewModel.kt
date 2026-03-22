@@ -390,6 +390,13 @@ class PlanningViewModel @Inject constructor(
         }
     }
 
+    fun clearAllPlanned() {
+        viewModelScope.launch {
+            val plannedDays = _uiState.value.workDays.filter { it.isPlanned }
+            plannedDays.forEach { workDayRepository.deleteWorkDay(it) }
+        }
+    }
+
     fun planRemainingAs(planType: PlanType) {
         viewModelScope.launch {
             val state = _uiState.value
