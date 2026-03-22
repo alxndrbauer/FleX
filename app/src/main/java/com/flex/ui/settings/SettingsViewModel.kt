@@ -24,6 +24,8 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
 
+enum class GeofenceStatus { UNKNOWN, REGISTERED, FAILED }
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -39,6 +41,9 @@ class SettingsViewModel @Inject constructor(
 
     private val _quotaRules = MutableStateFlow<List<QuotaRule>>(emptyList())
     val quotaRules: StateFlow<List<QuotaRule>> = _quotaRules.asStateFlow()
+
+    private val _geofenceStatus = MutableStateFlow(GeofenceStatus.UNKNOWN)
+    val geofenceStatus: StateFlow<GeofenceStatus> = _geofenceStatus.asStateFlow()
 
     val themeMode: StateFlow<ThemeMode> = themePreferences.themeModeFlow
     val appIconVariant: StateFlow<AppIconVariant> = appIconPreferences.variantFlow
@@ -117,9 +122,14 @@ class SettingsViewModel @Inject constructor(
                 )
             )
             if (enabled && lat != 0.0 && lon != 0.0) {
-                geofenceManager.registerGeofence(lat, lon, radius)
+                geofenceManager.registerGeofence(
+                    lat, lon, radius,
+                    onSuccess = { _geofenceStatus.value = GeofenceStatus.REGISTERED },
+                    onFailure = { _geofenceStatus.value = GeofenceStatus.FAILED }
+                )
             } else {
                 geofenceManager.removeGeofence()
+                _geofenceStatus.value = GeofenceStatus.UNKNOWN
             }
         }
     }

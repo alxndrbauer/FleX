@@ -27,7 +27,13 @@ class GeofenceManager @Inject constructor(
     }
 
     @SuppressLint("MissingPermission")
-    fun registerGeofence(lat: Double, lon: Double, radiusMeters: Float) {
+    fun registerGeofence(
+        lat: Double,
+        lon: Double,
+        radiusMeters: Float,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception) -> Unit = {}
+    ) {
         val geofence = Geofence.Builder()
             .setRequestId("office")
             .setCircularRegion(lat, lon, radiusMeters)
@@ -44,8 +50,14 @@ class GeofenceManager @Inject constructor(
 
         client.removeGeofences(listOf("office")).addOnCompleteListener {
             client.addGeofences(request, pendingIntent)
-                .addOnSuccessListener { Log.d("GeofenceManager", "Geofence registered: lat=$lat, lon=$lon, radius=$radiusMeters") }
-                .addOnFailureListener { e -> Log.e("GeofenceManager", "Failed to register geofence: ${e.message}") }
+                .addOnSuccessListener {
+                    Log.d("GeofenceManager", "Geofence registered: lat=$lat, lon=$lon, radius=$radiusMeters")
+                    onSuccess()
+                }
+                .addOnFailureListener { e ->
+                    Log.e("GeofenceManager", "Failed to register geofence: ${e.message}")
+                    onFailure(e)
+                }
         }
     }
 

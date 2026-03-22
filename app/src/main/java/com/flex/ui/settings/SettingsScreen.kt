@@ -81,6 +81,7 @@ fun SettingsScreen(
     val quotaRules by viewModel.quotaRules.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
     val appIconVariant by viewModel.appIconVariant.collectAsState()
+    val geofenceStatus by viewModel.geofenceStatus.collectAsState()
 
     var dailyHours by remember(settings) { mutableStateOf((settings.dailyWorkMinutes / 60).toString()) }
     var dailyMinutes by remember(settings) { mutableStateOf((settings.dailyWorkMinutes % 60).toString()) }
@@ -115,8 +116,8 @@ fun SettingsScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val backgroundLocationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { _ ->
-        geofenceEnabled = true
+    ) { granted ->
+        if (granted) geofenceEnabled = true
     }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -579,6 +580,19 @@ fun SettingsScreen(
                         enabled = geofenceLat.isNotBlank() && geofenceLon.isNotBlank()
                     ) {
                         Text("Bürostandort speichern")
+                    }
+                    when (geofenceStatus) {
+                        GeofenceStatus.REGISTERED -> Text(
+                            "Geofence aktiv",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        GeofenceStatus.FAILED -> Text(
+                            "Geofence-Registrierung fehlgeschlagen – prüfe Berechtigungen",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        GeofenceStatus.UNKNOWN -> {}
                     }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
