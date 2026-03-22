@@ -54,11 +54,13 @@ import com.flex.R
 import com.flex.domain.model.AppIconVariant
 import com.flex.domain.model.ThemeMode
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -112,6 +114,13 @@ fun SettingsScreen(
     var geofenceLon by remember(settings) { mutableStateOf(if (settings.geofenceLon == 0.0) "" else "%.6f".format(java.util.Locale.US, settings.geofenceLon)) }
     var geofenceRadius by remember(settings) { mutableStateOf(settings.geofenceRadiusMeters.toInt().toString()) }
     var geofenceError by remember { mutableStateOf(false) }
+    var geofenceSaved by remember { mutableStateOf(false) }
+    LaunchedEffect(geofenceSaved) {
+        if (geofenceSaved) {
+            delay(2000)
+            geofenceSaved = false
+        }
+    }
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val backgroundLocationLauncher = rememberLauncherForActivityResult(
@@ -575,6 +584,7 @@ fun SettingsScreen(
                             val lon = geofenceLon.toDoubleOrNull() ?: 0.0
                             val radius = geofenceRadius.toFloatOrNull() ?: 150f
                             viewModel.saveGeofenceSettings(true, lat, lon, radius, geofenceAddress)
+                            geofenceSaved = true
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = geofenceLat.isNotBlank() && geofenceLon.isNotBlank()
@@ -582,19 +592,28 @@ fun SettingsScreen(
                         Text("Bürostandort speichern")
                     }
                     Spacer(modifier = Modifier.height(4.dp))
-                    when (geofenceStatus) {
-                        GeofenceStatus.REGISTERED -> Text(
-                            "Geofence aktiv",
+                    if (geofenceSaved) {
+                        Text(
+                            "Gespeichert",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
-                        GeofenceStatus.FAILED -> Text(
-                            "Geofence-Registrierung fehlgeschlagen – prüfe Berechtigungen",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        GeofenceStatus.UNKNOWN -> {}
+                    } else {
+                        when (geofenceStatus) {
+                            GeofenceStatus.REGISTERED -> Text(
+                                "Geofence aktiv",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            GeofenceStatus.FAILED -> Text(
+                                "Geofence-Registrierung fehlgeschlagen – prüfe Berechtigungen",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            GeofenceStatus.UNKNOWN -> {}
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
