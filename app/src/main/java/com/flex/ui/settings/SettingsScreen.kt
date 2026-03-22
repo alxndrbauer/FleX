@@ -108,8 +108,8 @@ fun SettingsScreen(
 
     var geofenceEnabled by remember(settings) { mutableStateOf(settings.geofenceEnabled) }
     var geofenceAddress by remember(settings) { mutableStateOf(settings.geofenceAddress) }
-    var geofenceLat by remember(settings) { mutableStateOf(if (settings.geofenceLat == 0.0) "" else "%.6f".format(settings.geofenceLat)) }
-    var geofenceLon by remember(settings) { mutableStateOf(if (settings.geofenceLon == 0.0) "" else "%.6f".format(settings.geofenceLon)) }
+    var geofenceLat by remember(settings) { mutableStateOf(if (settings.geofenceLat == 0.0) "" else "%.6f".format(java.util.Locale.US, settings.geofenceLat)) }
+    var geofenceLon by remember(settings) { mutableStateOf(if (settings.geofenceLon == 0.0) "" else "%.6f".format(java.util.Locale.US, settings.geofenceLon)) }
     var geofenceRadius by remember(settings) { mutableStateOf(settings.geofenceRadiusMeters.toInt().toString()) }
     var geofenceError by remember { mutableStateOf(false) }
 
@@ -520,8 +520,8 @@ fun SettingsScreen(
                                 viewModel.geocodeAddress(
                                     geofenceAddress,
                                     onResult = { lat, lon ->
-                                        geofenceLat = "%.6f".format(lat)
-                                        geofenceLon = "%.6f".format(lon)
+                                        geofenceLat = "%.6f".format(java.util.Locale.US, lat)
+                                        geofenceLon = "%.6f".format(java.util.Locale.US, lon)
                                         geofenceError = false
                                     },
                                     onError = { geofenceError = true }
@@ -536,8 +536,8 @@ fun SettingsScreen(
                             onClick = {
                                 viewModel.fetchCurrentLocation(
                                     onResult = { lat, lon ->
-                                        geofenceLat = "%.6f".format(lat)
-                                        geofenceLon = "%.6f".format(lon)
+                                        geofenceLat = "%.6f".format(java.util.Locale.US, lat)
+                                        geofenceLon = "%.6f".format(java.util.Locale.US, lon)
                                         geofenceError = false
                                     },
                                     onError = { geofenceError = true }

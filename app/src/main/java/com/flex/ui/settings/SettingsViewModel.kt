@@ -3,6 +3,7 @@ package com.flex.ui.settings
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Geocoder
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.flex.data.local.AppIconPreferences
@@ -52,9 +53,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             getSettings().collect { s ->
                 _settings.value = s
+                Log.d("GeoDebug", "Settings loaded: enabled=${s.geofenceEnabled}, lat=${s.geofenceLat}, lon=${s.geofenceLon}, status=${_geofenceStatus.value}")
                 if (_geofenceStatus.value == GeofenceStatus.UNKNOWN &&
                     s.geofenceEnabled && s.geofenceLat != 0.0 && s.geofenceLon != 0.0
                 ) {
+                    Log.d("GeoDebug", "Init: setting status → REGISTERED")
                     _geofenceStatus.value = GeofenceStatus.REGISTERED
                 }
             }
@@ -118,6 +121,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun saveGeofenceSettings(enabled: Boolean, lat: Double, lon: Double, radius: Float, address: String = "") {
+        Log.d("GeoDebug", "saveGeofenceSettings called: enabled=$enabled, lat=$lat, lon=$lon")
         viewModelScope.launch {
             settingsRepository.saveSettings(
                 _settings.value.copy(
@@ -129,12 +133,17 @@ class SettingsViewModel @Inject constructor(
                 )
             )
             if (enabled && lat != 0.0 && lon != 0.0) {
+                Log.d("GeoDebug", "saveGeofenceSettings: setting status → REGISTERED")
                 _geofenceStatus.value = GeofenceStatus.REGISTERED
                 geofenceManager.registerGeofence(
                     lat, lon, radius,
-                    onFailure = { _geofenceStatus.value = GeofenceStatus.FAILED }
+                    onFailure = { e ->
+                        Log.e("GeoDebug", "registerGeofence FAILED: ${e.message}")
+                        _geofenceStatus.value = GeofenceStatus.FAILED
+                    }
                 )
             } else {
+                Log.d("GeoDebug", "saveGeofenceSettings: else branch (lat=$lat, lon=$lon) → UNKNOWN")
                 geofenceManager.removeGeofence()
                 _geofenceStatus.value = GeofenceStatus.UNKNOWN
             }
