@@ -129,9 +129,9 @@ class SettingsViewModel @Inject constructor(
                 )
             )
             if (enabled && lat != 0.0 && lon != 0.0) {
+                _geofenceStatus.value = GeofenceStatus.REGISTERED
                 geofenceManager.registerGeofence(
                     lat, lon, radius,
-                    onSuccess = { _geofenceStatus.value = GeofenceStatus.REGISTERED },
                     onFailure = { _geofenceStatus.value = GeofenceStatus.FAILED }
                 )
             } else {

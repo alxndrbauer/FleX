@@ -581,15 +581,17 @@ fun SettingsScreen(
                     ) {
                         Text("Bürostandort speichern")
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
                     when (geofenceStatus) {
                         GeofenceStatus.REGISTERED -> Text(
                             "Geofence aktiv",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
                         )
                         GeofenceStatus.FAILED -> Text(
                             "Geofence-Registrierung fehlgeschlagen – prüfe Berechtigungen",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error
                         )
                         GeofenceStatus.UNKNOWN -> {}
