@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -55,7 +57,8 @@ fun AnalyticsScreen(
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Gleitzeit-Verlauf", style = MaterialTheme.typography.titleSmall)
+                        Text("Gleitzeit-Verlauf", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
                         FlextimeLineChart(data = data.flextimeSeries)
                     }
                 }
@@ -64,7 +67,8 @@ fun AnalyticsScreen(
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Standort-Verteilung", style = MaterialTheme.typography.titleSmall)
+                        Text("Standort-Verteilung", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
                         LocationDistributionChart(distribution = data.locationDistribution)
                     }
                 }
@@ -73,7 +77,8 @@ fun AnalyticsScreen(
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Wöchentliche Arbeitszeit", style = MaterialTheme.typography.titleSmall)
+                        Text("Wöchentliche Arbeitszeit", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
                         WeeklyWorkHoursChart(data = data.weeklyHours)
                     }
                 }
@@ -82,7 +87,8 @@ fun AnalyticsScreen(
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Monatliche Arbeitszeit", style = MaterialTheme.typography.titleSmall)
+                        Text("Monatliche Arbeitszeit", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
                         MonthlyWorkHoursChart(data = data.monthlyHours)
                     }
                 }
@@ -91,7 +97,8 @@ fun AnalyticsScreen(
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Überstunden", style = MaterialTheme.typography.titleSmall)
+                        Text("Überstunden", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
                         OvertimeLineChart(data = data.overtimeSeries)
                     }
                 }
