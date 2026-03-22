@@ -253,27 +253,35 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             }
         }
 
-        // Quick actions — adaptive to selected plan type + clear all
+        // Quick actions
         item {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                FilledTonalButton(
-                    onClick = { viewModel.planRemainingAs(state.selectedPlanType) },
-                    modifier = Modifier.weight(1f)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Rest als ${state.selectedPlanType.label}")
+                    FilledTonalButton(
+                        onClick = { viewModel.planRemainingAs(PlanType.HOME_OFFICE) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Rest als HO")
+                    }
+                    FilledTonalButton(
+                        onClick = { viewModel.planRemainingAs(PlanType.OFFICE) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Rest als Büro")
+                    }
                 }
                 FilledTonalButton(
                     onClick = { viewModel.clearAllPlanned() },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
                     )
                 ) {
-                    Text("Alle löschen")
+                    Text("Alle geplanten Tage löschen")
                 }
             }
         }
