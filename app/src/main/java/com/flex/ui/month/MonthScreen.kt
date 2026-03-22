@@ -11,14 +11,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -40,13 +43,16 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -110,6 +116,7 @@ class MutableBlockState(
     var location by mutableStateOf(location)
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
@@ -139,29 +146,26 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Month navigation header
+        // Month navigation header — export action on the left, navigation symmetric on the right
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            IconButton(onClick = { viewModel.onExportClick() }) {
+                Icon(Icons.Default.FileDownload, contentDescription = "Exportieren")
+            }
             IconButton(onClick = { viewModel.previousMonth() }) {
                 Icon(Icons.Default.ChevronLeft, contentDescription = "Vorheriger Monat")
             }
             Text(
                 text = state.yearMonth.format(
-                    DateTimeFormatter.ofPattern(
-                        "MMMM yyyy",
-                        Locale.GERMAN
-                    )
+                    DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN)
                 ),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center
             )
-            IconButton(onClick = { viewModel.onExportClick() }) {
-                Icon(Icons.Default.FileDownload, contentDescription = "Exportieren")
-            }
             IconButton(onClick = { viewModel.nextMonth() }) {
                 Icon(Icons.Default.ChevronRight, contentDescription = "Nächster Monat")
             }
@@ -169,7 +173,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Prognosis card
+        // Prognosis card — two visual sections
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(12.dp)) {
                 Row(
@@ -183,22 +187,52 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                     )
                     InfoTooltip(title = TOOLTIP_PROGNOSIS_TITLE, text = TOOLTIP_PROGNOSIS)
                 }
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 val q = state.prognosisQuota
 
-                // Office hours
+                // Section A: Office quota
                 val officeH = state.officeMinutes / 60
                 val officeM = state.officeMinutes % 60
                 val reqH = state.requiredOfficeMinutes / 60
                 val reqM = state.requiredOfficeMinutes % 60
-                val totalH = state.totalWorkMinutes / 60
-                val totalM = state.totalWorkMinutes % 60
-                Text(
-                    "Büro-Stunden: ${officeH}h ${officeM}min / ${reqH}h ${reqM}min (${totalH}h ${totalM}min gesamt)",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold
-                )
+
+                val statusColor =
+                    if (q.quotaMet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            "${officeH}h ${officeM}m Büro",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "von ${reqH}h ${reqM}m gefordert",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = statusColor.copy(alpha = 0.12f)
+                    ) {
+                        Text(
+                            if (q.quotaMet) "Quote erfüllt" else "nicht erfüllt",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = statusColor
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
                 val hoursProgress = if (state.requiredOfficeMinutes > 0)
                     (state.officeMinutes.toFloat() / state.requiredOfficeMinutes).coerceIn(0f, 1f)
                 else 0f
@@ -206,49 +240,20 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                     progress = { hoursProgress },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(8.dp),
-                    color = ProgressIndicatorDefaults.linearColor,
+                        .height(6.dp),
+                    color = OfficeColor,
                     trackColor = ProgressIndicatorDefaults.linearTrackColor,
                     strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-
-                val pctProg = (q.officePercent / state.effectiveQuotaPercent.toDouble()).toFloat()
-                    .coerceIn(0f, 1f)
-                val dayProg = q.officeDays.toFloat() / state.effectiveQuotaMinDays.toFloat()
-
                 Text(
-                    "${"%.1f".format(q.officePercent)}% Büro (Ziel: ${state.effectiveQuotaPercent}%) | ${q.officeDays}/${state.effectiveQuotaMinDays} Tage",
-                    style = MaterialTheme.typography.bodySmall
+                    "${q.officeDays}/${state.effectiveQuotaMinDays} Tage · ${"%.0f".format(q.officePercent)}% (Ziel ${state.effectiveQuotaPercent}%)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                LinearProgressIndicator(
-                    progress = { pctProg },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = ProgressIndicatorDefaults.linearColor,
-                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
-                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                LinearProgressIndicator(
-                    progress = { dayProg.coerceIn(0f, 1f) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = ProgressIndicatorDefaults.linearColor,
-                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
-                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
-                )
-                Spacer(modifier = Modifier.height(2.dp))
 
-                val statusText = if (q.quotaMet) "Quote erfüllt" else "Quote nicht erfüllt"
-                val statusColor =
-                    if (q.quotaMet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                Text(
-                    statusText, color = statusColor, fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodySmall
-                )
+                // Section B: Hours balance
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 val workedHours = state.workedMinutesMonth / 60
                 val workedMinutes = state.workedMinutesMonth % 60
@@ -257,11 +262,52 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                 val sign = if (state.differenceMinutesMonth >= 0) "+" else ""
                 val diffHours = kotlin.math.abs(state.differenceMinutesMonth) / 60
                 val diffMinutes = kotlin.math.abs(state.differenceMinutesMonth) % 60
-                Text(
-                    "Erbrachte Stunden: ${workedHours}h ${workedMinutes}min (Soll: ${targetHours}h ${targetMinutes}min) | Differenz: $sign${diffHours}h ${diffMinutes}min",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                val diffColor =
+                    if (state.differenceMinutesMonth >= 0) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.error
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "Geleistet",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "${workedHours}h ${workedMinutes}m",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "Soll",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "${targetHours}h ${targetMinutes}m",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "Differenz",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "$sign${diffHours}h ${diffMinutes}m",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = diffColor
+                        )
+                    }
+                }
             }
         }
 
@@ -297,15 +343,19 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Calendar grid
+        // Calendar grid — dynamic height to handle 4-, 5-, and 6-week months
         val firstDay = state.yearMonth.atDay(1)
         val startOffset = (firstDay.dayOfWeek.value - 1)
         val daysInMonth = state.yearMonth.lengthOfMonth()
         val workDayMap = state.workDays.associateBy { it.date }
 
+        val totalCells = startOffset + daysInMonth
+        val rowCount = (totalCells + 6) / 7
+        val gridHeight = (rowCount * 40 + (rowCount - 1) * 2).dp
+
         LazyVerticalGrid(
             columns = GridCells.Fixed(7),
-            modifier = Modifier.height(260.dp),
+            modifier = Modifier.height(gridHeight),
             verticalArrangement = Arrangement.spacedBy(2.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
@@ -326,14 +376,16 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Legend
-        Row(
+        // Legend — FlowRow so it wraps on narrow screens
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             LegendItem(color = OfficeColor, label = "Büro")
             LegendItem(color = HomeOfficeColor, label = "HO")
             LegendItem(color = VacationColor, label = "Urlaub")
+            LegendItem(color = SpecialVacationColor, label = "Sonderurlaub")
             LegendItem(color = FlexDayColor, label = "Gleittag")
             LegendItem(color = SickDayColor, label = "Krank")
             LegendItem(color = PublicHolidayColor, label = "Feiertag")
@@ -341,12 +393,23 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Entries list
-        Text("Einträge", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        // Entries header with count
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Einträge", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                "${state.workDays.size} Einträge",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         Spacer(modifier = Modifier.height(4.dp))
 
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(state.workDays.sortedBy { it.date }) { workDay ->
                 WorkDayListItem(
@@ -364,26 +427,34 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
         AlertDialog(
             onDismissRequest = { viewModel.onExportDismiss() },
             title = { Text("Monat exportieren") },
-            text = { Text("Format wählen:") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.onExportDismiss()
-                    csvLauncher.launch("flex_$yearMonthStr.csv")
-                }) {
-                    Text("CSV")
-                }
-            },
-            dismissButton = {
-                Row {
-                    TextButton(onClick = {
-                        viewModel.onExportDismiss()
-                        pdfLauncher.launch("flex_$yearMonthStr.pdf")
-                    }) {
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Format wählen:")
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.onExportDismiss()
+                            csvLauncher.launch("flex_$yearMonthStr.csv")
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("CSV")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.onExportDismiss()
+                            pdfLauncher.launch("flex_$yearMonthStr.pdf")
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text("PDF")
                     }
-                    TextButton(onClick = { viewModel.onExportDismiss() }) {
-                        Text("Abbrechen")
-                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { viewModel.onExportDismiss() }) {
+                    Text("Abbrechen")
                 }
             }
         )
@@ -476,8 +547,9 @@ fun LegendItem(color: Color, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .size(12.dp)
-                .clip(CircleShape)
+                .width(12.dp)
+                .height(8.dp)
+                .clip(RoundedCornerShape(3.dp))
                 .background(color)
         )
         Text(
@@ -493,74 +565,130 @@ fun WorkDayListItem(workDay: WorkDay, netMinutes: Long, onClick: () -> Unit) {
     val isWorkType = workDay.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
     val workBlocks = workDay.timeBlocks.filter { it.endTime != null }
 
+    // Compute office/HO split once for both accentColor and typeLabel
+    var officeMin = 0L
+    var hoMin = 0L
+    if (isWorkType && workBlocks.isNotEmpty()) {
+        for (b in workBlocks) {
+            val min = java.time.Duration.between(b.startTime, b.endTime!!).toMinutes()
+            if (b.location == WorkLocation.OFFICE) officeMin += min else hoMin += min
+        }
+    }
+
+    val accentColor = when (workDay.dayType) {
+        DayType.VACATION -> VacationColor
+        DayType.SPECIAL_VACATION -> SpecialVacationColor
+        DayType.FLEX_DAY -> FlexDayColor
+        DayType.SICK_DAY -> SickDayColor
+        else -> when {
+            workBlocks.isEmpty() -> if (workDay.location == WorkLocation.OFFICE) OfficeColor else HomeOfficeColor
+            officeMin >= hoMin -> OfficeColor
+            else -> HomeOfficeColor
+        }
+    }
+
+    val typeLabel = when (workDay.dayType) {
+        DayType.WORK, DayType.SATURDAY_BONUS -> {
+            if (workBlocks.isEmpty()) {
+                if (workDay.location == WorkLocation.OFFICE) "Büro" else "HO"
+            } else {
+                when {
+                    officeMin > 0 && hoMin > 0 -> "Gemischt"
+                    officeMin > 0 -> "Büro"
+                    else -> "HO"
+                }
+            }
+        }
+        DayType.VACATION -> "Urlaub"
+        DayType.SPECIAL_VACATION -> "Sonderurlaub"
+        DayType.FLEX_DAY -> "Gleittag"
+        DayType.SICK_DAY -> "Krank"
+        DayType.OVERTIME_DAY -> "Überstundentag"
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+            // Left accent strip indicating day type
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(accentColor)
+            )
+            Column(
+                modifier = Modifier
+                    .padding(12.dp)
+                    .weight(1f)
             ) {
-                val dayName = workDay.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.GERMAN)
-                val dateStr = workDay.date.format(DateTimeFormatter.ofPattern("d. MMM"))
-                Text("$dayName, $dateStr", style = MaterialTheme.typography.bodyMedium)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val dayName = workDay.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.GERMAN)
+                    val dateStr = workDay.date.format(DateTimeFormatter.ofPattern("d. MMM"))
+                    Text("$dayName, $dateStr", style = MaterialTheme.typography.bodyMedium)
 
-                val typeLabel = when (workDay.dayType) {
-                    DayType.WORK, DayType.SATURDAY_BONUS -> {
-                        val blocks = workDay.timeBlocks.filter { it.endTime != null }
-                        if (blocks.isEmpty()) {
-                            if (workDay.location == WorkLocation.OFFICE) "Büro" else "HO"
-                        } else {
-                            var officeMin = 0L; var hoMin = 0L
-                            for (b in blocks) {
-                                val min = java.time.Duration.between(b.startTime, b.endTime!!).toMinutes()
-                                if (b.location == WorkLocation.OFFICE) officeMin += min else hoMin += min
-                            }
-                            when {
-                                officeMin > 0 && hoMin > 0 -> "Gemischt"
-                                officeMin > 0 -> "Büro"
-                                else -> "HO"
-                            }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (netMinutes > 0) {
+                            Text(
+                                "${netMinutes / 60}h ${netMinutes % 60}min",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = accentColor.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                typeLabel,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = accentColor
+                            )
                         }
                     }
-                    DayType.VACATION -> "Urlaub"
-                    DayType.SPECIAL_VACATION -> "Sonderurlaub"
-                    DayType.FLEX_DAY -> "Gleittag"
-                    DayType.SICK_DAY -> "Krank"
-                    DayType.OVERTIME_DAY -> "Überstundentag"
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (netMinutes > 0) {
-                        Text(
-                            "${netMinutes / 60}h ${netMinutes % 60}min",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                // Show individual time blocks for work days
+                if (isWorkType && workBlocks.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    workBlocks.forEach { block ->
+                        val startStr = block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
+                        val endStr = block.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))
+                        val locationLabel = if (block.location == WorkLocation.OFFICE) "Büro" else "HO"
+                        val locationColor =
+                            if (block.location == WorkLocation.OFFICE) OfficeColor else HomeOfficeColor
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                "$startStr – $endStr",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(3.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                            )
+                            Text(
+                                locationLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = locationColor.copy(alpha = 0.8f)
+                            )
+                        }
                     }
-                    Text(
-                        typeLabel,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
-            // Show individual time blocks for work days
-            if (isWorkType && workBlocks.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                workBlocks.forEach { block ->
-                    val startStr = block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
-                    val endStr = block.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))
-                    val locationLabel = if (block.location == WorkLocation.OFFICE) "Büro" else "HO"
-                    Text(
-                        "$startStr – $endStr · $locationLabel",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
         }
@@ -600,7 +728,26 @@ fun EditDayDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(workDay.date.format(DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(workDay.date.format(DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)))
+                if (onDelete != null) {
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Tag löschen",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
         },
         text = {
             Column(
@@ -653,7 +800,9 @@ fun EditDayDialog(
 
                     // Per-block editors
                     blocks.forEachIndexed { index, block ->
-                        Spacer(modifier = Modifier.height(4.dp))
+                        if (index > 0) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        }
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -662,7 +811,8 @@ fun EditDayDialog(
                         ) {
                             Text(
                                 "Block ${index + 1}",
-                                style = MaterialTheme.typography.labelMedium
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             if (blocks.size > 1) {
                                 IconButton(
@@ -802,15 +952,8 @@ fun EditDayDialog(
             }
         },
         dismissButton = {
-            Row {
-                if (onDelete != null) {
-                    TextButton(onClick = onDelete) {
-                        Text("Löschen", color = MaterialTheme.colorScheme.error)
-                    }
-                }
-                TextButton(onClick = onDismiss) {
-                    Text("Abbrechen")
-                }
+            TextButton(onClick = onDismiss) {
+                Text("Abbrechen")
             }
         }
     )
