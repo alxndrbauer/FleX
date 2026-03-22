@@ -6,6 +6,11 @@
       "sourceType": "github",
       "computedHash": "08562cabf7a3afb5c10800334a4b4bbb99cdc88773f6bb63d55ac924c3160489"
     },
+    "conventional-commit": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "computedHash": "f29c9486cede6c7b2df0cfb0a2e4aa67446552b991bcf17d1b309e903171f03d"
+    },
     "mobile-android-design": {
       "source": "wshobson/agents",
       "sourceType": "github",
