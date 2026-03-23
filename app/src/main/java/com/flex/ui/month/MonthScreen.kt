@@ -171,7 +171,24 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        var selectedTab by remember { mutableIntStateOf(0) }
+
+        PrimaryTabRow(selectedTabIndex = selectedTab) {
+            Tab(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                text = { Text("Kalender") }
+            )
+            Tab(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                text = { Text("Einträge") }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (selectedTab == 0) {
 
         // Prognosis card — two visual sections
         Card(modifier = Modifier.fillMaxWidth()) {
@@ -391,34 +408,36 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             LegendItem(color = PublicHolidayColor, label = "Feiertag")
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        } // end selectedTab == 0
 
-        // Entries header with count
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Einträge", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(
-                "${state.workDays.size} Einträge",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(state.workDays.sortedBy { it.date }) { workDay ->
-                WorkDayListItem(
-                    workDay = workDay,
-                    netMinutes = state.netMinutesByDate[workDay.date] ?: 0,
-                    onClick = { viewModel.selectDay(workDay.date) }
+        if (selectedTab == 1) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Einträge", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "${state.workDays.size} Einträge",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
+            Spacer(modifier = Modifier.height(4.dp))
+
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(state.workDays.sortedBy { it.date }) { workDay ->
+                    WorkDayListItem(
+                        workDay = workDay,
+                        netMinutes = state.netMinutesByDate[workDay.date] ?: 0,
+                        onClick = { viewModel.selectDay(workDay.date) }
+                    )
+                }
+            }
+        } // end selectedTab == 1
     }
 
     // Export format dialog
