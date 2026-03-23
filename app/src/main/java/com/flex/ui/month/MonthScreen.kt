@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -62,6 +64,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,6 +93,7 @@ import com.flex.ui.theme.SaturdayBonusColor
 import com.flex.ui.theme.SickDayColor
 import com.flex.ui.theme.SpecialVacationColor
 import com.flex.ui.theme.VacationColor
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -169,29 +173,35 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             }
         }
 
-        var selectedTab by remember { mutableIntStateOf(0) }
+        val pagerState = rememberPagerState { 2 }
+        val scope = rememberCoroutineScope()
 
-        PrimaryTabRow(selectedTabIndex = selectedTab) {
+        PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
             Tab(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0 },
+                selected = pagerState.currentPage == 0,
+                onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
                 text = { Text("Kalender") }
             )
             Tab(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1 },
+                selected = pagerState.currentPage == 1,
+                onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
                 text = { Text("Einträge") }
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.weight(1f)
+        ) { page ->
 
-        if (selectedTab == 0) {
+            if (page == 0) {
         Column(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+            Spacer(modifier = Modifier.height(8.dp))
 
         // Prognosis card — two visual sections
         Card(modifier = Modifier.fillMaxWidth()) {
@@ -419,9 +429,11 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
         }
 
         } // end scrollable Column
-        } // end selectedTab == 0
+            } // end page == 0
 
-        if (selectedTab == 1) {
+            if (page == 1) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -452,7 +464,10 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                     )
                 }
             }
-        } // end selectedTab == 1
+                } // end Column for page 1
+            } // end page == 1
+
+        } // end HorizontalPager
     }
 
     // Export format dialog
@@ -714,7 +729,11 @@ fun WorkDayListItem(workDay: WorkDay, netMinutes: Long, onClick: () -> Unit) {
                                 modifier = Modifier
                                     .size(3.dp)
                                     .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                                    .background(
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                            alpha = 0.4f
+                                        )
+                                    )
                             )
                             Text(
                                 locationLabel,
