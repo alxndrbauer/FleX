@@ -179,7 +179,8 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                 columns = GridCells.Fixed(7),
                 modifier = Modifier.height(gridHeight),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                userScrollEnabled = false
             ) {
                 items(startOffset) {
                     Box(modifier = Modifier.aspectRatio(1f))
