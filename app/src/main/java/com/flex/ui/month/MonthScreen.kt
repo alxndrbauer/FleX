@@ -23,8 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -364,7 +362,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Calendar grid — dynamic height to handle 4-, 5-, and 6-week months
+        // Calendar grid — non-lazy grid (safe inside verticalScroll), max 42 cells
         val firstDay = state.yearMonth.atDay(1)
         val startOffset = (firstDay.dayOfWeek.value - 1)
         val daysInMonth = state.yearMonth.lengthOfMonth()
@@ -372,27 +370,33 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
 
         val totalCells = startOffset + daysInMonth
         val rowCount = (totalCells + 6) / 7
-        val gridHeight = (rowCount * 40 + (rowCount - 1) * 2).dp
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(7),
-            modifier = Modifier.height(gridHeight),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            userScrollEnabled = false
-        ) {
-            items(startOffset) {
-                Box(modifier = Modifier.aspectRatio(1f))
+        val allCells = List(rowCount * 7) { index ->
+            when {
+                index < startOffset -> null
+                index < startOffset + daysInMonth -> state.yearMonth.atDay(index - startOffset + 1)
+                else -> null
             }
-            items(daysInMonth) { index ->
-                val date = state.yearMonth.atDay(index + 1)
-                val workDay = workDayMap[date]
-                DayCell(
-                    date = date,
-                    workDay = workDay,
-                    isToday = date == LocalDate.now(),
-                    onClick = { viewModel.selectDay(date) }
-                )
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            allCells.chunked(7).forEach { week ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    week.forEach { date ->
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (date != null) {
+                                DayCell(
+                                    date = date,
+                                    workDay = workDayMap[date],
+                                    isToday = date == LocalDate.now(),
+                                    onClick = { viewModel.selectDay(date) }
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
