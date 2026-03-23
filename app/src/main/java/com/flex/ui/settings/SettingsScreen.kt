@@ -144,16 +144,10 @@ fun SettingsScreen(
         }
     }
 
-    androidx.compose.material3.Scaffold { innerPadding ->
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(
-                top = innerPadding.calculateTopPadding() + 16.dp,
-                bottom = innerPadding.calculateBottomPadding() + 16.dp,
-                start = 16.dp,
-                end = 16.dp
-            )
+            .padding(16.dp)
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -772,7 +766,6 @@ fun SettingsScreen(
             }
         )
     }
-    } // end Scaffold
 }
 
 @Composable
