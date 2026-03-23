@@ -146,6 +146,22 @@ Mit jeder Änderung soll die Version der App gemäß semver angepasst werden.
 - Hilt: Alle Custom Classes müssen `@Inject` oder im `AppModule`
 - Compose: `@Composable` und State-Management prüfen
 
+## Skills
+
+Vor jeder passenden Aufgabe den entsprechenden Skill aufrufen – **nicht warten bis der User fragt**:
+
+| Skill | Wann aufrufen |
+|---|---|
+| `mobile-android-design` | Vor jeder Compose UI Aufgabe – Layout, Komponenten, Material 3 Design |
+| `android-kotlin` | Coroutines, Hilt, MockK, Compose State, Room – alles Kotlin/Android-spezifisch |
+| `context7-mcp` | Immer wenn eine Library/Framework-API genutzt wird (Room, Hilt, Compose, etc.) |
+| `conventional-commit` | Beim Erstellen von Commit Messages |
+| `simplify` | Nach größeren Implementierungen – Code auf Qualität und Redundanz prüfen |
+| `claude-api` | Wenn Anthropic SDK / Claude API verwendet wird |
+| `update-config` | Für Änderungen an Claude Code Settings, Hooks, Permissions |
+| `keybindings-help` | Für Keyboard-Shortcut-Anpassungen |
+| `loop` | Wenn eine Aufgabe wiederkehrend auf Intervall laufen soll |
+
 ## Kontakt & Fragen
 
 Bei Fragen zur Architektur oder unklaren Anforderungen → **Plan schreiben** vor Implementierung!

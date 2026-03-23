@@ -173,7 +173,10 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
 
         var selectedTab by remember { mutableIntStateOf(0) }
 
-        PrimaryTabRow(selectedTabIndex = selectedTab) {
+        PrimaryTabRow(
+            selectedTabIndex = selectedTab,
+            modifier = Modifier.padding(horizontal = (-16).dp)
+        ) {
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
@@ -189,6 +192,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
         Spacer(modifier = Modifier.height(8.dp))
 
         if (selectedTab == 0) {
+        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
 
         // Prognosis card — two visual sections
         Card(modifier = Modifier.fillMaxWidth()) {
@@ -374,7 +378,8 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             columns = GridCells.Fixed(7),
             modifier = Modifier.height(gridHeight),
             verticalArrangement = Arrangement.spacedBy(2.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            userScrollEnabled = false
         ) {
             items(startOffset) {
                 Box(modifier = Modifier.aspectRatio(1f))
@@ -408,6 +413,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             LegendItem(color = PublicHolidayColor, label = "Feiertag")
         }
 
+        } // end scrollable Column
         } // end selectedTab == 0
 
         if (selectedTab == 1) {
