@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -173,80 +171,77 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
 
             val totalCells = startOffset + daysInMonth
             val rowCount = (totalCells + 6) / 7
-            val gridHeight = (rowCount * 40 + (rowCount - 1) * 2).dp
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(7),
-                modifier = Modifier.height(gridHeight),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                userScrollEnabled = false
-            ) {
-                items(startOffset) {
-                    Box(modifier = Modifier.aspectRatio(1f))
+            val allCells = List(rowCount * 7) { index ->
+                when {
+                    index < startOffset -> null
+                    index < startOffset + daysInMonth -> state.yearMonth.atDay(index - startOffset + 1)
+                    else -> null
                 }
-                items(daysInMonth) { index ->
-                    val date = state.yearMonth.atDay(index + 1)
-                    val workDay = workDayMap[date]
-                    val isWeekend =
-                        date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
-                    val isHoliday = PublicHolidays.isHoliday(date)
+            }
 
-                    val bgColor = when {
-                        isHoliday -> PublicHolidayColor.copy(alpha = 0.3f)
-                        workDay == null -> if (isWeekend) Color.LightGray.copy(alpha = 0.2f) else Color.Transparent
-                        workDay.dayType == DayType.VACATION -> VacationColor.copy(alpha = 0.3f)
-                        workDay.dayType == DayType.SPECIAL_VACATION -> SpecialVacationColor.copy(alpha = 0.3f)
-                        workDay.dayType == DayType.FLEX_DAY -> FlexDayColor.copy(alpha = 0.3f)
-                        workDay.dayType == DayType.SATURDAY_BONUS -> SaturdayBonusColor.copy(alpha = 0.3f)
-                        workDay.location == WorkLocation.OFFICE -> OfficeColor.copy(alpha = 0.3f)
-                        workDay.location == WorkLocation.HOME_OFFICE -> HomeOfficeColor.copy(alpha = 0.3f)
-                        else -> Color.Transparent
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(bgColor)
-                            .then(
-                                if (workDay?.isPlanned == true)
-                                    Modifier.border(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outline,
-                                        RoundedCornerShape(4.dp)
-                                    )
-                                else Modifier
-                            )
-                            .combinedClickable(
-                                enabled = !isHoliday,
-                                onClick = {
-                                    if (workDay?.isPlanned == true) {
-                                        viewModel.removePlan(date)
-                                    } else {
-                                        viewModel.planDay(date)
-                                    }
-                                },
-                                onLongClick = {
-                                    viewModel.openDayEditor(date)
-                                }
-                            ),
-                        contentAlignment = Alignment.Center
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                allCells.chunked(7).forEach { week ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = (index + 1).toString(),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (isHoliday) PublicHolidayColor
-                                else if (isWeekend) MaterialTheme.colorScheme.onSurfaceVariant
-                                else MaterialTheme.colorScheme.onSurface
-                            )
-                            if ((workDay?.timeBlocks?.size ?: 0) > 1) {
-                                Text(
-                                    text = "${workDay!!.timeBlocks.size}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                        week.forEach { date ->
+                            Box(modifier = Modifier.weight(1f)) {
+                                if (date != null) {
+                                    val workDay = workDayMap[date]
+                                    val isWeekend = date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
+                                    val isHoliday = PublicHolidays.isHoliday(date)
+
+                                    val bgColor = when {
+                                        isHoliday -> PublicHolidayColor.copy(alpha = 0.3f)
+                                        workDay == null -> if (isWeekend) Color.LightGray.copy(alpha = 0.2f) else Color.Transparent
+                                        workDay.dayType == DayType.VACATION -> VacationColor.copy(alpha = 0.3f)
+                                        workDay.dayType == DayType.SPECIAL_VACATION -> SpecialVacationColor.copy(alpha = 0.3f)
+                                        workDay.dayType == DayType.FLEX_DAY -> FlexDayColor.copy(alpha = 0.3f)
+                                        workDay.dayType == DayType.SATURDAY_BONUS -> SaturdayBonusColor.copy(alpha = 0.3f)
+                                        workDay.location == WorkLocation.OFFICE -> OfficeColor.copy(alpha = 0.3f)
+                                        workDay.location == WorkLocation.HOME_OFFICE -> HomeOfficeColor.copy(alpha = 0.3f)
+                                        else -> Color.Transparent
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .aspectRatio(1f)
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(bgColor)
+                                            .then(
+                                                if (workDay?.isPlanned == true)
+                                                    Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
+                                                else Modifier
+                                            )
+                                            .combinedClickable(
+                                                enabled = !isHoliday,
+                                                onClick = {
+                                                    if (workDay?.isPlanned == true) viewModel.removePlan(date)
+                                                    else viewModel.planDay(date)
+                                                },
+                                                onLongClick = { viewModel.openDayEditor(date) }
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(
+                                                text = date.dayOfMonth.toString(),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = if (isHoliday) PublicHolidayColor
+                                                else if (isWeekend) MaterialTheme.colorScheme.onSurfaceVariant
+                                                else MaterialTheme.colorScheme.onSurface
+                                            )
+                                            if ((workDay?.timeBlocks?.size ?: 0) > 1) {
+                                                Text(
+                                                    text = "${workDay!!.timeBlocks.size}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
