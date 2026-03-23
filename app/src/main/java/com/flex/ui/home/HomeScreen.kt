@@ -634,6 +634,17 @@ private fun HeroCard(
                                 MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.error
                         )
+                        if (state.liveFlextimeDelta > 0L) {
+                            val liveTotal = state.flextimeBalance.totalMinutes + state.liveFlextimeDelta
+                            val sign = if (liveTotal >= 0) "+" else "-"
+                            val h = kotlin.math.abs(liveTotal) / 60
+                            val m = kotlin.math.abs(liveTotal) % 60
+                            Text(
+                                text = "(${sign}${h}h ${m}min)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -653,6 +664,17 @@ private fun HeroCard(
                                 MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.error
                         )
+                        if (state.liveFlextimeDelta > 0L) {
+                            val liveMonthly = monthlyEarned + state.liveFlextimeDelta
+                            val liveSign = if (liveMonthly >= 0) "+" else "-"
+                            val liveH = kotlin.math.abs(liveMonthly) / 60
+                            val liveM = kotlin.math.abs(liveMonthly) % 60
+                            Text(
+                                text = "(${liveSign}${liveH}h ${liveM}min)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 InfoTooltip(title = TOOLTIP_FLEXTIME_TITLE, text = TOOLTIP_FLEXTIME)

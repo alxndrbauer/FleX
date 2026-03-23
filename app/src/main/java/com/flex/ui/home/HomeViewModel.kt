@@ -46,6 +46,8 @@ data class HomeUiState(
     val selectedLocation: WorkLocation = WorkLocation.OFFICE,
     val selectedDayType: DayType = DayType.WORK,
     val dayWorkTime: DayWorkTimeResult = DayWorkTimeResult(0, 0, 0, false),
+    val baseDayNetMinutes: Long = 0,
+    val liveFlextimeDelta: Long = 0,
     val flextimeBalance: FlextimeBalance = FlextimeBalance(),
     val monthlyFlextimeBalance: FlextimeBalance = FlextimeBalance(),
     val quotaStatus: QuotaStatus = QuotaStatus(),
@@ -126,7 +128,8 @@ class HomeViewModel @Inject constructor(
                         if (block.endTime == null) block.copy(endTime = now) else block
                     }
                     val liveWorkTime = calculateDayWorkTime(blocksForCalc)
-                    _uiState.update { it.copy(dayWorkTime = liveWorkTime) }
+                    val liveFlexDelta = liveWorkTime.netMinutes - state.baseDayNetMinutes
+                    _uiState.update { it.copy(dayWorkTime = liveWorkTime, liveFlextimeDelta = liveFlexDelta) }
                 }
                 _remainingMinutes.value = computeRemainingMinutes(_uiState.value)
             }
@@ -213,6 +216,8 @@ class HomeViewModel @Inject constructor(
                             selectedLocation = workDay?.location ?: WorkLocation.OFFICE,
                             selectedDayType = override ?: workDay?.dayType ?: DayType.WORK,
                             dayWorkTime = dayResult,
+                            baseDayNetMinutes = dayResult.netMinutes,
+                            liveFlextimeDelta = 0,
                             flextimeBalance = flextime,
                             monthlyFlextimeBalance = monthlyFlextime,
                             quotaStatus = quota,
