@@ -140,13 +140,13 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+        modifier = Modifier.fillMaxSize()
     ) {
         // Month navigation header — export action on the left, navigation symmetric on the right
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { viewModel.onExportClick() }) {
@@ -171,10 +171,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
 
         var selectedTab by remember { mutableIntStateOf(0) }
 
-        PrimaryTabRow(
-            selectedTabIndex = selectedTab,
-            modifier = Modifier.padding(horizontal = (-16).dp)
-        ) {
+        PrimaryTabRow(selectedTabIndex = selectedTab) {
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
@@ -190,7 +187,11 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
         Spacer(modifier = Modifier.height(8.dp))
 
         if (selectedTab == 0) {
-        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
 
         // Prognosis card — two visual sections
         Card(modifier = Modifier.fillMaxWidth()) {
@@ -422,7 +423,9 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
 
         if (selectedTab == 1) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -436,7 +439,9 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             Spacer(modifier = Modifier.height(4.dp))
 
             LazyColumn(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(state.workDays.sortedBy { it.date }) { workDay ->
