@@ -613,26 +613,13 @@ private fun HeroCard(
             // Gleitzeit: gesamt + dieser Monat
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Gleitzeit gesamt",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = state.flextimeBalance.formatDisplay(),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = if (state.flextimeBalance.isPositive)
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.error
                         )
                         if (state.liveFlextimeDelta > 0L) {
                             val liveTotal = state.flextimeBalance.totalMinutes + state.liveFlextimeDelta
@@ -640,9 +627,20 @@ private fun HeroCard(
                             val h = kotlin.math.abs(liveTotal) / 60
                             val m = kotlin.math.abs(liveTotal) % 60
                             Text(
-                                text = "(${sign}${h}h ${m}min)",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "→ ${sign}${h}h ${m}min",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = if (liveTotal >= 0) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.error
+                            )
+                        } else {
+                            Text(
+                                text = state.flextimeBalance.formatDisplay(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = if (state.flextimeBalance.isPositive)
+                                    MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.error
                             )
                         }
                     }
@@ -653,31 +651,32 @@ private fun HeroCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         val monthlyEarned = state.monthlyFlextimeBalance.earnedMinutes
-                        val monthlySign = if (monthlyEarned >= 0) "+" else "-"
-                        val monthlyH = kotlin.math.abs(monthlyEarned) / 60
-                        val monthlyM = kotlin.math.abs(monthlyEarned) % 60
-                        Text(
-                            text = "$monthlySign${monthlyH}h ${monthlyM}min",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = if (monthlyEarned >= 0)
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.error
-                        )
                         if (state.liveFlextimeDelta > 0L) {
                             val liveMonthly = monthlyEarned + state.liveFlextimeDelta
                             val liveSign = if (liveMonthly >= 0) "+" else "-"
                             val liveH = kotlin.math.abs(liveMonthly) / 60
                             val liveM = kotlin.math.abs(liveMonthly) % 60
                             Text(
-                                text = "(${liveSign}${liveH}h ${liveM}min)",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "→ ${liveSign}${liveH}h ${liveM}min",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = if (liveMonthly >= 0) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.error
+                            )
+                        } else {
+                            val monthlySign = if (monthlyEarned >= 0) "+" else "-"
+                            val monthlyH = kotlin.math.abs(monthlyEarned) / 60
+                            val monthlyM = kotlin.math.abs(monthlyEarned) % 60
+                            Text(
+                                text = "$monthlySign${monthlyH}h ${monthlyM}min",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = if (monthlyEarned >= 0)
+                                    MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.error
                             )
                         }
                     }
-                }
-                InfoTooltip(title = TOOLTIP_FLEXTIME_TITLE, text = TOOLTIP_FLEXTIME)
             }
         }
     }
