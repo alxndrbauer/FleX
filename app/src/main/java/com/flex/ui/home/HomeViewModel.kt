@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -118,6 +119,15 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.Default) {
             while (true) {
                 delay(30_000L)
+                val state = _uiState.value
+                if (state.isClockRunning) {
+                    val now = LocalTime.now()
+                    val blocksForCalc = state.timeBlocks.map { block ->
+                        if (block.endTime == null) block.copy(endTime = now) else block
+                    }
+                    val liveWorkTime = calculateDayWorkTime(blocksForCalc)
+                    _uiState.update { it.copy(dayWorkTime = liveWorkTime) }
+                }
                 _remainingMinutes.value = computeRemainingMinutes(_uiState.value)
             }
         }
