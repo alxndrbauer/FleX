@@ -41,12 +41,18 @@ import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -101,35 +107,54 @@ private fun Modifier.diagonalHatch(color: Color): Modifier = drawBehind { drawHa
 @Composable
 fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
+    val pagerState = rememberPagerState { 2 }
+    val scope = rememberCoroutineScope()
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Month navigation — title centered between chevrons
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { viewModel.previousMonth() }) {
-                    Icon(Icons.Default.ChevronLeft, contentDescription = "Zurück")
-                }
-                Text(
-                    text = state.yearMonth.format(
-                        DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN)
-                    ),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center
-                )
-                IconButton(onClick = { viewModel.nextMonth() }) {
-                    Icon(Icons.Default.ChevronRight, contentDescription = "Weiter")
-                }
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Month navigation — above the tabs, always visible
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { viewModel.previousMonth() }) {
+                Icon(Icons.Default.ChevronLeft, contentDescription = "Zurück")
+            }
+            Text(
+                text = state.yearMonth.format(
+                    DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN)
+                ),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center
+            )
+            IconButton(onClick = { viewModel.nextMonth() }) {
+                Icon(Icons.Default.ChevronRight, contentDescription = "Weiter")
             }
         }
+
+        PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
+            Tab(
+                selected = pagerState.currentPage == 0,
+                onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
+                text = { Text("Planung") }
+            )
+            Tab(
+                selected = pagerState.currentPage == 1,
+                onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
+                text = { Text("Monate") }
+            )
+        }
+
+        HorizontalPager(state = pagerState, modifier = Modifier.weight(1f)) { page ->
+            if (page == 0) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
 
         // Plan type selector with color indicators
         item {
@@ -431,28 +456,31 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             }
         }
 
-        // Multi-month overview
-        item {
-            Text(
-                "Monatsübersicht",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        items(state.monthSummaries) { summary ->
-            MonthSummaryCard(
-                summary = summary,
-                isSelected = summary.yearMonth == state.yearMonth,
-                onClick = {
-                    viewModel.navigateToMonth(summary.yearMonth)
-                }
-            )
-        }
-
         // Bottom spacer
         item { Spacer(modifier = Modifier.height(8.dp)) }
-    }
+                } // end Tab 0 LazyColumn
+            }
+            if (page == 1) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(state.monthSummaries) { summary ->
+                        MonthSummaryCard(
+                            summary = summary,
+                            isSelected = summary.yearMonth == state.yearMonth,
+                            onClick = {
+                                viewModel.navigateToMonth(summary.yearMonth)
+                                scope.launch { pagerState.animateScrollToPage(0) }
+                            }
+                        )
+                    }
+                    item { Spacer(modifier = Modifier.height(8.dp)) }
+                }
+            }
+        } // end HorizontalPager
+    } // end Column
 
     // Long-press hour editing dialog
     state.editingDate?.let { date ->
