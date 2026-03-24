@@ -715,8 +715,12 @@ private fun CompactQuotaCard(state: HomeUiState) {
     val reqH = state.requiredOfficeMinutes / 60
     val reqM = state.requiredOfficeMinutes % 60
 
+    // Today is excluded from quota calc when it has no completed blocks yet (only running block).
+    // Add a +1 live bonus day when clocked in as OFFICE before any clock-out.
+    val todayHasNoCompletedBlock = state.timeBlocks.none { it.endTime != null }
     val liveOfficeDelta = if (state.liveFlextimeDelta > 0 && state.selectedLocation == WorkLocation.OFFICE)
         state.liveFlextimeDelta else 0L
+    val liveOfficeDayBonus = if (liveOfficeDelta > 0 && todayHasNoCompletedBlock) 1 else 0
     val liveOfficeMin = state.officeMinutes + liveOfficeDelta
     val liveH = liveOfficeMin / 60
     val liveM = liveOfficeMin % 60
@@ -792,9 +796,11 @@ private fun CompactQuotaCard(state: HomeUiState) {
             )
             Spacer(modifier = Modifier.height(6.dp))
             CompactProgressRow(
-                label = "${quota.officeDays} Tage",
+                label = if (liveOfficeDayBonus > 0) "→ ${quota.officeDays + liveOfficeDayBonus} Tage" else "${quota.officeDays} Tage",
                 sublabel = "von ${state.effectiveQuotaMinDays} Büro-Tagen",
-                progress = animDays,
+                progress = if (liveOfficeDayBonus > 0)
+                    ((quota.officeDays + liveOfficeDayBonus).toFloat() / state.effectiveQuotaMinDays).coerceIn(0f, 1f)
+                else animDays,
                 isMet = quota.officeDays >= state.effectiveQuotaMinDays
             )
         }
