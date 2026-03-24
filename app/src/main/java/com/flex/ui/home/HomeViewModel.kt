@@ -151,7 +151,7 @@ class HomeViewModel @Inject constructor(
                     combine(
                         workDayRepository.getWorkDay(date),
                         getSettings(),
-                        getMonthWorkDays(todayYearMonth),
+                        getMonthWorkDays(yearMonth),
                         settingsRepository.getQuotaRules(),
                         workDayRepository.getWorkDaysForYear(today.year)
                     ) { arr ->
@@ -171,18 +171,26 @@ class HomeViewModel @Inject constructor(
                         val timeBlocks = workDay?.timeBlocks ?: emptyList()
                         val isRunning = timeBlocks.any { it.endTime == null }
                         val dayResult = calculateDayWorkTime(timeBlocks)
-                        // Exclude planned days from calculations in current month
-                        val actualMonthDays = monthDays.filter { !it.isPlanned }.map { day ->
-                            if (day.date == today && workDay != null && date == today) workDay else day
+                        // Exclude planned days from calculations in current month.
+                        // Also exclude today if it's a WORK day with no completed time blocks yet
+                        // (running blocks count as 0 min, empty entries from auto-clockin etc.
+                        // would wrongly deduct the full daily target before the day is over).
+                        fun hasCompletedBlocks(day: WorkDay) = day.timeBlocks.any { it.endTime != null }
+                        val actualMonthDays = monthDays.filter { !it.isPlanned }.mapNotNull { day ->
+                            val resolved = if (day.date == today && workDay != null && date == today) workDay else day
+                            if (resolved.date == today && resolved.dayType == DayType.WORK && !hasCompletedBlocks(resolved)) null
+                            else resolved
                         }
 
                         // Cumulative flextime: all year's actual days (not planned), with today replaced
-                        val actualYearDays = yearDays.filter { !it.isPlanned }.map { day ->
-                            if (day.date == today && workDay != null && date == today) workDay else day
+                        val actualYearDays = yearDays.filter { !it.isPlanned }.mapNotNull { day ->
+                            val resolved = if (day.date == today && workDay != null && date == today) workDay else day
+                            if (resolved.date == today && resolved.dayType == DayType.WORK && !hasCompletedBlocks(resolved)) null
+                            else resolved
                         }
                         val flextime = calculateFlextime(actualYearDays, settings, todayYearMonth)
-                        val monthlyFlextime = calculateFlextime(actualMonthDays, settings, todayYearMonth)
-                        val quota = calculateQuota(actualMonthDays, settings, todayYearMonth, qPercent, qDays)
+                        val monthlyFlextime = calculateFlextime(actualMonthDays, settings, yearMonth)
+                        val quota = calculateQuota(actualMonthDays, settings, yearMonth, qPercent, qDays)
 
                         // Fixed monthly target, reduced by neutral days
                         val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)

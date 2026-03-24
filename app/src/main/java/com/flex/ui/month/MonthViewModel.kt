@@ -157,16 +157,17 @@ class MonthViewModel @Inject constructor(
                     day.date to calculateDayWorkTime(day.timeBlocks).netMinutes
                 }
 
-                // Calculate monthly worked hours (sum of WORK and SATURDAY_BONUS days only, excluding planned days)
+                // Calculate monthly worked hours: WORK + SATURDAY_BONUS actual minutes,
+                // plus dailyWorkMinutes credit for vacation/sick (they count as worked),
+                // but NOT for flex days (those are deducted flextime, shown as deficit)
                 val workingDaysMonth = daysForCalc.filter {
-                    it.dayType in listOf(
-                        DayType.WORK,
-                        DayType.SATURDAY_BONUS
-                    )
+                    it.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
                 }
+                val creditTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY, DayType.FLEX_DAY)
+                val creditDaysInMonth = prognosisDays.count { it.dayType in creditTypes }
                 val totalWorkMinutesMonth = workingDaysMonth.sumOf { day ->
                     calculateDayWorkTime(day.timeBlocks).netMinutes
-                }
+                } + creditDaysInMonth.toLong() * settings.dailyWorkMinutes
 
                 // Calculate target work days for the month (Mon-Fri excluding holidays)
                 var targetWorkDaysMonth = 0

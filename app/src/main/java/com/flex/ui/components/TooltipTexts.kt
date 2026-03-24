@@ -57,6 +57,11 @@ Verbleibend = Anspruch − genommen − geplant
 const val TOOLTIP_PROGNOSIS_TITLE = "Prognose"
 val TOOLTIP_PROGNOSIS = """
 Hochrechnung der Büro-Quote und Arbeitszeit basierend auf allen bisherigen und geplanten Arbeitstagen des Monats.
+
+Geleistete Zeit:
+• Arbeitstage zählen mit tatsächlichen Stunden
+• Urlaub, Kranktage und Gleittage zählen als voller Arbeitstag
+• Gleittage werden zusätzlich von der Gleitzeit-Bilanz abgezogen
 """.trim()
 
 const val TOOLTIP_QUOTA_PREVIEW_TITLE = "Quoten-Vorschau"

@@ -105,6 +105,7 @@ import com.flex.ui.theme.SickDayColor
 import com.flex.ui.theme.SpecialVacationColor
 import com.flex.ui.theme.VacationColor
 import java.time.LocalTime
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -646,7 +647,8 @@ private fun HeroCard(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Dieser Monat",
+                            text = if (YearMonth.from(state.selectedDate) == YearMonth.now()) "Dieser Monat"
+                                   else state.selectedDate.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN)),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
