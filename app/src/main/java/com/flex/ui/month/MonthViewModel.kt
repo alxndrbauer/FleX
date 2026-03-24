@@ -22,6 +22,7 @@ import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.domain.usecase.CheckBreakViolationUseCase
 import com.flex.domain.usecase.PrepareExportDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,7 +60,8 @@ data class MonthUiState(
     val targetMinutesMonth: Long = 0,
     val differenceMinutesMonth: Long = 0,
     val showExportDialog: Boolean = false,
-    val exportMessage: String? = null
+    val exportMessage: String? = null,
+    val breakViolationDates: Set<LocalDate> = emptySet()
 )
 
 @HiltViewModel
@@ -73,7 +75,8 @@ class MonthViewModel @Inject constructor(
     private val calculateFlextime: CalculateFlextimeUseCase,
     private val dataChangeEventBus: DataChangeEventBus,
     private val prepareExportData: PrepareExportDataUseCase,
-    private val exportService: ExportService
+    private val exportService: ExportService,
+    private val checkBreakViolation: CheckBreakViolationUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MonthUiState())
@@ -157,6 +160,13 @@ class MonthViewModel @Inject constructor(
                     day.date to calculateDayWorkTime(day.timeBlocks).netMinutes
                 }
 
+                val violationDates = if (settings.breakWarningEnabled) {
+                    days.filter { !it.isPlanned }.mapNotNull { workDay ->
+                        val result = checkBreakViolation(workDay.timeBlocks)
+                        if (!result.skipped && result.violations.isNotEmpty()) workDay.date else null
+                    }.toSet()
+                } else emptySet()
+
                 // Calculate monthly worked hours: WORK + SATURDAY_BONUS actual minutes,
                 // plus dailyWorkMinutes credit for vacation/sick (they count as worked),
                 // but NOT for flex days (those are deducted flextime, shown as deficit)
@@ -197,7 +207,8 @@ class MonthViewModel @Inject constructor(
                     hasPlannedDays = hasPlanned,
                     workedMinutesMonth = totalWorkMinutesMonth,
                     targetMinutesMonth = targetMinutesMonth,
-                    differenceMinutesMonth = differenceMinutesMonth
+                    differenceMinutesMonth = differenceMinutesMonth,
+                    breakViolationDates = violationDates
                 )
             }
         }

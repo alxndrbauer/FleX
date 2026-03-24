@@ -766,6 +766,36 @@ fun SettingsScreen(
             }
         }
 
+        // Break Warning
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    "Arbeitszeit-Warnungen",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Pausenzeitverletzungen warnen")
+                        Text(
+                            "Warnung bei Verstößen gegen §4 ArbZG",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = settings.breakWarningEnabled,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(breakWarningEnabled = it)) }
+                    )
+                }
+            }
+        }
+
         // Backup navigation
         Card(
             onClick = onNavigateToBackup,

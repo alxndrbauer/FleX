@@ -18,5 +18,6 @@ data class Settings(
     val geofenceRadiusMeters: Float = 150f,
     val geofenceAddress: String = "",
     val wifiAutoStampEnabled: Boolean = false,
-    val wifiSsid: String = ""
+    val wifiSsid: String = "",
+    val breakWarningEnabled: Boolean = true
 )

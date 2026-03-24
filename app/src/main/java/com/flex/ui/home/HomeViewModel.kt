@@ -18,7 +18,10 @@ import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.DayWorkTimeResult
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
+import com.flex.domain.model.BreakCheckResult
+import com.flex.domain.usecase.CheckBreakViolationUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.notification.BreakWarningScheduler
 import com.flex.wearable.WearSyncHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -55,7 +58,8 @@ data class HomeUiState(
     val effectiveQuotaPercent: Int = 40,
     val effectiveQuotaMinDays: Int = 8,
     val officeMinutes: Long = 0,
-    val requiredOfficeMinutes: Long = 0
+    val requiredOfficeMinutes: Long = 0,
+    val breakCheckResult: BreakCheckResult = BreakCheckResult(emptyList(), skipped = false)
 )
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -69,7 +73,9 @@ class HomeViewModel @Inject constructor(
     private val calculateFlextime: CalculateFlextimeUseCase,
     private val calculateQuota: CalculateQuotaUseCase,
     private val dataChangeEventBus: DataChangeEventBus,
-    private val wearSyncHelper: WearSyncHelper
+    private val wearSyncHelper: WearSyncHelper,
+    private val checkBreakViolation: CheckBreakViolationUseCase,
+    private val breakWarningScheduler: BreakWarningScheduler
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -129,7 +135,10 @@ class HomeViewModel @Inject constructor(
                     }
                     val liveWorkTime = calculateDayWorkTime(blocksForCalc)
                     val liveFlexDelta = liveWorkTime.netMinutes - state.baseDayNetMinutes
-                    _uiState.update { it.copy(dayWorkTime = liveWorkTime, liveFlextimeDelta = liveFlexDelta) }
+                    val liveBreakCheck = if (state.settings.breakWarningEnabled)
+                        checkBreakViolation(blocksForCalc)
+                    else BreakCheckResult(emptyList(), skipped = false)
+                    _uiState.update { it.copy(dayWorkTime = liveWorkTime, liveFlextimeDelta = liveFlexDelta, breakCheckResult = liveBreakCheck) }
                 }
                 _remainingMinutes.value = computeRemainingMinutes(_uiState.value)
             }
@@ -171,6 +180,10 @@ class HomeViewModel @Inject constructor(
                         val timeBlocks = workDay?.timeBlocks ?: emptyList()
                         val isRunning = timeBlocks.any { it.endTime == null }
                         val dayResult = calculateDayWorkTime(timeBlocks)
+                        val breakCheckResult = if (settings.breakWarningEnabled)
+                            checkBreakViolation(timeBlocks)
+                        else
+                            BreakCheckResult(emptyList(), skipped = false)
                         // Exclude planned days from calculations in current month.
                         // Also exclude today if it's a WORK day with no completed time blocks yet
                         // (running blocks count as 0 min, empty entries from auto-clockin etc.
@@ -233,7 +246,8 @@ class HomeViewModel @Inject constructor(
                             effectiveQuotaPercent = qPercent,
                             effectiveQuotaMinDays = qDays,
                             officeMinutes = officeMin,
-                            requiredOfficeMinutes = requiredMin
+                            requiredOfficeMinutes = requiredMin,
+                            breakCheckResult = breakCheckResult
                         )
                     }
                 }
@@ -296,6 +310,9 @@ class HomeViewModel @Inject constructor(
             workDayRepository.saveTimeBlock(
                 TimeBlock(workDayId = workDayId, startTime = now, location = state.selectedLocation)
             )
+            if (state.settings.breakWarningEnabled) {
+                breakWarningScheduler.scheduleWarning(now)
+            }
             _localDayTypeOverride.value = null
             wearSyncHelper.push()
         }
@@ -310,6 +327,7 @@ class HomeViewModel @Inject constructor(
             workDayRepository.saveTimeBlock(
                 runningBlock.copy(endTime = now)
             )
+            breakWarningScheduler.cancelWarning()
             wearSyncHelper.push()
         }
     }

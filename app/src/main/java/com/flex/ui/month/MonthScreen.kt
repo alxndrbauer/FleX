@@ -402,6 +402,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                                     date = date,
                                     workDay = workDayMap[date],
                                     isToday = date == LocalDate.now(),
+                                    hasBreakViolation = state.breakViolationDates.contains(date),
                                     onClick = { viewModel.selectDay(date) }
                                 )
                             }
@@ -530,6 +531,7 @@ fun DayCell(
     date: LocalDate,
     workDay: WorkDay?,
     isToday: Boolean,
+    hasBreakViolation: Boolean = false,
     onClick: () -> Unit
 ) {
     val holidayName = PublicHolidays.getHolidayName(date)
@@ -567,10 +569,12 @@ fun DayCell(
             .clip(RoundedCornerShape(4.dp))
             .background(bgColor)
             .then(borderMod)
-            .clickable(enabled = holidayName == null, onClick = onClick),
-        contentAlignment = Alignment.Center
+            .clickable(enabled = holidayName == null, onClick = onClick)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(
                 text = date.dayOfMonth.toString(),
                 style = MaterialTheme.typography.bodySmall,
@@ -587,6 +591,16 @@ fun DayCell(
                         .background(MaterialTheme.colorScheme.primary)
                 )
             }
+        }
+        if (hasBreakViolation) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(2.dp)
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.error)
+            )
         }
     }
 }

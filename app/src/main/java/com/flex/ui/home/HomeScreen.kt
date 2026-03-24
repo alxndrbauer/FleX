@@ -85,6 +85,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.flex.domain.model.BreakViolationType
 import com.flex.domain.model.DayType
 import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.TimeBlock
@@ -605,6 +606,27 @@ private fun HeroCard(
                     color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Bold
                 )
+            }
+
+            val breakViolations = state.breakCheckResult.violations
+            if (breakViolations.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                breakViolations.forEach { violation ->
+                    val text = when (violation.type) {
+                        BreakViolationType.CONTINUOUS_WORK_EXCEEDS_6H ->
+                            "⚠ Über 6h ohne Pause (${violation.continuousWorkMinutes / 60}h ${violation.continuousWorkMinutes % 60}min)"
+                        BreakViolationType.INSUFFICIENT_TOTAL_BREAK ->
+                            "⚠ Pause zu kurz: ${violation.actualBreakMinutes}min / 30min (§4 ArbZG)"
+                        BreakViolationType.INSUFFICIENT_TOTAL_BREAK_9H ->
+                            "⚠ Pause zu kurz: ${violation.actualBreakMinutes}min / 45min (§4 ArbZG)"
+                    }
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
