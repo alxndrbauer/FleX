@@ -36,7 +36,7 @@ class BreakWarningScheduler @Inject constructor(
             .build()
 
         WorkManager.getInstance(context)
-            .enqueueUniqueWork(WORK_TAG, ExistingWorkPolicy.REPLACE, request)
+            .enqueueUniqueWork(WORK_TAG, ExistingWorkPolicy.KEEP, request)
     }
 
     fun cancelWarning() {

@@ -9,7 +9,9 @@ import com.flex.domain.repository.WorkDayRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
+import java.time.Duration
 import java.time.LocalDate
+import java.time.LocalTime
 
 @HiltWorker
 class BreakWarningWorker @AssistedInject constructor(
@@ -31,11 +33,13 @@ class BreakWarningWorker @AssistedInject constructor(
         // Skip if automatic break deduction is active
         if (blocks.any { it.isDuration }) return Result.success()
 
-        // Only notify if there is a running block and no prior completed block.
-        // A completed block means the user already clocked out (took at least some break).
-        val hasRunningBlock = blocks.any { it.endTime == null }
+        // Only notify if there is a completed block + a running block that has been
+        // going for at least 5.5h (330 min). The 0.5h tolerance accounts for WorkManager
+        // scheduling imprecision — the worker is intended to fire after 6h.
+        val runningBlock = blocks.find { it.endTime == null } ?: return Result.success()
         val hasCompletedBlock = blocks.any { it.endTime != null }
-        if (hasRunningBlock && hasCompletedBlock) {
+        val runningMinutes = Duration.between(runningBlock.startTime, LocalTime.now()).toMinutes()
+        if (hasCompletedBlock && runningMinutes >= 330) {
             notificationHelper.showBreakWarningNotification()
         }
         return Result.success()
