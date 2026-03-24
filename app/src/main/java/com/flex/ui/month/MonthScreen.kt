@@ -4,7 +4,6 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,7 +68,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -526,6 +527,20 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
     }
 }
 
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawHatchLines(color: Color) {
+    val spacing = 8.dp.toPx()
+    val strokeWidth = 1.5.dp.toPx()
+    val w = size.width
+    val h = size.height
+    var x = -h
+    while (x <= w) {
+        drawLine(color, Offset(x, h), Offset(x + h, 0f), strokeWidth)
+        x += spacing
+    }
+}
+
+private fun Modifier.diagonalHatch(color: Color): Modifier = drawBehind { drawHatchLines(color) }
+
 @Composable
 fun DayCell(
     date: LocalDate,
@@ -559,8 +574,9 @@ fun DayCell(
         }
     }
 
+    val hatchColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
     val borderMod = if (workDay?.isPlanned == true) {
-        Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
+        Modifier.diagonalHatch(hatchColor)
     } else Modifier
 
     Box(

@@ -715,6 +715,14 @@ private fun CompactQuotaCard(state: HomeUiState) {
     val reqH = state.requiredOfficeMinutes / 60
     val reqM = state.requiredOfficeMinutes % 60
 
+    val liveOfficeDelta = if (state.liveFlextimeDelta > 0 && state.selectedLocation == WorkLocation.OFFICE)
+        state.liveFlextimeDelta else 0L
+    val liveOfficeMin = state.officeMinutes + liveOfficeDelta
+    val liveH = liveOfficeMin / 60
+    val liveM = liveOfficeMin % 60
+    val liveTotalMin = state.officeMinutes + state.quotaStatus.homeOfficeMinutes + liveOfficeDelta
+    val livePercent = if (liveTotalMin > 0) liveOfficeMin.toDouble() / liveTotalMin * 100 else 0.0
+
     val rawHoursProgress = if (state.requiredOfficeMinutes > 0)
         (state.officeMinutes.toFloat() / state.requiredOfficeMinutes).coerceIn(0f, 1f)
     else 0f
@@ -762,16 +770,22 @@ private fun CompactQuotaCard(state: HomeUiState) {
             Spacer(modifier = Modifier.height(8.dp))
 
             CompactProgressRow(
-                label = "${officeH}h ${officeM}min",
+                label = if (liveOfficeDelta > 0) "→ ${liveH}h ${liveM}min" else "${officeH}h ${officeM}min",
                 sublabel = "von ${reqH}h ${reqM}min Büro",
-                progress = animHours,
+                progress = if (liveOfficeDelta > 0) {
+                    if (state.requiredOfficeMinutes > 0)
+                        (liveOfficeMin.toFloat() / state.requiredOfficeMinutes).coerceIn(0f, 1f)
+                    else 0f
+                } else animHours,
                 isMet = rawHoursProgress >= 1f
             )
             Spacer(modifier = Modifier.height(6.dp))
             CompactProgressRow(
-                label = "${"%.1f".format(quota.officePercent)}%",
+                label = if (liveOfficeDelta > 0) "→ ${"%.1f".format(livePercent)}%" else "${"%.1f".format(quota.officePercent)}%",
                 sublabel = "von ${state.effectiveQuotaPercent}% Ziel",
-                progress = animPct,
+                progress = if (liveOfficeDelta > 0) {
+                    (livePercent / state.effectiveQuotaPercent.toDouble()).toFloat().coerceIn(0f, 1f)
+                } else animPct,
                 isMet = quota.officePercent >= state.effectiveQuotaPercent
             )
             Spacer(modifier = Modifier.height(6.dp))
