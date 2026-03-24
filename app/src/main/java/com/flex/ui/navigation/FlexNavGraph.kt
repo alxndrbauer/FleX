@@ -9,7 +9,10 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
@@ -42,7 +45,10 @@ import com.flex.ui.home.HomeScreen
 import com.flex.ui.month.MonthScreen
 import com.flex.ui.planning.PlanningScreen
 import com.flex.ui.quota.QuotaScreen
+import com.flex.ui.settings.GeofenceSettingsScreen
+import com.flex.ui.settings.QuotaRulesScreen
 import com.flex.ui.settings.SettingsScreen
+import com.flex.ui.settings.WifiSettingsScreen
 import com.flex.ui.year.YearOverviewScreen
 import kotlinx.coroutines.launch
 
@@ -56,6 +62,9 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     data object Settings : Screen("settings", "Einstellungen", Icons.Default.Settings)
     data object Backup : Screen("backup", "Datensicherung", Icons.Default.Settings)
     data object About : Screen("about", "Info", Icons.Default.Settings)
+    data object GeofenceSettings : Screen("geofence_settings", "Geofencing", Icons.Default.LocationOn)
+    data object WifiSettings : Screen("wifi_settings", "WLAN", Icons.Default.Wifi)
+    data object QuotaRules : Screen("quota_rules", "Quoten-Zeiträume", Icons.Default.DateRange)
 }
 
 val bottomNavItems = listOf(
@@ -154,7 +163,10 @@ fun FlexNavGraph() {
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     onNavigateToBackup = { navController.navigate(Screen.Backup.route) },
-                    onNavigateToAbout = { navController.navigate(Screen.About.route) }
+                    onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                    onNavigateToGeofence = { navController.navigate(Screen.GeofenceSettings.route) },
+                    onNavigateToWifi = { navController.navigate(Screen.WifiSettings.route) },
+                    onNavigateToQuotaRules = { navController.navigate(Screen.QuotaRules.route) }
                 )
             }
             composable(Screen.Backup.route) {
@@ -162,6 +174,15 @@ fun FlexNavGraph() {
             }
             composable(Screen.About.route) {
                 AboutScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(Screen.GeofenceSettings.route) {
+                GeofenceSettingsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(Screen.WifiSettings.route) {
+                WifiSettingsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(Screen.QuotaRules.route) {
+                QuotaRulesScreen(onNavigateBack = { navController.popBackStack() })
             }
         }
     }
