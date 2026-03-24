@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -35,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -56,10 +58,10 @@ import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
 
-private val CELL_SIZE = 12.dp
+private val CELL_SIZE = 14.dp
 private val CELL_SPACING = 2.dp
-private val WEEKDAY_LABEL_WIDTH = 20.dp
-private val MONTH_LABEL_HEIGHT = 16.dp
+private val WEEKDAY_LABEL_WIDTH = 28.dp
+private val MONTH_LABEL_HEIGHT = 18.dp
 
 private fun cellColor(entry: DayHeatmapEntry?, dailyWorkMinutes: Int, isSurface: Boolean): Color {
     if (entry == null) return Color.Transparent
@@ -223,21 +225,23 @@ private fun YearHeatmap(
                 } else null
 
                 Column(
+                    modifier = Modifier.zIndex(if (monthLabel != null) 1f else 0f),
                     verticalArrangement = Arrangement.spacedBy(CELL_SPACING)
                 ) {
                     Box(
                         modifier = Modifier
                             .width(CELL_SIZE)
                             .height(MONTH_LABEL_HEIGHT),
-                        contentAlignment = Alignment.TopCenter
+                        contentAlignment = Alignment.TopStart
                     ) {
                         if (monthLabel != null) {
                             Text(
                                 text = monthLabel,
                                 fontSize = 8.sp,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                textAlign = TextAlign.Center,
-                                maxLines = 1
+                                textAlign = TextAlign.Start,
+                                maxLines = 1,
+                                modifier = Modifier.wrapContentWidth(unbounded = true)
                             )
                         }
                     }
