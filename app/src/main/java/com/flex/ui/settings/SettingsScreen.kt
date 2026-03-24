@@ -558,13 +558,28 @@ fun SettingsScreen(
                         }
                     }
 
-                    // Resolved coordinates (read-only display)
-                    if (geofenceLat.isNotBlank() && geofenceLon.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            "Koordinaten: $geofenceLat, $geofenceLon",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = geofenceLat,
+                            onValueChange = { geofenceLat = it; geofenceError = false },
+                            label = { Text("Breitengrad") },
+                            placeholder = { Text("48.137154") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                        )
+                        OutlinedTextField(
+                            value = geofenceLon,
+                            onValueChange = { geofenceLon = it; geofenceError = false },
+                            label = { Text("Längengrad") },
+                            placeholder = { Text("11.576124") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
                     }
 
@@ -661,6 +676,92 @@ fun SettingsScreen(
                     ) {
                         Text("Akku-Optimierung deaktivieren")
                     }
+                }
+            }
+        }
+
+        // WiFi Auto-Stamp
+        run {
+            var wifiEnabled by remember(settings) { mutableStateOf(settings.wifiAutoStampEnabled) }
+            var wifiSsid by remember(settings) { mutableStateOf(settings.wifiSsid) }
+            var wifiSaved by remember { mutableStateOf(false) }
+            LaunchedEffect(wifiSaved) {
+                if (wifiSaved) { delay(2000); wifiSaved = false }
+            }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "Automatisches Stempeln (WLAN)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Einstempeln beim Verbinden, Ausstempeln beim Trennen vom Büro-WLAN",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("WLAN-Stempeln aktivieren")
+                        Switch(
+                            checked = wifiEnabled,
+                            onCheckedChange = { wifiEnabled = it }
+                        )
+                    }
+                    if (wifiEnabled) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = wifiSsid,
+                                onValueChange = { wifiSsid = it },
+                                label = { Text("WLAN-Name (SSID)") },
+                                placeholder = { Text("z.B. Buero-WLAN") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.getCurrentWifiSsid()?.let { wifiSsid = it }
+                                }
+                            ) {
+                                Text("Aktuell")
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                viewModel.saveWifiSettings(true, wifiSsid)
+                                wifiSaved = true
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = wifiSsid.isNotBlank()
+                        ) {
+                            Text("WLAN-Einstellungen speichern")
+                        }
+                        if (wifiSaved) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "Gespeichert",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Benötigt Standortberechtigung für WLAN-Name. Bei \"<unknown ssid>\" Standort aktivieren.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }

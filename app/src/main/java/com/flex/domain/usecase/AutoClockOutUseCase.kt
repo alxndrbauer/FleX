@@ -9,11 +9,12 @@ import javax.inject.Inject
 class AutoClockOutUseCase @Inject constructor(
     private val workDayRepository: WorkDayRepository
 ) {
-    suspend operator fun invoke() {
+    suspend operator fun invoke(): Boolean {
         val today = LocalDate.now()
-        val workDay = workDayRepository.getWorkDay(today).first() ?: return
-        val runningBlock = workDay.timeBlocks.find { it.endTime == null } ?: return
+        val workDay = workDayRepository.getWorkDay(today).first() ?: return false
+        val runningBlock = workDay.timeBlocks.find { it.endTime == null } ?: return false
         val now = LocalTime.now().withSecond(0).withNano(0)
         workDayRepository.saveTimeBlock(runningBlock.copy(endTime = now))
+        return true
     }
 }

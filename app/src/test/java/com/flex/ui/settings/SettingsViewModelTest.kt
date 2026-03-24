@@ -12,6 +12,7 @@ import com.flex.data.local.ThemePreferences
 import com.flex.domain.model.AppIconVariant
 import com.flex.domain.model.ThemeMode
 import com.flex.geofence.GeofenceManager
+import com.flex.wifi.WifiMonitor
 import com.flex.domain.usecase.GetSettingsUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +51,9 @@ class SettingsViewModelTest : BaseUnitTest() {
     private lateinit var geofenceManager: GeofenceManager
 
     @Mock
+    private lateinit var wifiMonitor: WifiMonitor
+
+    @Mock
     private lateinit var appIconPreferences: AppIconPreferences
 
     private lateinit var viewModel: SettingsViewModel
@@ -80,7 +84,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
         advanceUntilIdle()
 
         // Then: Settings state should be loaded
@@ -94,7 +98,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
         advanceUntilIdle()
 
         // Then: QuotaRules state should be empty
@@ -112,7 +116,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(expectedRules))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
         advanceUntilIdle()
 
         // Then: QuotaRules state should be loaded
@@ -125,7 +129,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `updateSettings persists settings to repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
         advanceUntilIdle()
 
         val updatedSettings = Settings(
@@ -146,7 +150,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `updateSettings with different values persists correctly`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
         advanceUntilIdle()
 
         val newSettings = Settings(
@@ -174,7 +178,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `addQuotaRule persists rule to repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
         advanceUntilIdle()
 
         val newRule = QuotaRule(
@@ -195,7 +199,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `addQuotaRule with different month persists correctly`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
         advanceUntilIdle()
 
         val rule = QuotaRule(
@@ -218,7 +222,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `deleteQuotaRule removes rule from repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
         advanceUntilIdle()
 
         val ruleToDelete = QuotaRule(
@@ -248,7 +252,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
         advanceUntilIdle()
 
         // Then: State should reflect the latest settings
@@ -268,7 +272,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(initialRules, updatedRules))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
         advanceUntilIdle()
 
         // Then: State should reflect the rules
@@ -285,7 +289,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
         advanceUntilIdle()
 
         // Then: Settings should have default value
@@ -300,7 +304,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
         advanceUntilIdle()
 
         // Then: QuotaRules should be empty list

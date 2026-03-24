@@ -3,6 +3,7 @@ package com.flex.ui.settings
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Geocoder
+import android.net.wifi.WifiManager
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,6 +16,7 @@ import com.flex.domain.model.ThemeMode
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.geofence.GeofenceManager
+import com.flex.wifi.WifiMonitor
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -34,7 +36,8 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val themePreferences: ThemePreferences,
     private val appIconPreferences: AppIconPreferences,
-    private val geofenceManager: GeofenceManager
+    private val geofenceManager: GeofenceManager,
+    private val wifiMonitor: WifiMonitor
 ) : ViewModel() {
 
     private val _settings = MutableStateFlow(Settings())
@@ -117,6 +120,33 @@ class SettingsViewModel @Inject constructor(
                 .addOnFailureListener { onError() }
         } catch (_: Exception) {
             onError()
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun getCurrentWifiSsid(): String? {
+        val wifiManager = context.applicationContext
+            .getSystemService(Context.WIFI_SERVICE) as WifiManager
+        @Suppress("DEPRECATION")
+        return wifiManager.connectionInfo?.ssid
+            ?.removeSurrounding("\"")
+            ?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
+    }
+
+    fun saveWifiSettings(enabled: Boolean, ssid: String) {
+        viewModelScope.launch {
+            val trimmedSsid = ssid.trim()
+            settingsRepository.saveSettings(
+                _settings.value.copy(
+                    wifiAutoStampEnabled = enabled,
+                    wifiSsid = trimmedSsid
+                )
+            )
+            if (enabled && trimmedSsid.isNotBlank()) {
+                wifiMonitor.register(trimmedSsid)
+            } else {
+                wifiMonitor.unregister()
+            }
         }
     }
 

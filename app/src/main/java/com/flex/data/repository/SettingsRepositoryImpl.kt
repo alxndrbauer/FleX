@@ -65,7 +65,9 @@ class SettingsRepositoryImpl @Inject constructor(
         geofenceLat = geofenceLat,
         geofenceLon = geofenceLon,
         geofenceRadiusMeters = geofenceRadiusMeters,
-        geofenceAddress = geofenceAddress
+        geofenceAddress = geofenceAddress,
+        wifiAutoStampEnabled = wifiAutoStampEnabled,
+        wifiSsid = wifiSsid
     )
 
     private fun Settings.toEntity() = SettingsEntity(
@@ -84,7 +86,9 @@ class SettingsRepositoryImpl @Inject constructor(
         geofenceLat = geofenceLat,
         geofenceLon = geofenceLon,
         geofenceRadiusMeters = geofenceRadiusMeters,
-        geofenceAddress = geofenceAddress
+        geofenceAddress = geofenceAddress,
+        wifiAutoStampEnabled = wifiAutoStampEnabled,
+        wifiSsid = wifiSsid
     )
 
     private fun QuotaRuleEntity.toDomain() = QuotaRule(

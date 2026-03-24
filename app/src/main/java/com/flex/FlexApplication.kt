@@ -7,6 +7,7 @@ import androidx.work.Configuration
 import com.flex.data.local.AppIconPreferences
 import com.flex.domain.repository.SettingsRepository
 import com.flex.geofence.GeofenceManager
+import com.flex.wifi.WifiMonitor
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +26,9 @@ class FlexApplication : Application(), Configuration.Provider {
 
     @Inject
     lateinit var geofenceManager: GeofenceManager
+
+    @Inject
+    lateinit var wifiMonitor: WifiMonitor
 
     override fun onCreate() {
         // Fix PackageManager alias state before Hilt init — prevents stuck launcher icon
@@ -45,8 +49,12 @@ class FlexApplication : Application(), Configuration.Provider {
                         settings.geofenceRadiusMeters
                     )
                 }
+                if (settings.wifiAutoStampEnabled && settings.wifiSsid.isNotBlank()) {
+                    Log.d("FlexApplication", "Registering WiFi monitor for SSID: ${settings.wifiSsid}")
+                    wifiMonitor.register(settings.wifiSsid)
+                }
             } catch (e: Exception) {
-                Log.e("FlexApplication", "Failed to re-register geofence: ${e.message}")
+                Log.e("FlexApplication", "Failed to re-register geofence/wifi: ${e.message}")
             }
         }
     }
