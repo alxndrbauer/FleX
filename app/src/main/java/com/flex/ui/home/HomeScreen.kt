@@ -720,8 +720,10 @@ private fun CompactQuotaCard(state: HomeUiState) {
     val liveOfficeMin = state.officeMinutes + liveOfficeDelta
     val liveH = liveOfficeMin / 60
     val liveM = liveOfficeMin % 60
-    val liveTotalMin = state.officeMinutes + state.quotaStatus.homeOfficeMinutes + liveOfficeDelta
-    val livePercent = if (liveTotalMin > 0) liveOfficeMin.toDouble() / liveTotalMin * 100 else 0.0
+    // officePercent = officeMinutes / fixedTarget * 100, where fixedTarget = requiredOfficeMinutes * 100 / quotaPercent
+    val fixedTarget = if (state.effectiveQuotaPercent > 0)
+        state.requiredOfficeMinutes * 100.0 / state.effectiveQuotaPercent else 0.0
+    val livePercent = if (fixedTarget > 0) liveOfficeMin.toDouble() / fixedTarget * 100 else 0.0
 
     val rawHoursProgress = if (state.requiredOfficeMinutes > 0)
         (state.officeMinutes.toFloat() / state.requiredOfficeMinutes).coerceIn(0f, 1f)
