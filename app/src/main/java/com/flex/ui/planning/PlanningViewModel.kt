@@ -341,6 +341,16 @@ class PlanningViewModel @Inject constructor(
         }
     }
 
+    fun deleteWorkDay(date: LocalDate) {
+        viewModelScope.launch {
+            val existing = _uiState.value.workDays.find { it.date == date }
+            if (existing != null) {
+                workDayRepository.deleteWorkDay(existing)
+                closeDayEditor()
+            }
+        }
+    }
+
     fun openDayEditor(date: LocalDate) {
         if (PublicHolidays.isHoliday(date)) return
         _uiState.value = _uiState.value.copy(editingDate = date)

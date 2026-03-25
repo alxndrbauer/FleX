@@ -24,6 +24,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -109,6 +111,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
     val pagerState = rememberPagerState { 2 }
     val scope = rememberCoroutineScope()
+    var showClearAllDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Month navigation — above the tabs, always visible
@@ -257,8 +260,14 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                                             .combinedClickable(
                                                 enabled = !isHoliday,
                                                 onClick = {
-                                                    if (workDay?.isPlanned == true) viewModel.removePlan(date)
-                                                    else viewModel.planDay(date)
+                                                    when {
+                                                        workDay?.isPlanned == true ->
+                                                            viewModel.removePlan(date)
+                                                        workDay != null ->
+                                                            viewModel.openDayEditor(date)
+                                                        else ->
+                                                            viewModel.planDay(date)
+                                                    }
                                                 },
                                                 onLongClick = { viewModel.openDayEditor(date) }
                                             ),
@@ -310,7 +319,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                     }
                 }
                 FilledTonalButton(
-                    onClick = { viewModel.clearAllPlanned() },
+                    onClick = { showClearAllDialog = true },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -482,9 +491,35 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
         } // end HorizontalPager
     } // end Column
 
+    // Confirm clear all planned days
+    if (showClearAllDialog) {
+        val plannedCount = state.workDays.count { it.isPlanned }
+        AlertDialog(
+            onDismissRequest = { showClearAllDialog = false },
+            title = { Text("Alle geplanten Tage löschen?") },
+            text = {
+                Text(
+                    if (plannedCount == 0) "Es gibt keine geplanten Tage in diesem Monat."
+                    else "$plannedCount ${if (plannedCount == 1) "geplanter Tag" else "geplante Tage"} werden entfernt. " +
+                         "Tage mit echten Stempeleinträgen bleiben erhalten."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.clearAllPlanned(); showClearAllDialog = false },
+                    enabled = plannedCount > 0
+                ) { Text("Löschen", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearAllDialog = false }) { Text("Abbrechen") }
+            }
+        )
+    }
+
     // Long-press hour editing dialog
     state.editingDate?.let { date ->
         val existingDay = state.workDays.find { it.date == date }
+        val isRealEntry = existingDay != null && !existingDay.isPlanned
         val existingMinutes = existingDay?.timeBlocks?.firstOrNull()?.let { block ->
             block.endTime?.let { end ->
                 java.time.Duration.between(block.startTime, end).toMinutes().toInt()
@@ -495,7 +530,9 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             date = date,
             initialHours = existingMinutes / 60,
             initialMinutes = existingMinutes % 60,
+            isRealEntry = isRealEntry,
             onDismiss = { viewModel.closeDayEditor() },
+            onDelete = if (isRealEntry) ({ viewModel.deleteWorkDay(date) }) else null,
             onConfirm = { totalMinutes -> viewModel.savePlannedHours(date, totalMinutes) }
         )
     }
@@ -595,7 +632,9 @@ fun PlanHoursDialog(
     date: java.time.LocalDate,
     initialHours: Int,
     initialMinutes: Int,
+    isRealEntry: Boolean = false,
     onDismiss: () -> Unit,
+    onDelete: (() -> Unit)? = null,
     onConfirm: (Int) -> Unit
 ) {
     var hours by remember { mutableStateOf(initialHours.toString()) }
@@ -607,9 +646,33 @@ fun PlanHoursDialog(
             Text(date.format(DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)))
         },
         text = {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (isRealEntry) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            "Echter Stempeleintrag",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
                 Text("Geplante Arbeitszeit", style = MaterialTheme.typography.labelMedium)
-                Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = hours,
@@ -627,6 +690,23 @@ fun PlanHoursDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
+                }
+                if (onDelete != null) {
+                    TextButton(
+                        onClick = onDelete,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.size(6.dp))
+                        Text("Eintrag löschen")
+                    }
                 }
             }
         },
