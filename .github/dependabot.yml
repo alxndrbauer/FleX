@@ -1,0 +1,30 @@
+version: 2
+updates:
+  # Gradle dependencies
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "alxndrbauer"
+    assignees:
+      - "alxndrbauer"
+    commit-message:
+      prefix: "chore(deps):"
+      prefix-development: "chore(deps-dev):"
+      include: "scope"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "alxndrbauer"
+    assignees:
+      - "alxndrbauer"
+    commit-message:
+      prefix: "ci:"
+      include: "scope"

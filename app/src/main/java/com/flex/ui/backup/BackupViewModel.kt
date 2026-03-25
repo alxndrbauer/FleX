@@ -1,0 +1,254 @@
+package com.flex.ui.backup
+
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.documentfile.provider.DocumentFile
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.flex.data.backup.BackupPreferences
+import com.flex.data.backup.BackupRepository
+import com.flex.data.backup.BackupWorker
+import com.flex.data.backup.ImportMode
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+import javax.inject.Inject
+
+data class BackupUiState(
+    val isLoading: Boolean = false,
+    val isAutoBackupEnabled: Boolean = false,
+    val lastBackupTime: String? = null,
+    val localBackupCount: Int = 0,
+    val message: String? = null,
+    val showImportModeDialog: Boolean = false,
+    val showTimePicker: Boolean = false,
+    val pendingImportUri: Uri? = null,
+    val autoBackupDirectoryUri: Uri? = null,
+    val autoBackupDirectoryName: String? = null,
+    val autoBackupHour: Int = 2,
+    val autoBackupMinute: Int = 0,
+    val maxLocalBackups: Int = 5
+)
+
+@HiltViewModel
+class BackupViewModel @Inject constructor(
+    @param:ApplicationContext private val appContext: Context,
+    private val backupRepository: BackupRepository,
+    private val backupPreferences: BackupPreferences
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(BackupUiState())
+    val uiState: StateFlow<BackupUiState> = _uiState.asStateFlow()
+
+    private val dateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", Locale.GERMAN)
+
+    init {
+        loadState()
+    }
+
+    fun refreshState() = loadState()
+
+    private fun loadState() {
+        val lastBackup = backupPreferences.lastBackupTimestamp
+        val dirUriString = backupPreferences.autoBackupDirectoryUri
+        val dirUri = dirUriString?.let { Uri.parse(it) }
+        val count = if (dirUri != null) {
+            DocumentFile.fromTreeUri(appContext, dirUri)
+                ?.listFiles()
+                ?.count { it.name?.startsWith("flex_backup_") == true && it.name?.endsWith(".json") == true }
+                ?: 0
+        } else 0
+        val dirName = if (dirUri != null) {
+            DocumentFile.fromTreeUri(appContext, dirUri)?.name ?: dirUri.lastPathSegment
+        } else null
+
+        _uiState.update {
+            it.copy(
+                isAutoBackupEnabled = backupPreferences.isAutoBackupEnabled,
+                localBackupCount = count,
+                lastBackupTime = if (lastBackup > 0) {
+                    Instant.ofEpochMilli(lastBackup)
+                        .atZone(ZoneId.systemDefault())
+                        .format(dateTimeFormatter)
+                } else null,
+                autoBackupDirectoryUri = dirUri,
+                autoBackupDirectoryName = dirName,
+                autoBackupHour = backupPreferences.autoBackupHour,
+                autoBackupMinute = backupPreferences.autoBackupMinute,
+                maxLocalBackups = backupPreferences.maxLocalBackups
+            )
+        }
+
+        // Re-schedule if auto-backup was enabled before (survives app restarts)
+        if (backupPreferences.isAutoBackupEnabled) {
+            schedulePeriodicBackup()
+        }
+    }
+
+    fun exportToLocalFile(contentResolver: android.content.ContentResolver, uri: Uri) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, message = null) }
+            try {
+                backupRepository.exportToUri(contentResolver, uri)
+                backupPreferences.lastBackupTimestamp = System.currentTimeMillis()
+                loadState()
+                _uiState.update { it.copy(isLoading = false, message = "Export erfolgreich") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, message = "Export fehlgeschlagen: ${e.message}") }
+            }
+        }
+    }
+
+    fun onImportFileSelected(uri: Uri) {
+        _uiState.update { it.copy(showImportModeDialog = true, pendingImportUri = uri) }
+    }
+
+    fun dismissImportDialog() {
+        _uiState.update { it.copy(showImportModeDialog = false, pendingImportUri = null) }
+    }
+
+    fun confirmImport(contentResolver: android.content.ContentResolver, mode: ImportMode) {
+        val uri = _uiState.value.pendingImportUri ?: return
+        _uiState.update { it.copy(showImportModeDialog = false, isLoading = true, message = null) }
+
+        viewModelScope.launch {
+            try {
+                backupRepository.importFromUri(contentResolver, uri, mode)
+                _uiState.update { it.copy(isLoading = false, message = "Import erfolgreich", pendingImportUri = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, message = "Import fehlgeschlagen: ${e.message}", pendingImportUri = null) }
+            }
+        }
+    }
+
+    fun selectBackupDirectory(uri: Uri) {
+        appContext.contentResolver.takePersistableUriPermission(
+            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        )
+        backupPreferences.autoBackupDirectoryUri = uri.toString()
+        loadState()
+    }
+
+    fun toggleAutoBackup(enabled: Boolean) {
+        if (enabled && backupPreferences.autoBackupDirectoryUri == null) {
+            _uiState.update { it.copy(message = "Bitte zuerst ein Verzeichnis wählen") }
+            return
+        }
+
+        backupPreferences.isAutoBackupEnabled = enabled
+        _uiState.update { it.copy(isAutoBackupEnabled = enabled) }
+
+        if (enabled) {
+            schedulePeriodicBackup()
+        } else {
+            WorkManager.getInstance(appContext).cancelUniqueWork(BackupWorker.WORK_NAME)
+        }
+    }
+
+    fun showTimePicker() {
+        _uiState.update { it.copy(showTimePicker = true) }
+    }
+
+    fun dismissTimePicker() {
+        _uiState.update { it.copy(showTimePicker = false) }
+    }
+
+    fun setBackupTime(hour: Int, minute: Int) {
+        backupPreferences.autoBackupHour = hour
+        backupPreferences.autoBackupMinute = minute
+        _uiState.update { it.copy(autoBackupHour = hour, autoBackupMinute = minute, showTimePicker = false) }
+        if (backupPreferences.isAutoBackupEnabled) {
+            schedulePeriodicBackup(ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE)
+        }
+    }
+
+    private fun schedulePeriodicBackup(policy: ExistingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.UPDATE) {
+        val now = LocalDateTime.now()
+        val hour = backupPreferences.autoBackupHour
+        val minute = backupPreferences.autoBackupMinute
+        var nextRun = now.withHour(hour).withMinute(minute).withSecond(0).withNano(0)
+        if (!nextRun.isAfter(now)) {
+            nextRun = nextRun.plusDays(1)
+        }
+        val delayMs = java.time.Duration.between(now, nextRun).toMillis()
+
+        val backupRequest = PeriodicWorkRequestBuilder<BackupWorker>(24, TimeUnit.HOURS)
+            .setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
+            .build()
+
+        WorkManager.getInstance(appContext).enqueueUniquePeriodicWork(
+            BackupWorker.WORK_NAME,
+            policy,
+            backupRequest
+        )
+    }
+
+    fun runAutoBackupNow() {
+        val dirUriString = backupPreferences.autoBackupDirectoryUri ?: return
+        val dirUri = Uri.parse(dirUriString)
+        val docDir = DocumentFile.fromTreeUri(appContext, dirUri) ?: return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, message = null) }
+            try {
+                withContext(Dispatchers.IO) {
+                    val json = backupRepository.createBackupJson()
+                    val timestamp =
+                        LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
+                    val file = docDir.createFile("application/json", "flex_backup_$timestamp")
+                        ?: throw IllegalStateException("Datei konnte nicht erstellt werden")
+
+                    appContext.contentResolver.openOutputStream(file.uri)
+                        ?.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+                    backupPreferences.lastBackupTimestamp = System.currentTimeMillis()
+
+                    val maxBackups = backupPreferences.maxLocalBackups
+                    docDir.listFiles()
+                        .filter { it.name?.startsWith("flex_backup_") == true && it.name?.endsWith(".json") == true }
+                        .sortedByDescending { it.lastModified() }
+                        .drop(maxBackups)
+                        .forEach { it.delete() }
+                }
+                loadState()
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        message = "Backup erfolgreich erstellt"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        message = "Backup fehlgeschlagen: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun setMaxLocalBackups(count: Int) {
+        backupPreferences.maxLocalBackups = count
+        _uiState.update { it.copy(maxLocalBackups = count) }
+    }
+
+    fun clearMessage() {
+        _uiState.update { it.copy(message = null) }
+    }
+}

@@ -1,0 +1,39 @@
+# IDE
+*.iml
+/.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Build
+/build
+/app/build
+/app/release
+/wear/build
+.gradle
+.m2
+
+# Local files
+/local.properties
+local.properties
+keystore.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+
+# Logs
+*.log
+
+# Misc
+.env
+*.jks
+/.claude/settings.local.json
