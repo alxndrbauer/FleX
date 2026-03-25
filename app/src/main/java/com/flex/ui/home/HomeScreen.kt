@@ -47,7 +47,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -114,8 +117,11 @@ import com.flex.ui.theme.SaturdayBonusColor
 import com.flex.ui.theme.SickDayColor
 import com.flex.ui.theme.SpecialVacationColor
 import com.flex.ui.theme.VacationColor
+import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -192,7 +198,8 @@ fun HomeScreen(
                     isToday = isToday,
                     onPreviousDay = { viewModel.goToPreviousDay() },
                     onNextDay = { viewModel.goToNextDay() },
-                    onGoToToday = { viewModel.goToToday() }
+                    onGoToToday = { viewModel.goToToday() },
+                    onJumpToDate = { viewModel.navigateToDate(it) }
                 )
             }
 
@@ -468,6 +475,7 @@ private fun HeroCard(
     onPreviousDay: () -> Unit,
     onNextDay: () -> Unit,
     onGoToToday: () -> Unit,
+    onJumpToDate: (LocalDate) -> Unit,
 ) {
     val rawDailyProgress = if (state.settings.dailyWorkMinutes > 0)
         (state.dayWorkTime.netMinutes.toFloat() / state.settings.dailyWorkMinutes).coerceIn(0f, 1f)
@@ -497,6 +505,31 @@ private fun HeroCard(
     val progressColor = if (dailyGoalReached) MaterialTheme.colorScheme.secondary
         else MaterialTheme.colorScheme.primary
 
+    var showDatePicker by remember { mutableStateOf(false) }
+    if (showDatePicker) {
+        val initialMillis = state.selectedDate
+            .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        onJumpToDate(
+                            Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                        )
+                    }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Abbrechen") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -511,7 +544,13 @@ private fun HeroCard(
                 IconButton(onClick = onPreviousDay) {
                     Icon(Icons.Default.ChevronLeft, contentDescription = "Vorheriger Tag")
                 }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { showDatePicker = true }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
                     Text(
                         text = if (isToday) "Heute" else state.selectedDate.format(
                             DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)

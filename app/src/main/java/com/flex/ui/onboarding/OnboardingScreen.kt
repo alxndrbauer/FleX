@@ -52,7 +52,7 @@ private val pages = listOf(
     OnboardingPage(
         icon = Icons.Outlined.Login,
         title = "Einstempeln & Ausstempeln",
-        description = "Tippe auf den Button auf dem Heute-Screen um deinen Arbeitstag zu starten und zu beenden. Solange du eingestempelt bist, zeigt eine Benachrichtigung die laufende Arbeitszeit – mit direktem Ausstempel-Button."
+        description = "Tippe auf den Button auf dem Heute-Screen um deinen Arbeitstag zu starten und zu beenden. Solange du eingestempelt bist, zeigt eine Benachrichtigung die laufende Arbeitszeit – mit direktem Ausstempel-Button. Tippe auf das angezeigte Datum, um direkt zu einem beliebigen Tag zu springen."
     ),
     OnboardingPage(
         icon = Icons.Outlined.PhoneAndroid,
