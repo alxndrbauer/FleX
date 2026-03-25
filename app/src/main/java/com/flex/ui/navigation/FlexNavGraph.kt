@@ -86,7 +86,8 @@ val moreItems = listOf(
 @Composable
 fun FlexNavGraph(
     onboardingCompleted: Boolean = true,
-    onOnboardingFinished: () -> Unit = {}
+    onOnboardingFinished: () -> Unit = {},
+    onOnboardingReset: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val sheetState = rememberModalBottomSheetState()
@@ -181,7 +182,11 @@ fun FlexNavGraph(
                     onNavigateToAbout = { navController.navigate(Screen.About.route) },
                     onNavigateToGeofence = { navController.navigate(Screen.GeofenceSettings.route) },
                     onNavigateToWifi = { navController.navigate(Screen.WifiSettings.route) },
-                    onNavigateToQuotaRules = { navController.navigate(Screen.QuotaRules.route) }
+                    onNavigateToQuotaRules = { navController.navigate(Screen.QuotaRules.route) },
+                    onShowOnboarding = {
+                        onOnboardingReset()
+                        navController.navigate(Screen.Onboarding.route)
+                    }
                 )
             }
             composable(Screen.Backup.route) {

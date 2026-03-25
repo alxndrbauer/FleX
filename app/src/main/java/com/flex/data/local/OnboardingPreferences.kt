@@ -26,6 +26,11 @@ class OnboardingPreferences @Inject constructor(
         _completed.value = true
     }
 
+    fun reset() {
+        prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETED, false).apply()
+        _completed.value = false
+    }
+
     companion object {
         private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
     }

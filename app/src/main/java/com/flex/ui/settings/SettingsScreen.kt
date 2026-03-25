@@ -82,6 +82,7 @@ fun SettingsScreen(
     onNavigateToGeofence: () -> Unit = {},
     onNavigateToWifi: () -> Unit = {},
     onNavigateToQuotaRules: () -> Unit = {},
+    onShowOnboarding: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
@@ -295,6 +296,15 @@ fun SettingsScreen(
         item { SettingsSectionHeader("App") }
         item {
             SettingsGroup {
+                ListItem(
+                    headlineContent = { Text("Einführung wiederholen") },
+                    supportingContent = { Text("Onboarding erneut anzeigen") },
+                    leadingContent = { SettingsIcon(Icons.Default.Update, MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant) },
+                    trailingContent = { ChevronTrailing() },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    modifier = Modifier.clickable { onShowOnboarding() }
+                )
+                SettingsGroupDivider()
                 ListItem(
                     headlineContent = { Text("Über FleX") },
                     supportingContent = { Text("Version & Kontakt") },

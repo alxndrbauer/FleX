@@ -36,7 +36,8 @@ class MainActivity : ComponentActivity() {
             FlexTheme(darkTheme = darkTheme) {
                 FlexNavGraph(
                     onboardingCompleted = onboardingCompleted,
-                    onOnboardingFinished = { onboardingPreferences.setCompleted() }
+                    onOnboardingFinished = { onboardingPreferences.setCompleted() },
+                    onOnboardingReset = { onboardingPreferences.reset() }
                 )
             }
         }
