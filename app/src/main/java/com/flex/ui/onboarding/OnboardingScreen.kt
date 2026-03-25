@@ -72,7 +72,7 @@ private val pages = listOf(
     OnboardingPage(
         icon = Icons.Outlined.Settings,
         title = "Einstellungen & Backup",
-        description = "Passe Arbeitszeit, Urlaub, Büro-Quote und mehr in den Einstellungen an. Automatische Backups sichern deine Daten regelmäßig."
+        description = "Passe Arbeitszeit, Urlaub, Büro-Quote und mehr in den Einstellungen an. Zum Jahreswechsel hilft dir ein Assistent beim Übertragen von Resturlaub und Flextime. Automatische Backups sichern deine Daten regelmäßig."
     )
 )
 
