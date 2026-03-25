@@ -43,6 +43,7 @@ import com.flex.ui.analytics.AnalyticsScreen
 import com.flex.ui.backup.BackupScreen
 import com.flex.ui.home.HomeScreen
 import com.flex.ui.month.MonthScreen
+import com.flex.ui.onboarding.OnboardingScreen
 import com.flex.ui.planning.PlanningScreen
 import com.flex.ui.quota.QuotaScreen
 import com.flex.ui.settings.GeofenceSettingsScreen
@@ -65,6 +66,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     data object GeofenceSettings : Screen("geofence_settings", "Geofencing", Icons.Default.LocationOn)
     data object WifiSettings : Screen("wifi_settings", "WLAN", Icons.Default.Wifi)
     data object QuotaRules : Screen("quota_rules", "Quoten-Zeiträume", Icons.Default.DateRange)
+    data object Onboarding : Screen("onboarding", "Onboarding", Icons.Default.Home)
 }
 
 val bottomNavItems = listOf(
@@ -82,7 +84,10 @@ val moreItems = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FlexNavGraph() {
+fun FlexNavGraph(
+    onboardingCompleted: Boolean = true,
+    onOnboardingFinished: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
@@ -151,9 +156,19 @@ fun FlexNavGraph() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Home.route,
+            startDestination = if (onboardingCompleted) Screen.Home.route else Screen.Onboarding.route,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable(Screen.Onboarding.route) {
+                OnboardingScreen(
+                    onFinish = {
+                        onOnboardingFinished()
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Onboarding.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
             composable(Screen.Home.route) { HomeScreen() }
             composable(Screen.Month.route) { MonthScreen() }
             composable(Screen.Planning.route) { PlanningScreen() }
