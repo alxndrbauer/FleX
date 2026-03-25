@@ -23,7 +23,11 @@ import com.flex.domain.usecase.CheckBreakViolationUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.notification.BreakWarningScheduler
 import com.flex.wearable.WearSyncHelper
+import android.content.Context
+import android.content.Intent
+import com.flex.notification.WorkTimerService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -70,6 +74,7 @@ data class HomeUiState(
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val workDayRepository: WorkDayRepository,
     private val settingsRepository: SettingsRepository,
     private val getMonthWorkDays: GetMonthWorkDaysUseCase,
@@ -260,8 +265,13 @@ class HomeViewModel @Inject constructor(
                     }
                 }
                 .collect { state ->
+                    val wasRunning = _uiState.value.isClockRunning
                     _uiState.value = state
                     _remainingMinutes.value = computeRemainingMinutes(state)
+                    // Restart service if clocked in and it was just loaded (first emission)
+                    if (!wasRunning && state.isClockRunning && state.settings.workTimerNotificationEnabled) {
+                        startWorkTimerService()
+                    }
                 }
         }
     }
@@ -321,6 +331,9 @@ class HomeViewModel @Inject constructor(
             if (state.settings.breakWarningEnabled) {
                 breakWarningScheduler.scheduleWarning(now)
             }
+            if (state.settings.workTimerNotificationEnabled) {
+                startWorkTimerService()
+            }
             _localDayTypeOverride.value = null
             wearSyncHelper.push()
         }
@@ -336,8 +349,17 @@ class HomeViewModel @Inject constructor(
                 runningBlock.copy(endTime = now)
             )
             breakWarningScheduler.cancelWarning()
+            stopWorkTimerService()
             wearSyncHelper.push()
         }
+    }
+
+    private fun startWorkTimerService() {
+        context.startForegroundService(Intent(context, WorkTimerService::class.java))
+    }
+
+    private fun stopWorkTimerService() {
+        context.stopService(Intent(context, WorkTimerService::class.java))
     }
 
     fun setLocation(location: WorkLocation) {

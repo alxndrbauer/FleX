@@ -24,5 +24,6 @@ data class SettingsEntity(
     val geofenceAddress: String = "",
     val wifiAutoStampEnabled: Boolean = false,
     val wifiSsid: String = "",
-    val breakWarningEnabled: Boolean = true
+    val breakWarningEnabled: Boolean = true,
+    val workTimerNotificationEnabled: Boolean = true
 )

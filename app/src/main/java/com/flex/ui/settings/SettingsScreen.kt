@@ -278,6 +278,19 @@ fun SettingsScreen(
                     },
                     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                 )
+                SettingsGroupDivider()
+                ListItem(
+                    headlineContent = { Text("Laufzeit-Anzeige") },
+                    supportingContent = { Text("Zeigt die aktive Arbeitszeit in der Statusleiste") },
+                    leadingContent = { SettingsIcon(Icons.Default.Timer, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
+                    trailingContent = {
+                        Switch(
+                            checked = settings.workTimerNotificationEnabled,
+                            onCheckedChange = { viewModel.updateSettings(settings.copy(workTimerNotificationEnabled = it)) }
+                        )
+                    },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                )
             }
         }
 

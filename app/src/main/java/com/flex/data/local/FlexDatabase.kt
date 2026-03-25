@@ -18,7 +18,7 @@ import com.flex.data.local.entity.WorkDayEntity
         SettingsEntity::class,
         QuotaRuleEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class FlexDatabase : RoomDatabase() {
