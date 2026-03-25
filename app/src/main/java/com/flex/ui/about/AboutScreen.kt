@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,7 +17,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -85,7 +88,107 @@ fun AboutScreen(onNavigateBack: () -> Unit) {
                 )
             }
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Neu seit 1.1.2
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Neu seit Version 1.1.2",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    val changelog = listOf(
+                        "Einführungs-Tutorial beim ersten App-Start",
+                        "Automatisches Stempeln via WLAN oder Geofencing (GPS Koordinaten)",
+                        "Pausenzeiten-Warnung gemäß §4 ArbZG",
+                        "Benachrichtigung mit laufender Arbeitszeit beim Einstempeln",
+                        "Jahreswechsel-Assistent zum Übertragen von Resturlaub & Flextime",
+                        "Datum antippen → direkt zu beliebigem Tag springen",
+                        "Undo-Funktion beim Löschen von Einträgen",
+                        "Überarbeitetes Design und verbessertes Layout",
+                        "Neue Einstellungs-Übersicht mit Unterbereichen",
+                        "Büro-Quote Live-Vorschau in der Planung",
+                        "Monatsübersicht in der Planung",
+                        "Wear OS Companion App mit Tiles"
+                    )
+                    changelog.forEach { item ->
+                        Row(
+                            verticalAlignment = Alignment.Top,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "•  ",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Text(
+                                text = item,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Feature-Liste
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Features",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    val features = listOf(
+                        "Arbeitszeit erfassen – manuell oder per Stempel-Button",
+                        "Automatisch stempeln via Geofencing oder WLAN",
+                        "Flextime-Saldo & Überstunden im Blick behalten",
+                        "Büro-Quote planen und live überwachen",
+                        "Urlaub, Gleittage & Sonderurlaub verwalten",
+                        "Monats- & Jahresauswertung auf einen Blick",
+                        "CSV-Export für Abrechnungen",
+                        "Automatische Datensicherung",
+                        "Pausenzeiten-Kontrolle (§4 ArbZG)",
+                        "Wear OS Companion App mit Tiles"
+                    )
+                    features.forEach { feature ->
+                        Row(
+                            verticalAlignment = Alignment.Top,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.CheckCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp).padding(top = 1.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.size(6.dp))
+                            Text(
+                                text = feature,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            HorizontalDivider()
+
+            Spacer(modifier = Modifier.height(24.dp))
 
             Text(
                 text = "Entwickelt von",
