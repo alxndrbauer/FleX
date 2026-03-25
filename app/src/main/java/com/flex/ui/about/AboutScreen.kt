@@ -3,6 +3,7 @@ package com.flex.ui.about
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -54,9 +55,10 @@ fun AboutScreen(onNavigateBack: () -> Unit) {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Zurück")
                     }
-                }
+                },
+                windowInsets = WindowInsets(0, 0, 0, 0)
             )
-        }
+        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -64,8 +66,7 @@ fun AboutScreen(onNavigateBack: () -> Unit) {
                 .padding(innerPadding)
                 .padding(32.dp)
                 .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = "FleX",
