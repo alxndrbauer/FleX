@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.flex.data.export.ExportService
 import com.flex.domain.events.DataChangeEvent
 import com.flex.domain.events.DataChangeEventBus
+import com.flex.domain.events.UndoEvent
 import com.flex.domain.model.DayType
 import com.flex.domain.model.FlextimeBalance
 import com.flex.domain.model.PublicHolidays
@@ -17,6 +18,7 @@ import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
+import com.flex.domain.usecase.BuildPrognosisDaysUseCase
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
@@ -43,8 +45,6 @@ import java.time.YearMonth
 import javax.inject.Inject
 
 enum class ExportFormat { CSV, PDF }
-
-data class UndoEvent(val message: String, val undoAction: suspend () -> Unit)
 
 data class MonthUiState(
     val yearMonth: YearMonth = YearMonth.now(),
@@ -81,7 +81,8 @@ class MonthViewModel @Inject constructor(
     private val dataChangeEventBus: DataChangeEventBus,
     private val prepareExportData: PrepareExportDataUseCase,
     private val exportService: ExportService,
-    private val checkBreakViolation: CheckBreakViolationUseCase
+    private val checkBreakViolation: CheckBreakViolationUseCase,
+    private val buildPrognosisDays: BuildPrognosisDaysUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MonthUiState())
@@ -220,49 +221,6 @@ class MonthViewModel @Inject constructor(
                 )
             }
         }
-    }
-
-    private fun buildPrognosisDays(
-        month: YearMonth,
-        existingDays: List<WorkDay>,
-        settings: Settings
-    ): List<WorkDay> {
-        val existingByDate = existingDays.associateBy { it.date }
-        val allDays = mutableListOf<WorkDay>()
-
-        for (day in 1..month.lengthOfMonth()) {
-            val date = month.atDay(day)
-            val existing = existingByDate[date]
-
-            if (existing != null) {
-                // Use actual/planned data
-                if (existing.timeBlocks.isEmpty() &&
-                    existing.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
-                ) {
-                    // Planned work day without time blocks: assume full day
-                    val start = LocalTime.of(8, 0)
-                    val end = start.plusMinutes(settings.dailyWorkMinutes.toLong())
-                    allDays.add(existing.copy(
-                        timeBlocks = listOf(TimeBlock(workDayId = existing.id, startTime = start, endTime = end, isDuration = true, location = existing.location))
-                    ))
-                } else {
-                    allDays.add(existing)
-                }
-            } else if (date.dayOfWeek != DayOfWeek.SATURDAY && date.dayOfWeek != DayOfWeek.SUNDAY
-                && !PublicHolidays.isHoliday(date)) {
-                // Unplanned weekday (not a holiday): default to Home-Office
-                val start = LocalTime.of(8, 0)
-                val end = start.plusMinutes(settings.dailyWorkMinutes.toLong())
-                allDays.add(WorkDay(
-                    date = date,
-                    location = WorkLocation.HOME_OFFICE,
-                    dayType = DayType.WORK,
-                    isPlanned = true,
-                    timeBlocks = listOf(TimeBlock(workDayId = 0, startTime = start, endTime = end, isDuration = true, location = WorkLocation.HOME_OFFICE))
-                ))
-            }
-        }
-        return allDays
     }
 
     fun confirmPlannedDays() {

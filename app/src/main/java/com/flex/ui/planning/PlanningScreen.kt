@@ -63,9 +63,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -79,6 +77,7 @@ import com.flex.ui.components.TOOLTIP_FLEXTIME_PROGNOSIS
 import com.flex.ui.components.TOOLTIP_FLEXTIME_PROGNOSIS_TITLE
 import com.flex.ui.components.TOOLTIP_QUOTA_PREVIEW
 import com.flex.ui.components.TOOLTIP_QUOTA_PREVIEW_TITLE
+import com.flex.ui.components.diagonalHatch
 import com.flex.ui.theme.FlexDayColor
 import com.flex.ui.theme.HomeOfficeColor
 import com.flex.ui.theme.OfficeColor
@@ -92,19 +91,6 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawHatchLines(color: Color) {
-    val spacing = 8.dp.toPx()
-    val strokeWidth = 1.5.dp.toPx()
-    val w = size.width
-    val h = size.height
-    var x = -h
-    while (x <= w) {
-        drawLine(color, Offset(x, h), Offset(x + h, 0f), strokeWidth)
-        x += spacing
-    }
-}
-
-private fun Modifier.diagonalHatch(color: Color): Modifier = drawBehind { drawHatchLines(color) }
 
 @OptIn(
     ExperimentalMaterial3Api::class,

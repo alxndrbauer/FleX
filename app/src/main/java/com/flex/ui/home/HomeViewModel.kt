@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.flex.domain.events.DataChangeEvent
 import com.flex.domain.events.DataChangeEventBus
+import com.flex.domain.events.UndoEvent
 import com.flex.domain.model.DayType
 import com.flex.domain.model.FlextimeBalance
 import com.flex.domain.model.QuotaStatus
@@ -46,8 +47,6 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.YearMonth
 import javax.inject.Inject
-
-data class UndoEvent(val message: String, val undoAction: suspend () -> Unit)
 
 data class HomeUiState(
     val today: LocalDate = LocalDate.now(),

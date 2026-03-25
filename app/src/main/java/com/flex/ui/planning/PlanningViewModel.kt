@@ -13,6 +13,8 @@ import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
+import com.flex.domain.events.UndoEvent
+import com.flex.domain.usecase.BuildPrognosisDaysUseCase
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
@@ -82,8 +84,6 @@ data class PlanningUiState(
     val monthSummaries: List<MonthSummary> = emptyList()
 )
 
-data class UndoEvent(val message: String, val undoAction: suspend () -> Unit)
-
 enum class PlanType(val label: String) {
     OFFICE("Büro"),
     HOME_OFFICE("Home-Office"),
@@ -101,7 +101,8 @@ class PlanningViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val calculateDayWorkTime: CalculateDayWorkTimeUseCase,
     private val calculateQuota: CalculateQuotaUseCase,
-    private val calculateFlextime: CalculateFlextimeUseCase
+    private val calculateFlextime: CalculateFlextimeUseCase,
+    private val buildPrognosisDays: BuildPrognosisDaysUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlanningUiState())
@@ -242,46 +243,6 @@ class PlanningViewModel @Inject constructor(
             plannedOfficeMinutes = officeMinutes,
             plannedTotalMinutes = totalMinutes
         )
-    }
-
-    private fun buildPrognosisDays(
-        month: YearMonth,
-        existingDays: List<WorkDay>,
-        settings: Settings
-    ): List<WorkDay> {
-        val existingByDate = existingDays.associateBy { it.date }
-        val allDays = mutableListOf<WorkDay>()
-
-        for (day in 1..month.lengthOfMonth()) {
-            val date = month.atDay(day)
-            val existing = existingByDate[date]
-
-            if (existing != null) {
-                if (existing.timeBlocks.isEmpty() &&
-                    existing.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
-                ) {
-                    val start = LocalTime.of(8, 0)
-                    val end = start.plusMinutes(settings.dailyWorkMinutes.toLong())
-                    allDays.add(existing.copy(
-                        timeBlocks = listOf(TimeBlock(workDayId = existing.id, startTime = start, endTime = end, isDuration = true, location = existing.location))
-                    ))
-                } else {
-                    allDays.add(existing)
-                }
-            } else if (date.dayOfWeek != DayOfWeek.SATURDAY && date.dayOfWeek != DayOfWeek.SUNDAY
-                && !PublicHolidays.isHoliday(date)) {
-                val start = LocalTime.of(8, 0)
-                val end = start.plusMinutes(settings.dailyWorkMinutes.toLong())
-                allDays.add(WorkDay(
-                    date = date,
-                    location = WorkLocation.HOME_OFFICE,
-                    dayType = DayType.WORK,
-                    isPlanned = true,
-                    timeBlocks = listOf(TimeBlock(workDayId = 0, startTime = start, endTime = end, isDuration = true, location = WorkLocation.HOME_OFFICE))
-                ))
-            }
-        }
-        return allDays
     }
 
     fun previousMonth() {
