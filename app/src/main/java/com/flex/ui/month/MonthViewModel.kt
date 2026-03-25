@@ -25,8 +25,11 @@ import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.usecase.CheckBreakViolationUseCase
 import com.flex.domain.usecase.PrepareExportDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
@@ -40,6 +43,8 @@ import java.time.YearMonth
 import javax.inject.Inject
 
 enum class ExportFormat { CSV, PDF }
+
+data class UndoEvent(val message: String, val undoAction: suspend () -> Unit)
 
 data class MonthUiState(
     val yearMonth: YearMonth = YearMonth.now(),
@@ -81,6 +86,9 @@ class MonthViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(MonthUiState())
     val uiState: StateFlow<MonthUiState> = _uiState.asStateFlow()
+
+    private val _undoEvent = MutableSharedFlow<UndoEvent>()
+    val undoEvent: SharedFlow<UndoEvent> = _undoEvent.asSharedFlow()
 
     private val _selectedMonth = MutableStateFlow(YearMonth.now())
 
@@ -291,6 +299,10 @@ class MonthViewModel @Inject constructor(
             workDay.timeBlocks.forEach { workDayRepository.deleteTimeBlock(it) }
             workDayRepository.deleteWorkDay(workDay)
             clearEditing()
+            _undoEvent.emit(UndoEvent("Eintrag gelöscht") {
+                val newId = workDayRepository.saveWorkDay(workDay.copy(id = 0L))
+                workDay.timeBlocks.forEach { workDayRepository.saveTimeBlock(it.copy(id = 0L, workDayId = newId)) }
+            })
         }
     }
 

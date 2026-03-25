@@ -51,6 +51,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -124,6 +128,21 @@ class MutableBlockState(
 fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(viewModel) {
+        viewModel.undoEvent.collect { event ->
+            scope.launch {
+                val result = snackbarHostState.showSnackbar(
+                    message = event.message,
+                    actionLabel = "Rückgängig",
+                    duration = SnackbarDuration.Short
+                )
+                if (result == SnackbarResult.ActionPerformed) event.undoAction()
+            }
+        }
+    }
 
     val csvLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/csv")
@@ -144,6 +163,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
         }
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -525,6 +545,11 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             } else null
         )
     }
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier.align(Alignment.BottomCenter)
+    )
+    } // end Box
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawHatchLines(color: Color) {

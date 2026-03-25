@@ -26,8 +26,11 @@ import com.flex.wearable.WearSyncHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -39,6 +42,8 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.YearMonth
 import javax.inject.Inject
+
+data class UndoEvent(val message: String, val undoAction: suspend () -> Unit)
 
 data class HomeUiState(
     val today: LocalDate = LocalDate.now(),
@@ -80,6 +85,9 @@ class HomeViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    private val _undoEvent = MutableSharedFlow<UndoEvent>()
+    val undoEvent: SharedFlow<UndoEvent> = _undoEvent.asSharedFlow()
 
     private val _remainingMinutes = MutableStateFlow<Int?>(null)
     val remainingMinutes: StateFlow<Int?> = _remainingMinutes.asStateFlow()
@@ -431,12 +439,22 @@ class HomeViewModel @Inject constructor(
 
     fun deleteTimeBlock(timeBlock: TimeBlock) {
         viewModelScope.launch {
-            workDayRepository.deleteTimeBlock(timeBlock)
             val workDay = _uiState.value.workDay
-            if (workDay != null && workDay.timeBlocks.all { it.id == timeBlock.id }) {
+            val isLastBlock = workDay != null && workDay.timeBlocks.all { it.id == timeBlock.id }
+            workDayRepository.deleteTimeBlock(timeBlock)
+            if (isLastBlock && workDay != null) {
                 workDayRepository.deleteWorkDay(workDay)
             }
             wearSyncHelper.push()
+            _undoEvent.emit(UndoEvent("Block gelöscht") {
+                if (isLastBlock && workDay != null) {
+                    val newId = workDayRepository.saveWorkDay(workDay.copy(id = 0L))
+                    workDayRepository.saveTimeBlock(timeBlock.copy(id = 0L, workDayId = newId))
+                } else {
+                    workDayRepository.saveTimeBlock(timeBlock.copy(id = 0L))
+                }
+                wearSyncHelper.push()
+            })
         }
     }
 

@@ -19,8 +19,11 @@ import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
@@ -79,6 +82,8 @@ data class PlanningUiState(
     val monthSummaries: List<MonthSummary> = emptyList()
 )
 
+data class UndoEvent(val message: String, val undoAction: suspend () -> Unit)
+
 enum class PlanType(val label: String) {
     OFFICE("Büro"),
     HOME_OFFICE("Home-Office"),
@@ -101,6 +106,9 @@ class PlanningViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(PlanningUiState())
     val uiState: StateFlow<PlanningUiState> = _uiState.asStateFlow()
+
+    private val _undoEvent = MutableSharedFlow<UndoEvent>()
+    val undoEvent: SharedFlow<UndoEvent> = _undoEvent.asSharedFlow()
 
     private val _selectedMonth = MutableStateFlow(YearMonth.now().plusMonths(1))
 
@@ -337,6 +345,10 @@ class PlanningViewModel @Inject constructor(
             val existing = _uiState.value.workDays.find { it.date == date }
             if (existing != null && existing.isPlanned) {
                 workDayRepository.deleteWorkDay(existing)
+                _undoEvent.emit(UndoEvent("Plan entfernt") {
+                    val newId = workDayRepository.saveWorkDay(existing.copy(id = 0L))
+                    existing.timeBlocks.forEach { workDayRepository.saveTimeBlock(it.copy(id = 0L, workDayId = newId)) }
+                })
             }
         }
     }
@@ -347,6 +359,10 @@ class PlanningViewModel @Inject constructor(
             if (existing != null) {
                 workDayRepository.deleteWorkDay(existing)
                 closeDayEditor()
+                _undoEvent.emit(UndoEvent("Eintrag gelöscht") {
+                    val newId = workDayRepository.saveWorkDay(existing.copy(id = 0L))
+                    existing.timeBlocks.forEach { workDayRepository.saveTimeBlock(it.copy(id = 0L, workDayId = newId)) }
+                })
             }
         }
     }

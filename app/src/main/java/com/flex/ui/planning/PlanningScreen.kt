@@ -40,6 +40,10 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,6 +52,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -112,7 +117,22 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
     val pagerState = rememberPagerState { 2 }
     val scope = rememberCoroutineScope()
     var showClearAllDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
+    LaunchedEffect(viewModel) {
+        viewModel.undoEvent.collect { event ->
+            scope.launch {
+                val result = snackbarHostState.showSnackbar(
+                    message = event.message,
+                    actionLabel = "Rückgängig",
+                    duration = SnackbarDuration.Short
+                )
+                if (result == SnackbarResult.ActionPerformed) event.undoAction()
+            }
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Month navigation — above the tabs, always visible
         Row(
@@ -536,6 +556,11 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             onConfirm = { totalMinutes -> viewModel.savePlannedHours(date, totalMinutes) }
         )
     }
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier.align(Alignment.BottomCenter)
+    )
+    } // end Box
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -666,7 +691,7 @@ fun PlanHoursDialog(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            "Echter Stempeleintrag",
+                            "Echter Eintrag",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
@@ -691,38 +716,31 @@ fun PlanHoursDialog(
                         singleLine = true
                     )
                 }
-                if (onDelete != null) {
-                    TextButton(
-                        onClick = onDelete,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.size(6.dp))
-                        Text("Eintrag löschen")
-                    }
-                }
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                val h = hours.toIntOrNull() ?: 0
-                val m = minutes.toIntOrNull() ?: 0
-                val total = h * 60 + m
-                if (total > 0) onConfirm(total)
-            }) {
-                Text("Speichern")
+            Row {
+                if (onDelete != null) {
+                    TextButton(onClick = onDismiss) { Text("Abbrechen") }
+                }
+                TextButton(onClick = {
+                    val h = hours.toIntOrNull() ?: 0
+                    val m = minutes.toIntOrNull() ?: 0
+                    val total = h * 60 + m
+                    if (total > 0) onConfirm(total)
+                }) {
+                    Text("Speichern")
+                }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Abbrechen")
+            if (onDelete != null) {
+                TextButton(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Löschen") }
+            } else {
+                TextButton(onClick = onDismiss) { Text("Abbrechen") }
             }
         }
     )

@@ -65,17 +65,24 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -117,6 +124,21 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val remaining by viewModel.remainingMinutes.collectAsState()
     var showManualEntry by remember { mutableStateOf(false) }
     var editingBlock by remember { mutableStateOf<TimeBlock?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(viewModel) {
+        viewModel.undoEvent.collect { event ->
+            scope.launch {
+                val result = snackbarHostState.showSnackbar(
+                    message = event.message,
+                    actionLabel = "Rückgängig",
+                    duration = SnackbarDuration.Short
+                )
+                if (result == SnackbarResult.ActionPerformed) event.undoAction()
+            }
+        }
+    }
 
     val isToday = state.selectedDate == state.today
     val holidayName = PublicHolidays.getHolidayName(state.selectedDate)
@@ -124,6 +146,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
 
     Scaffold(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (isWorkDay && holidayName == null && isToday) {
                 ExtendedFloatingActionButton(
