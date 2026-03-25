@@ -71,6 +71,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.flex.R
+import com.flex.ui.yearchange.YearChangeDialog
+import com.flex.ui.yearchange.YearChangeViewModel
 import com.flex.domain.model.AppIconVariant
 import com.flex.domain.model.ThemeMode
 
@@ -83,12 +85,14 @@ fun SettingsScreen(
     onNavigateToWifi: () -> Unit = {},
     onNavigateToQuotaRules: () -> Unit = {},
     onShowOnboarding: () -> Unit = {},
-    viewModel: SettingsViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = hiltViewModel(),
+    yearChangeViewModel: YearChangeViewModel = hiltViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
     val quotaRules by viewModel.quotaRules.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
     val appIconVariant by viewModel.appIconVariant.collectAsState()
+    val yearChangeState by yearChangeViewModel.uiState.collectAsState()
 
     // Dialog visibility state
     var showThemeDialog by remember { mutableStateOf(false) }
@@ -297,6 +301,15 @@ fun SettingsScreen(
         item {
             SettingsGroup {
                 ListItem(
+                    headlineContent = { Text("Neues Jahr beginnen") },
+                    supportingContent = { Text("Jahr ${settings.settingsYear + 1} vorbereiten") },
+                    leadingContent = { SettingsIcon(Icons.Default.CalendarMonth, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
+                    trailingContent = { ChevronTrailing() },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    modifier = Modifier.clickable { yearChangeViewModel.openDialog() }
+                )
+                SettingsGroupDivider()
+                ListItem(
                     headlineContent = { Text("Einführung wiederholen") },
                     supportingContent = { Text("Onboarding erneut anzeigen") },
                     leadingContent = { SettingsIcon(Icons.Default.Update, MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant) },
@@ -318,6 +331,16 @@ fun SettingsScreen(
     }
 
     // ── Dialogs ───────────────────────────────────────────────────────
+
+    if (yearChangeState.showDialog) {
+        YearChangeDialog(
+            state = yearChangeState,
+            onDismiss = { yearChangeViewModel.dismiss() },
+            onConfirm = { carryOver, annual ->
+                yearChangeViewModel.applyYearChange(carryOver, annual)
+            }
+        )
+    }
 
     if (showThemeDialog) {
         AlertDialog(

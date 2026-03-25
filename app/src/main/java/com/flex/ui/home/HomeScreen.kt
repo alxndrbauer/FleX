@@ -97,6 +97,8 @@ import com.flex.domain.model.DayType
 import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkLocation
+import com.flex.ui.yearchange.YearChangeDialog
+import com.flex.ui.yearchange.YearChangeViewModel
 import com.flex.ui.components.InfoTooltip
 import com.flex.ui.components.TOOLTIP_FLEXTIME
 import com.flex.ui.components.TOOLTIP_FLEXTIME_TITLE
@@ -119,9 +121,13 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(
+    viewModel: HomeViewModel = hiltViewModel(),
+    yearChangeViewModel: YearChangeViewModel = hiltViewModel()
+) {
     val state by viewModel.uiState.collectAsState()
     val remaining by viewModel.remainingMinutes.collectAsState()
+    val yearChangeState by yearChangeViewModel.uiState.collectAsState()
     var showManualEntry by remember { mutableStateOf(false) }
     var editingBlock by remember { mutableStateOf<TimeBlock?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -407,6 +413,17 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                 }
             }
         }
+    }
+
+    // Year change dialog (automatic on new year)
+    if (yearChangeState.showDialog) {
+        YearChangeDialog(
+            state = yearChangeState,
+            onDismiss = { yearChangeViewModel.dismiss() },
+            onConfirm = { carryOver, annual ->
+                yearChangeViewModel.applyYearChange(carryOver, annual)
+            }
+        )
     }
 
     // Manual entry dialog
