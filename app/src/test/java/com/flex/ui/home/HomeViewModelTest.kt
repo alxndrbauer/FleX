@@ -23,6 +23,7 @@ import com.flex.domain.model.BreakCheckResult
 import com.flex.domain.usecase.CheckBreakViolationUseCase
 import com.flex.notification.BreakWarningScheduler
 import com.flex.wearable.WearSyncHelper
+import android.content.Context
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
@@ -45,6 +46,9 @@ import java.time.LocalTime
 @ExtendWith(MainDispatcherExtension::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest : BaseUnitTest() {
+
+    @Mock
+    private lateinit var context: Context
 
     @Mock
     private lateinit var workDayRepository: WorkDayRepository
@@ -103,7 +107,7 @@ class HomeViewModelTest : BaseUnitTest() {
     fun `initial state has today's date`() = runTest {
         // When: ViewModel is created
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -126,7 +130,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         // When: ViewModel is created
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -145,7 +149,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         // When: ViewModel is created
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -174,7 +178,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         // When: ViewModel is created
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -206,7 +210,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         // When: ViewModel is created
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -231,7 +235,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         // When: ViewModel is created
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -256,7 +260,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         // When: ViewModel is created
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -275,7 +279,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
 
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -297,7 +301,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -318,7 +322,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedWorkDay))
 
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -347,7 +351,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -374,7 +378,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -397,7 +401,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -417,7 +421,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
 
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -439,7 +443,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -461,7 +465,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
 
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -483,7 +487,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -505,7 +509,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
 
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -524,7 +528,7 @@ class HomeViewModelTest : BaseUnitTest() {
     fun `deleteTimeBlock removes TimeBlock from repository`() = runTest {
         // Given: ViewModel initialized
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -552,7 +556,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
 
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -573,7 +577,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -598,7 +602,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         // When: ViewModel is created
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
@@ -617,7 +621,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
         // When: ViewModel is created
         viewModel = HomeViewModel(
-            workDayRepository, settingsRepository, getMonthWorkDays,
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler
         )
         advanceUntilIdle()
