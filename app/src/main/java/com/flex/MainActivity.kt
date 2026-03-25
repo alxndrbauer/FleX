@@ -7,12 +7,21 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.lifecycleScope
 import com.flex.data.local.OnboardingPreferences
 import com.flex.data.local.ThemePreferences
+import com.flex.data.update.UpdateChecker
+import com.flex.data.update.UpdateDownloader
+import com.flex.data.update.UpdateInfo
 import com.flex.domain.model.ThemeMode
 import com.flex.ui.navigation.FlexNavGraph
 import com.flex.ui.theme.FlexTheme
+import com.flex.ui.update.UpdateDialog
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -33,12 +42,43 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.DARK -> true
                 ThemeMode.SYSTEM -> systemDark
             }
+            var pendingUpdate by remember { mutableStateOf<UpdateInfo?>(null) }
+            var isDownloading by remember { mutableStateOf(false) }
+
             FlexTheme(darkTheme = darkTheme) {
                 FlexNavGraph(
                     onboardingCompleted = onboardingCompleted,
                     onOnboardingFinished = { onboardingPreferences.setCompleted() },
                     onOnboardingReset = { onboardingPreferences.reset() }
                 )
+                pendingUpdate?.let { update ->
+                    UpdateDialog(
+                        updateInfo = update,
+                        isDownloading = isDownloading,
+                        onDismiss = { pendingUpdate = null },
+                        onUpdate = {
+                            if (!packageManager.canRequestPackageInstalls()) {
+                                UpdateDownloader.openInstallPermissionSettings(this@MainActivity)
+                            } else {
+                                lifecycleScope.launch {
+                                    isDownloading = true
+                                    runCatching {
+                                        UpdateDownloader.downloadAndInstall(
+                                            context = this@MainActivity,
+                                            downloadUrl = update.downloadUrl
+                                        )
+                                    }
+                                    isDownloading = false
+                                    pendingUpdate = null
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+
+            lifecycleScope.launch {
+                pendingUpdate = UpdateChecker.checkForUpdate(BuildConfig.VERSION_CODE)
             }
         }
     }

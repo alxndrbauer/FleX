@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,6 +60,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,12 +71,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.flex.BuildConfig
 import com.flex.R
-import com.flex.ui.yearchange.YearChangeDialog
-import com.flex.ui.yearchange.YearChangeViewModel
+import com.flex.data.update.UpdateChecker
+import com.flex.data.update.UpdateDownloader
+import com.flex.data.update.UpdateInfo
 import com.flex.domain.model.AppIconVariant
 import com.flex.domain.model.ThemeMode
+import com.flex.ui.update.UpdateDialog
+import com.flex.ui.yearchange.YearChangeDialog
+import com.flex.ui.yearchange.YearChangeViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,6 +102,13 @@ fun SettingsScreen(
     val themeMode by viewModel.themeMode.collectAsState()
     val appIconVariant by viewModel.appIconVariant.collectAsState()
     val yearChangeState by yearChangeViewModel.uiState.collectAsState()
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var pendingUpdate by remember { mutableStateOf<UpdateInfo?>(null) }
+    var noUpdateFound by remember { mutableStateOf(false) }
+    var isDownloading by remember { mutableStateOf(false) }
 
     // Dialog visibility state
     var showThemeDialog by remember { mutableStateOf(false) }
@@ -332,6 +348,25 @@ fun SettingsScreen(
                 )
                 SettingsGroupDivider()
                 ListItem(
+                    headlineContent = { Text("Nach Update suchen") },
+                    supportingContent = { Text("Auf neue Version prüfen") },
+                    leadingContent = { SettingsIcon(Icons.Default.Update, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer) },
+                    trailingContent = {
+                        if (isCheckingUpdate) CircularProgressIndicator(modifier = androidx.compose.ui.Modifier.size(20.dp))
+                        else ChevronTrailing()
+                    },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    modifier = Modifier.clickable(enabled = !isCheckingUpdate) {
+                        scope.launch {
+                            isCheckingUpdate = true
+                            val update = UpdateChecker.checkForUpdate(BuildConfig.VERSION_CODE)
+                            isCheckingUpdate = false
+                            if (update != null) pendingUpdate = update else noUpdateFound = true
+                        }
+                    }
+                )
+                SettingsGroupDivider()
+                ListItem(
                     headlineContent = { Text("Über FleX") },
                     supportingContent = { Text("Version & Kontakt") },
                     leadingContent = { SettingsIcon(Icons.Default.Info, MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant) },
@@ -344,6 +379,37 @@ fun SettingsScreen(
     }
 
     // ── Dialogs ───────────────────────────────────────────────────────
+
+    pendingUpdate?.let { update ->
+        UpdateDialog(
+            updateInfo = update,
+            isDownloading = isDownloading,
+            onDismiss = { pendingUpdate = null },
+            onUpdate = {
+                if (!context.packageManager.canRequestPackageInstalls()) {
+                    UpdateDownloader.openInstallPermissionSettings(context)
+                } else {
+                    scope.launch {
+                        isDownloading = true
+                        runCatching {
+                            UpdateDownloader.downloadAndInstall(context, update.downloadUrl)
+                        }
+                        isDownloading = false
+                        pendingUpdate = null
+                    }
+                }
+            }
+        )
+    }
+
+    if (noUpdateFound) {
+        AlertDialog(
+            onDismissRequest = { noUpdateFound = false },
+            title = { Text("Kein Update verfügbar") },
+            text = { Text("Du verwendest bereits die neueste Version.") },
+            confirmButton = { TextButton(onClick = { noUpdateFound = false }) { Text("OK") } }
+        )
+    }
 
     if (yearChangeState.showDialog) {
         YearChangeDialog(

@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android.jks
+
+      - name: Set up JDK 23
+        uses: actions/setup-java@v5
+        with:
+          java-version: '23'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Run Unit Tests
+        run: xvfb-run ./gradlew testDebugUnitTest
+
+      - name: Build Release APK
+        run: xvfb-run ./gradlew assembleRelease renameReleaseApk :wear:assembleRelease :wear:renameWearReleaseApk --no-daemon
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -1)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="v${VERSION}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "name=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Push tag (manual trigger only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.tag }}
+          files: |
+            app/build/outputs/apk/release/renamed/*.apk
+            wear/build/outputs/apk/release/renamed/*.apk
+          generate_release_notes: true
+
+      - name: Update version manifest in Gist
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
+        run: |
+          VERSION_NAME="${{ steps.version.outputs.name }}"
+          VERSION_CODE=$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)
+          TAG="${{ steps.version.outputs.tag }}"
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/flex-v${VERSION_NAME}.apk"
+          jq -n \
+            --argjson vc "$VERSION_CODE" \
+            --arg vn "$VERSION_NAME" \
+            --arg dl "$DOWNLOAD_URL" \
+            '{files: {"version.json": {content: ({"versionCode": $vc, "versionName": $vn, "changelog": "", "downloadUrl": $dl} | tostring)}}}' \
+          | curl -s -X PATCH \
+              -H "Authorization: token $GIST_TOKEN" \
+              -H "Content-Type: application/json" \
+              "https://api.github.com/gists/$GIST_ID" \
+              --data-binary @-
