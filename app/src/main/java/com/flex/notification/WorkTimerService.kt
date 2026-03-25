@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Duration
@@ -43,9 +44,9 @@ class WorkTimerService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(NOTIF_ID, buildNotification("Arbeit läuft", "Berechne..."))
+        startForeground(NOTIF_ID, buildNotification("Arbeitzeit läuft", "Berechne..."))
         serviceScope.launch {
-            while (true) {
+            while (isActive) {
                 val workDay = workDayRepository.getWorkDay(LocalDate.now()).first()
                 val runningBlock = workDay?.timeBlocks?.find { it.endTime == null }
                 if (runningBlock == null) {
@@ -60,7 +61,7 @@ class WorkTimerService : Service() {
                     WorkLocation.HOME_OFFICE -> "Home-Office"
                 }
                 val contentText = if (h == 0L) "${m}min · $locationLabel" else "${h}h ${m}min · $locationLabel"
-                updateNotification("Arbeit läuft", contentText)
+                updateNotification("Arbeitzeit läuft", contentText)
                 delay(60_000)
             }
         }
