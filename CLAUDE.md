@@ -50,8 +50,12 @@ Task(subagent_type: "general-purpose", model: "haiku", prompt: "...")
 ```
 **Wichtig:** `subagent_type` ist immer `"general-purpose"`, das Modell wird über `model` gewählt.
 
-### 4. Review & Merge
-Opus prüft alle Ergebnisse und erstellt Final-Commit
+### 4. Git & Commit
+- `git add` + `git commit` → selbst ausführen, aber vorher **Skill `conventional-commit` aufrufen** für die Commit Message
+- `git push` → **niemals ausführen** – der User pusht immer selbst
+
+### 5. Review & Merge
+Opus prüft alle Ergebnisse
 
 ## Projektspezifisch
 
@@ -125,6 +129,8 @@ Mit jeder Änderung soll die Version der App gemäß semver angepasst werden.
 - Code-Review vor Merge
 - Descriptive Commit Messages
 - Du darfst gradle Tasks ohne nachfragen ausführen
+- **Niemals `git push` ausführen** – der User pusht immer selbst
+- **Vor jedem Commit den Skill `conventional-commit` aufrufen**
 
 ❌ **DON'T**
 - Force-Push zu main

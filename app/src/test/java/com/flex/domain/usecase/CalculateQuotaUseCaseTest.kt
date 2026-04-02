@@ -6,6 +6,7 @@ import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -344,12 +345,14 @@ class CalculateQuotaUseCaseTest {
 
     @Test
     fun testRemainingWorkDaysWhenCurrentMonthExpectCorrectCount() {
-        // This test is time-dependent; uses the current month so remainingWorkDays > 0
-        // For Mar 2026, from Mar 12 to end of month
-        // Remaining work days: Mon-Fri from Mar 13-31
-        val result = useCase(emptyList(), settings, YearMonth.of(2026, 3))
+        // Uses the current month dynamically so remainingWorkDays > 0 as long as the month isn't over
+        val currentMonth = YearMonth.now()
+        val today = java.time.LocalDate.now()
+        // Skip test if today is the last day of the month (no remaining work days possible)
+        assumeTrue(today.dayOfMonth < currentMonth.lengthOfMonth())
 
-        // Mar 2026: 13-20 (6 days), 23-27 (5 days), 30-31 (2 days) = 13 work days remaining
+        val result = useCase(emptyList(), settings, currentMonth)
+
         assertThat(result.remainingWorkDays).isGreaterThan(0)
     }
 
