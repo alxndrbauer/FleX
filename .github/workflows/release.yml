@@ -18,6 +18,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        run: |
+          curl -sSL https://github.com/orhun/git-cliff/releases/latest/download/git-cliff-x86_64-unknown-linux-gnu.tar.gz | tar -xz --strip-components=1 -C /usr/local/bin git-cliff-x86_64-unknown-linux-gnu/git-cliff
+          mkdir -p app/src/main/assets
+          git-cliff --output app/src/main/assets/changelog.md
 
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android.jks
@@ -80,11 +88,13 @@ jobs:
           VERSION_CODE=$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)
           TAG="${{ steps.version.outputs.tag }}"
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/flex-v${VERSION_NAME}.apk"
+          CHANGELOG=$(git-cliff --current --strip all)
           jq -n \
             --argjson vc "$VERSION_CODE" \
             --arg vn "$VERSION_NAME" \
             --arg dl "$DOWNLOAD_URL" \
-            '{files: {"version.json": {content: ({"versionCode": $vc, "versionName": $vn, "changelog": "", "downloadUrl": $dl} | tostring)}}}' \
+            --arg cl "$CHANGELOG" \
+            '{files: {"version.json": {content: ({"versionCode": $vc, "versionName": $vn, "changelog": $cl, "downloadUrl": $dl} | tostring)}}}' \
           | curl -s -X PATCH \
               -H "Authorization: token $GIST_TOKEN" \
               -H "Content-Type: application/json" \

@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -40,12 +41,44 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 
+private data class ChangelogSection(val version: String, val date: String, val groups: Map<String, List<String>>)
+
+private fun parseChangelog(content: String): List<ChangelogSection> {
+    val sections = content.split(Regex("(?m)^## ")).drop(1)
+    return sections.mapNotNull { section ->
+        val lines = section.lines()
+        val header = lines.firstOrNull() ?: return@mapNotNull null
+        val versionMatch = Regex("""\[([^\]]+)]\s*-\s*(.+)""").find(header) ?: return@mapNotNull null
+        val version = versionMatch.groupValues[1].trim()
+        val date = versionMatch.groupValues[2].trim()
+        val groups = mutableMapOf<String, MutableList<String>>()
+        var currentGroup = ""
+        lines.drop(1).forEach { line ->
+            when {
+                line.startsWith("### ") -> currentGroup = line.removePrefix("### ").trim()
+                line.startsWith("- ") && currentGroup.isNotEmpty() ->
+                    groups.getOrPut(currentGroup) { mutableListOf() }.add(line.removePrefix("- ").trim())
+            }
+        }
+        if (groups.isEmpty()) null else ChangelogSection(version, date, groups)
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(onNavigateBack: () -> Unit) {
     val context = LocalContext.current
     val version = context.packageManager
         .getPackageInfo(context.packageName, 0).versionName ?: "–"
+
+    val changelogSections = remember {
+        try {
+            val content = context.assets.open("changelog.md").bufferedReader().readText()
+            parseChangelog(content).take(3)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -91,56 +124,53 @@ fun AboutScreen(onNavigateBack: () -> Unit) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Neu seit 1.1.2
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Neu seit Version 1.1.2",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    val changelog = listOf(
-                        "Einführungs-Tutorial beim ersten App-Start",
-                        "Automatisches Stempeln via WLAN oder Geofencing (GPS Koordinaten)",
-                        "Pausenzeiten-Warnung gemäß §4 ArbZG",
-                        "Benachrichtigung mit laufender Arbeitszeit beim Einstempeln",
-                        "Jahreswechsel-Assistent zum Übertragen von Resturlaub & Flextime",
-                        "Datum antippen → direkt zu beliebigem Tag springen",
-                        "Undo-Funktion beim Löschen von Einträgen",
-                        "Überarbeitetes Design und verbessertes Layout",
-                        "Neue Einstellungs-Übersicht mit Unterbereichen",
-                        "Büro-Quote Live-Vorschau in der Planung",
-                        "Monatsübersicht in der Planung",
-                        "Wear OS Companion App mit Tiles"
-                    )
-                    changelog.forEach { item ->
-                        Row(
-                            verticalAlignment = Alignment.Top,
-                            modifier = Modifier.padding(vertical = 2.dp)
-                        ) {
+            // Dynamic changelog from assets
+            if (changelogSections.isNotEmpty()) {
+                changelogSections.forEach { section ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
                             Text(
-                                text = "•  ",
-                                style = MaterialTheme.typography.bodySmall,
+                                text = "Version ${section.version}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                             Text(
-                                text = item,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                text = section.date,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
                             )
+                            section.groups.forEach { (groupName, items) ->
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = groupName,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                items.forEach { item ->
+                                    Row(
+                                        verticalAlignment = Alignment.Top,
+                                        modifier = Modifier.padding(vertical = 2.dp)
+                                    ) {
+                                        Text("•  ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                        Text(item, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    }
+                                }
+                            }
                         }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Feature-Liste
             Card(modifier = Modifier.fillMaxWidth()) {
