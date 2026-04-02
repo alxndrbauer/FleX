@@ -22,6 +22,8 @@ import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.model.BreakCheckResult
 import com.flex.domain.usecase.CheckBreakViolationUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.BuildConfig
+import com.flex.data.local.WhatsNewPreferences
 import com.flex.notification.BreakWarningScheduler
 import com.flex.wearable.WearSyncHelper
 import android.content.Context
@@ -84,7 +86,8 @@ class HomeViewModel @Inject constructor(
     private val dataChangeEventBus: DataChangeEventBus,
     private val wearSyncHelper: WearSyncHelper,
     private val checkBreakViolation: CheckBreakViolationUseCase,
-    private val breakWarningScheduler: BreakWarningScheduler
+    private val breakWarningScheduler: BreakWarningScheduler,
+    private val whatsNewPreferences: WhatsNewPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -92,6 +95,9 @@ class HomeViewModel @Inject constructor(
 
     private val _undoEvent = MutableSharedFlow<UndoEvent>()
     val undoEvent: SharedFlow<UndoEvent> = _undoEvent.asSharedFlow()
+
+    private val _whatsNewEvent = MutableSharedFlow<String>()
+    val whatsNewEvent: SharedFlow<String> = _whatsNewEvent.asSharedFlow()
 
     private val _remainingMinutes = MutableStateFlow<Int?>(null)
     val remainingMinutes: StateFlow<Int?> = _remainingMinutes.asStateFlow()
@@ -117,6 +123,17 @@ class HomeViewModel @Inject constructor(
         loadDayData()
         launchRemainingMinutesTicker()
         launchMidnightRefresh()
+        checkWhatsNew()
+    }
+
+    private fun checkWhatsNew() {
+        val lastSeen = whatsNewPreferences.getLastSeenVersionCode()
+        if (lastSeen > 0 && BuildConfig.VERSION_CODE > lastSeen) {
+            viewModelScope.launch {
+                _whatsNewEvent.emit(BuildConfig.VERSION_NAME)
+            }
+        }
+        whatsNewPreferences.setLastSeenVersionCode(BuildConfig.VERSION_CODE)
     }
 
     private fun launchMidnightRefresh() {

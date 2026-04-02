@@ -128,6 +128,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    onNavigateToAbout: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
     yearChangeViewModel: YearChangeViewModel = hiltViewModel()
 ) {
@@ -148,6 +149,19 @@ fun HomeScreen(
                     duration = SnackbarDuration.Short
                 )
                 if (result == SnackbarResult.ActionPerformed) event.undoAction()
+            }
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.whatsNewEvent.collect { versionName ->
+            scope.launch {
+                val result = snackbarHostState.showSnackbar(
+                    message = "Aktualisiert auf v$versionName",
+                    actionLabel = "Was ist neu?",
+                    duration = SnackbarDuration.Long
+                )
+                if (result == SnackbarResult.ActionPerformed) onNavigateToAbout()
             }
         }
     }
