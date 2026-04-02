@@ -54,14 +54,12 @@ Sonderurlaub verfällt am 31. Oktober des laufenden Jahres.
 Verbleibend = Anspruch − genommen − geplant
 """.trim()
 
-const val TOOLTIP_PROGNOSIS_TITLE = "Prognose"
+const val TOOLTIP_PROGNOSIS_TITLE = "Monatsübersicht"
 val TOOLTIP_PROGNOSIS = """
-Hochrechnung der Büro-Quote und Arbeitszeit basierend auf allen bisherigen und geplanten Arbeitstagen des Monats.
+Übersicht der Büro-Quote und Arbeitszeit basierend auf allen bisherigen und geplanten Arbeitstagen des Monats.
 
-Geleistete Zeit:
-• Arbeitstage zählen mit tatsächlichen Stunden
-• Urlaub, Kranktage und Gleittage zählen als voller Arbeitstag
-• Gleittage werden zusätzlich von der Gleitzeit-Bilanz abgezogen
+Geleistet: Tatsächlich erfasste Arbeitszeit (z. B. für timr).
+Angerechnet: Gestempelte Zeit plus Gutschriften für Urlaub, Kranktage und Gleittage – relevant für den Flextime-Saldo.
 """.trim()
 
 const val TOOLTIP_QUOTA_PREVIEW_TITLE = "Quoten-Vorschau"

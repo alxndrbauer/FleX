@@ -61,6 +61,7 @@ data class MonthUiState(
     val totalWorkMinutes: Long = 0,
     val netMinutesByDate: Map<LocalDate, Long> = emptyMap(),
     val hasPlannedDays: Boolean = false,
+    val actualWorkedMinutesMonth: Long = 0,
     val workedMinutesMonth: Long = 0,
     val targetMinutesMonth: Long = 0,
     val differenceMinutesMonth: Long = 0,
@@ -184,9 +185,10 @@ class MonthViewModel @Inject constructor(
                 }
                 val creditTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY, DayType.FLEX_DAY)
                 val creditDaysInMonth = prognosisDays.count { it.dayType in creditTypes }
-                val totalWorkMinutesMonth = workingDaysMonth.sumOf { day ->
+                val actualWorkedMinutesMonth = workingDaysMonth.sumOf { day ->
                     calculateDayWorkTime(day.timeBlocks).netMinutes
-                } + creditDaysInMonth.toLong() * settings.dailyWorkMinutes
+                }
+                val totalWorkMinutesMonth = actualWorkedMinutesMonth + creditDaysInMonth.toLong() * settings.dailyWorkMinutes
 
                 // Calculate target work days for the month (Mon-Fri excluding holidays)
                 var targetWorkDaysMonth = 0
@@ -214,6 +216,7 @@ class MonthViewModel @Inject constructor(
                     totalWorkMinutes = totalMin,
                     netMinutesByDate = netByDate,
                     hasPlannedDays = hasPlanned,
+                    actualWorkedMinutesMonth = actualWorkedMinutesMonth,
                     workedMinutesMonth = totalWorkMinutesMonth,
                     targetMinutesMonth = targetMinutesMonth,
                     differenceMinutesMonth = differenceMinutesMonth,
