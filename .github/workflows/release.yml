@@ -26,10 +26,14 @@ jobs:
         run: echo "name=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -1)" >> "$GITHUB_OUTPUT"
 
       - name: Generate changelog
-        run: |
-          curl -sSL https://github.com/orhun/git-cliff/releases/latest/download/git-cliff-x86_64-unknown-linux-gnu.tar.gz | tar -xz --strip-components=1 -C /usr/local/bin git-cliff-x86_64-unknown-linux-gnu/git-cliff
-          mkdir -p app/src/main/assets
-          git-cliff --tag "v${{ steps.appversion.outputs.name }}" --output app/src/main/assets/changelog.md
+        run: mkdir -p app/src/main/assets
+
+      - uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --tag "v${{ steps.appversion.outputs.name }}"
+        env:
+          OUTPUT: app/src/main/assets/changelog.md
 
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android.jks
