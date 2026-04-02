@@ -48,9 +48,13 @@ private fun parseChangelog(content: String): List<ChangelogSection> {
     return sections.mapNotNull { section ->
         val lines = section.lines()
         val header = lines.firstOrNull() ?: return@mapNotNull null
-        val versionMatch = Regex("""\[([^\]]+)]\s*-\s*(.+)""").find(header) ?: return@mapNotNull null
-        val version = versionMatch.groupValues[1].trim()
-        val date = versionMatch.groupValues[2].trim()
+        val versionMatch = Regex("""\[([^\]]+)]\s*-\s*(.+)""").find(header)
+        val (version, date) = if (versionMatch != null) {
+            versionMatch.groupValues[1].trim() to versionMatch.groupValues[2].trim()
+        } else {
+            val label = Regex("""\[([^\]]+)]""").find(header)?.groupValues?.get(1)?.trim()
+            if (label?.lowercase() == "unreleased") "Aktuell" to "" else return@mapNotNull null
+        }
         val groups = mutableMapOf<String, MutableList<String>>()
         var currentGroup = ""
         lines.drop(1).forEach { line ->
