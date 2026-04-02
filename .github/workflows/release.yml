@@ -87,6 +87,13 @@ jobs:
             wear/build/outputs/apk/release/renamed/*.apk
           generate_release_notes: true
 
+      - name: Get release notes for manifest
+        id: cliff_manifest
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --current --strip all
+
       - name: Update version manifest in Gist
         env:
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
@@ -96,7 +103,7 @@ jobs:
           VERSION_CODE=$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)
           TAG="${{ steps.version.outputs.tag }}"
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/flex-v${VERSION_NAME}.apk"
-          CHANGELOG=$(git-cliff --current --strip all)
+          CHANGELOG="${{ steps.cliff_manifest.outputs.content }}"
           jq -n \
             --argjson vc "$VERSION_CODE" \
             --arg vn "$VERSION_NAME" \
