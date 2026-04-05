@@ -101,6 +101,7 @@ class WifiMonitor @Inject constructor(
         networkCallback?.let {
             try { connectivityManager.unregisterNetworkCallback(it) } catch (_: Exception) {}
             networkCallback = null
+            wifiPreferences.wasConnectedToTarget = false
             Log.d("WifiMonitor", "Unregistered WiFi monitor")
         }
     }

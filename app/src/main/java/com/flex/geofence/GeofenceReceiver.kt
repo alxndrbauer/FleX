@@ -38,9 +38,11 @@ class GeofenceReceiver : BroadcastReceiver() {
                         }
                     }
                     Geofence.GEOFENCE_TRANSITION_EXIT -> {
-                        autoClockOut()
-                        notificationHelper.showClockOutNotification()
-                        wearSyncHelper.push()
+                        val clocked = autoClockOut()
+                        if (clocked) {
+                            notificationHelper.showClockOutNotification()
+                            wearSyncHelper.push()
+                        }
                     }
                 }
             } finally {
