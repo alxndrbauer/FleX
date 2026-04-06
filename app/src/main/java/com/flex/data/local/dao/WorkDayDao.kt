@@ -33,6 +33,9 @@ interface WorkDayDao {
     @Query("UPDATE work_days SET isPlanned = 0 WHERE date >= :startDate AND date <= :endDate AND isPlanned = 1")
     suspend fun confirmPlannedDays(startDate: String, endDate: String)
 
+    @Query("SELECT * FROM work_days WHERE dayType = :dayType ORDER BY date")
+    suspend fun getWorkDaysByType(dayType: String): List<WorkDayEntity>
+
     @Query("SELECT * FROM work_days ORDER BY date")
     suspend fun getAllWorkDays(): List<WorkDayEntity>
 

@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import android.provider.CalendarContract
+import com.flex.calendar.VacationGroupUtil.VACATION_TYPES
 import com.flex.data.local.dao.CalendarEventDao
 import com.flex.data.local.entity.CalendarEventEntity
 import com.flex.domain.model.DayType
@@ -73,6 +74,80 @@ class CalendarSyncService @Inject constructor(
         return calendars
     }
 
+    /**
+     * Syncs a group of consecutive vacation days as a single multi-day calendar event.
+     * Any existing individual or group events for the days in [groupDays] are replaced.
+     */
+    suspend fun syncVacationGroup(groupDays: List<WorkDay>, settings: Settings) {
+        if (!settings.calendarSyncEnabled || settings.calendarId == -1L || groupDays.isEmpty()) return
+
+        val enabledTypes = settings.calendarSyncTypes.split(",").map { it.trim() }
+        val dayType = groupDays.first().dayType
+        if (dayType.name !in enabledTypes) {
+            // Type no longer synced — remove any existing events for these days
+            for (day in groupDays) {
+                val existing = calendarEventDao.getByWorkDayId(day.id)
+                if (existing != null) {
+                    deleteEventFromCalendar(existing.calendarEventId)
+                    calendarEventDao.deleteByCalendarEventId(existing.calendarEventId)
+                }
+            }
+            return
+        }
+
+        val sortedDays = groupDays.sortedBy { it.date }
+        val firstDay = sortedDays.first()
+        val lastDay = sortedDays.last()
+
+        // Delete all existing events and DB mappings for days in this group
+        val seenEventIds = mutableSetOf<Long>()
+        for (day in sortedDays) {
+            val existing = calendarEventDao.getByWorkDayId(day.id)
+            if (existing != null && seenEventIds.add(existing.calendarEventId)) {
+                deleteEventFromCalendar(existing.calendarEventId)
+                calendarEventDao.deleteByCalendarEventId(existing.calendarEventId)
+            }
+        }
+        // Also clear any remaining individual mappings (e.g. for newly added days)
+        for (day in sortedDays) {
+            calendarEventDao.deleteByWorkDayId(day.id)
+        }
+
+        // Create new multi-day event
+        val title = calendarEventMapper.eventTitle(firstDay, settings.calendarEventPrefix)
+        val startMillis = firstDay.date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        val endMillis = lastDay.date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+        val eventId = insertMultiDayEventToCalendar(title, startMillis, endMillis, settings.calendarId, settings.calendarEventNoAlarm)
+        Log.d(TAG, "syncVacationGroup: ${sortedDays.size} days ${firstDay.date}..${lastDay.date} → eventId=$eventId")
+
+        if (eventId != null) {
+            for (day in sortedDays) {
+                calendarEventDao.insert(
+                    CalendarEventEntity(
+                        workDayId = day.id,
+                        calendarEventId = eventId,
+                        calendarId = settings.calendarId
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Deletes the calendar group event for [workDayId] and removes all DB mappings for
+     * that event. Returns the IDs of the other work days that were part of the same group
+     * so the caller can re-sync them as new (potentially split) groups.
+     */
+    suspend fun deleteGroupEventForWorkDay(workDayId: Long): List<Long> {
+        val existing = calendarEventDao.getByWorkDayId(workDayId) ?: return emptyList()
+        val groupMappings = calendarEventDao.getByCalendarEventId(existing.calendarEventId)
+        deleteEventFromCalendar(existing.calendarEventId)
+        calendarEventDao.deleteByCalendarEventId(existing.calendarEventId)
+        Log.d(TAG, "deleteGroupEventForWorkDay: deleted calEventId=${existing.calendarEventId}, group size=${groupMappings.size}")
+        return groupMappings.map { it.workDayId }.filter { it != workDayId }
+    }
+
     suspend fun syncWorkDay(workDay: WorkDay, settings: Settings) {
         Log.d(TAG, "syncWorkDay: id=${workDay.id} date=${workDay.date} type=${workDay.dayType} loc=${workDay.location} enabled=${settings.calendarSyncEnabled} calId=${settings.calendarId}")
         if (!settings.calendarSyncEnabled || settings.calendarId == -1L) {
@@ -85,7 +160,8 @@ class CalendarSyncService @Inject constructor(
             val existing = calendarEventDao.getByWorkDayId(workDay.id)
             if (existing != null) {
                 deleteEventFromCalendar(existing.calendarEventId)
-                calendarEventDao.deleteByWorkDayId(workDay.id)
+                // Delete all mappings for this event (handles group events correctly)
+                calendarEventDao.deleteByCalendarEventId(existing.calendarEventId)
             }
             return
         }
@@ -161,26 +237,64 @@ class CalendarSyncService @Inject constructor(
         val toSync = workDays.filter { calendarEventMapper.isSyncedType(it, settings) }
         val toRemove = workDays.filter { !calendarEventMapper.isSyncedType(it, settings) }
         Log.d(TAG, "syncAll: ${toSync.size} to sync, ${toRemove.size} to remove")
-        var synced = 0
-        toSync.forEach {
-            try {
-                syncWorkDay(it, settings)
-                synced++
-            } catch (e: Exception) {
-                Log.e(TAG, "syncAll: exception for ${it.date}: ${e::class.simpleName}: ${e.message}", e)
-            }
-        }
+
         toRemove.forEach {
-            try {
-                syncWorkDay(it, settings)
-            } catch (e: Exception) {
+            try { syncWorkDay(it, settings) } catch (e: Exception) {
                 Log.e(TAG, "syncAll: remove exception for ${it.date}: ${e::class.simpleName}: ${e.message}", e)
             }
         }
+
+        // Vacation days are synced as grouped multi-day events; others individually
+        val vacationDays = toSync.filter { it.dayType in VACATION_TYPES }
+        val otherDays = toSync.filter { it.dayType !in VACATION_TYPES }
+
+        var synced = 0
+        otherDays.forEach {
+            try { syncWorkDay(it, settings); synced++ } catch (e: Exception) {
+                Log.e(TAG, "syncAll: exception for ${it.date}: ${e::class.simpleName}: ${e.message}", e)
+            }
+        }
+
+        // Group by type first (VACATION and SPECIAL_VACATION stay separate), then by consecutive runs
+        val vacationRuns = vacationDays
+            .groupBy { it.dayType }
+            .values
+            .flatMap { VacationGroupUtil.groupConsecutiveRuns(it) }
+
+        for (run in vacationRuns) {
+            try { syncVacationGroup(run, settings); synced += run.size } catch (e: Exception) {
+                Log.e(TAG, "syncAll: group exception for run starting ${run.first().date}: ${e::class.simpleName}: ${e.message}", e)
+            }
+        }
+
         Log.d(TAG, "syncAll: done synced=$synced of ${toSync.size}")
         return Pair(synced, toSync.size)
     }
 
+
+    private suspend fun insertMultiDayEventToCalendar(
+        title: String, startMillis: Long, endMillis: Long, calendarId: Long, noAlarm: Boolean
+    ): Long? {
+        val values = ContentValues().apply {
+            put(CalendarContract.Events.CALENDAR_ID, calendarId)
+            put(CalendarContract.Events.TITLE, title)
+            put(CalendarContract.Events.DTSTART, startMillis)
+            put(CalendarContract.Events.DTEND, endMillis)
+            put(CalendarContract.Events.ALL_DAY, 1)
+            put(CalendarContract.Events.EVENT_TIMEZONE, "UTC")
+            put(CalendarContract.Events.EVENT_END_TIMEZONE, "UTC")
+            put(CalendarContract.Events.HAS_ALARM, if (noAlarm) 0 else 1)
+        }
+        return withContext(Dispatchers.IO) {
+            try {
+                val uri = context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
+                uri?.lastPathSegment?.toLongOrNull()
+            } catch (e: Exception) {
+                Log.e(TAG, "insertMultiDayEventToCalendar: exception ${e::class.simpleName}: ${e.message}", e)
+                null
+            }
+        }
+    }
 
     private suspend fun insertEventToCalendar(workDay: WorkDay, calendarId: Long, prefix: String, noAlarm: Boolean): Long? {
         val title = calendarEventMapper.eventTitle(workDay, prefix)

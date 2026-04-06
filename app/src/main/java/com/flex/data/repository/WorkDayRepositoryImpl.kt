@@ -1,6 +1,8 @@
 package com.flex.data.repository
 
 import com.flex.calendar.CalendarSyncService
+import com.flex.calendar.VacationGroupUtil
+import com.flex.calendar.VacationGroupUtil.VACATION_TYPES
 import com.flex.data.local.dao.TimeBlockDao
 import com.flex.data.local.dao.WorkDayDao
 import com.flex.data.local.entity.TimeBlockEntity
@@ -69,17 +71,40 @@ class WorkDayRepositoryImpl @Inject constructor(
         }
         val settings = settingsRepository.getSettings().firstOrNull()
         if (settings != null && settings.calendarSyncEnabled) {
-            val blocks = timeBlockDao.getTimeBlocksForDays(listOf(savedId))
-            val workDayWithBlocks = workDay.copy(id = savedId, timeBlocks = blocks.map { it.toDomain() })
-            calendarSyncService.syncWorkDay(workDayWithBlocks, settings)
+            val savedWorkDay = workDay.copy(id = savedId)
+            if (savedWorkDay.dayType in VACATION_TYPES) {
+                val run = findVacationRun(savedWorkDay)
+                calendarSyncService.syncVacationGroup(run, settings)
+            } else {
+                val blocks = timeBlockDao.getTimeBlocksForDays(listOf(savedId))
+                val workDayWithBlocks = savedWorkDay.copy(timeBlocks = blocks.map { it.toDomain() })
+                calendarSyncService.syncWorkDay(workDayWithBlocks, settings)
+            }
         }
         return savedId
     }
 
     override suspend fun deleteWorkDay(workDay: WorkDay) {
-        val prefix = settingsRepository.getSettings().firstOrNull()?.calendarEventPrefix ?: "FleX"
-        calendarSyncService.deleteCalendarEvent(workDay, prefix)
-        workDayDao.delete(workDay.toEntity())
+        val settings = settingsRepository.getSettings().firstOrNull()
+        if (settings != null && settings.calendarSyncEnabled && workDay.dayType in VACATION_TYPES) {
+            val remainingIds = calendarSyncService.deleteGroupEventForWorkDay(workDay.id)
+            workDayDao.delete(workDay.toEntity())
+            if (remainingIds.isNotEmpty()) {
+                val remainingDays = remainingIds.mapNotNull { workDayDao.getWorkDayById(it)?.toDomain() }
+                val runs = VacationGroupUtil.groupConsecutiveRuns(remainingDays)
+                runs.forEach { calendarSyncService.syncVacationGroup(it, settings) }
+            }
+        } else {
+            val prefix = settings?.calendarEventPrefix ?: "FleX"
+            calendarSyncService.deleteCalendarEvent(workDay, prefix)
+            workDayDao.delete(workDay.toEntity())
+        }
+    }
+
+    private suspend fun findVacationRun(workDay: WorkDay): List<WorkDay> {
+        val allOfType = workDayDao.getWorkDaysByType(workDay.dayType.name).map { it.toDomain() }
+        val runs = VacationGroupUtil.groupConsecutiveRuns(allOfType)
+        return runs.find { run -> run.any { it.id == workDay.id } } ?: listOf(workDay)
     }
 
     override suspend fun saveTimeBlock(timeBlock: TimeBlock): Long {

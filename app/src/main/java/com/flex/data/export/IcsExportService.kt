@@ -1,6 +1,8 @@
 package com.flex.data.export
 
 import com.flex.calendar.CalendarEventMapper
+import com.flex.calendar.VacationGroupUtil
+import com.flex.calendar.VacationGroupUtil.VACATION_TYPES
 import com.flex.domain.model.DayType
 import com.flex.domain.model.Settings
 import com.flex.domain.model.WorkDay
@@ -18,9 +20,17 @@ class IcsExportService @Inject constructor(
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyyMMdd")
 
     fun exportToIcs(workDays: List<WorkDay>, settings: Settings): Pair<String, Int> {
-        val filtered = workDays.filter { day ->
-            calendarEventMapper.isSyncedType(day, settings)
-        }
+        val filtered = workDays.filter { calendarEventMapper.isSyncedType(it, settings) }
+
+        // Vacation days are grouped into consecutive multi-day spans; others stay individual
+        val vacationDays = filtered.filter { it.dayType in VACATION_TYPES }
+        val otherDays = filtered.filter { it.dayType !in VACATION_TYPES }
+
+        val vacationRuns = vacationDays
+            .groupBy { it.dayType }
+            .values
+            .flatMap { VacationGroupUtil.groupConsecutiveRuns(it) }
+            .sortedBy { it.first().date }
 
         val content = buildString {
             append("BEGIN:VCALENDAR\r\n")
@@ -29,7 +39,22 @@ class IcsExportService @Inject constructor(
             append("CALSCALE:GREGORIAN\r\n")
             append("METHOD:PUBLISH\r\n")
 
-            for (day in filtered) {
+            for (run in vacationRuns) {
+                val firstDay = run.first()
+                val lastDay = run.last()
+                val title = calendarEventMapper.eventTitle(firstDay, settings.calendarEventPrefix)
+                val startStr = firstDay.date.format(dateFormatter)
+                val endStr = lastDay.date.plusDays(1).format(dateFormatter)
+
+                append("BEGIN:VEVENT\r\n")
+                append("UID:flex-vacation-${firstDay.date}-${lastDay.date}@flex\r\n")
+                append("DTSTART;VALUE=DATE:$startStr\r\n")
+                append("DTEND;VALUE=DATE:$endStr\r\n")
+                append("SUMMARY:$title\r\n")
+                append("END:VEVENT\r\n")
+            }
+
+            for (day in otherDays) {
                 val title = calendarEventMapper.eventTitle(day, settings.calendarEventPrefix)
                 val dateStr = day.date.format(dateFormatter)
                 val nextDateStr = day.date.plusDays(1).format(dateFormatter)

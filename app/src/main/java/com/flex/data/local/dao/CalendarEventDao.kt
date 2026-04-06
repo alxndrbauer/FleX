@@ -19,4 +19,12 @@ interface CalendarEventDao {
 
     @Query("DELETE FROM calendar_events WHERE workDayId = :workDayId")
     suspend fun deleteByWorkDayId(workDayId: Long)
+
+    /** Returns all DB mappings that share the same calendar event (e.g. a vacation group). */
+    @Query("SELECT * FROM calendar_events WHERE calendarEventId = :calendarEventId")
+    suspend fun getByCalendarEventId(calendarEventId: Long): List<CalendarEventEntity>
+
+    /** Removes all DB mappings for a calendar event (used when deleting a group event). */
+    @Query("DELETE FROM calendar_events WHERE calendarEventId = :calendarEventId")
+    suspend fun deleteByCalendarEventId(calendarEventId: Long)
 }

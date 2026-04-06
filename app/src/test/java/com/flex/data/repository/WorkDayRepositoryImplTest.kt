@@ -22,6 +22,7 @@ import org.mockito.Mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.LocalDate
@@ -591,5 +592,155 @@ class WorkDayRepositoryImplTest : BaseUnitTest() {
         val captor = argumentCaptor<WorkDay>()
         verify(calendarSyncService).syncWorkDay(captor.capture(), eq(settings))
         assertThat(captor.firstValue.timeBlocks).isEmpty()
+    }
+
+    // ========== Vacation Group Sync Tests ==========
+
+    @Test
+    fun `saveWorkDay for VACATION calls syncVacationGroup with full consecutive run`() = runTest {
+        // Given: 3 consecutive vacation days already in DB, adding the 3rd
+        val settings = Settings(calendarSyncEnabled = true, calendarId = 42L, calendarSyncTypes = "VACATION")
+        whenever(settingsRepository.getSettings()).thenReturn(flowOf(settings))
+
+        val newDay = WorkDay(id = 0L, date = LocalDate.of(2026, 4, 9), location = WorkLocation.OFFICE, dayType = DayType.VACATION)
+        val savedId = 3L
+
+        whenever(workDayDao.insert(any())).thenReturn(savedId)
+        whenever(workDayDao.getWorkDaysByType("VACATION")).thenReturn(listOf(
+            WorkDayEntity(1L, "2026-04-07", "OFFICE", "VACATION"),
+            WorkDayEntity(2L, "2026-04-08", "OFFICE", "VACATION"),
+            WorkDayEntity(savedId, "2026-04-09", "OFFICE", "VACATION"),
+        ))
+
+        // When
+        repository.saveWorkDay(newDay)
+
+        // Then: syncVacationGroup is called with all 3 consecutive days
+        val captor = argumentCaptor<List<WorkDay>>()
+        verify(calendarSyncService).syncVacationGroup(captor.capture(), eq(settings))
+        assertThat(captor.firstValue).hasSize(3)
+        assertThat(captor.firstValue.map { it.date.dayOfMonth }).containsExactly(7, 8, 9).inOrder()
+
+        // And: syncWorkDay is NOT called
+        verify(calendarSyncService, never()).syncWorkDay(any(), any())
+    }
+
+    @Test
+    fun `saveWorkDay for SPECIAL_VACATION calls syncVacationGroup`() = runTest {
+        val settings = Settings(calendarSyncEnabled = true, calendarId = 42L, calendarSyncTypes = "SPECIAL_VACATION")
+        whenever(settingsRepository.getSettings()).thenReturn(flowOf(settings))
+
+        val newDay = WorkDay(id = 0L, date = LocalDate.of(2026, 4, 7), location = WorkLocation.OFFICE, dayType = DayType.SPECIAL_VACATION)
+        whenever(workDayDao.insert(any())).thenReturn(1L)
+        whenever(workDayDao.getWorkDaysByType("SPECIAL_VACATION")).thenReturn(listOf(
+            WorkDayEntity(1L, "2026-04-07", "OFFICE", "SPECIAL_VACATION"),
+        ))
+
+        repository.saveWorkDay(newDay)
+
+        verify(calendarSyncService).syncVacationGroup(any(), eq(settings))
+        verify(calendarSyncService, never()).syncWorkDay(any(), any())
+    }
+
+    @Test
+    fun `saveWorkDay for VACATION only includes days of same type in run (not SPECIAL_VACATION)`() = runTest {
+        val settings = Settings(calendarSyncEnabled = true, calendarId = 42L, calendarSyncTypes = "VACATION,SPECIAL_VACATION")
+        whenever(settingsRepository.getSettings()).thenReturn(flowOf(settings))
+
+        val newDay = WorkDay(id = 0L, date = LocalDate.of(2026, 4, 8), location = WorkLocation.OFFICE, dayType = DayType.VACATION)
+        whenever(workDayDao.insert(any())).thenReturn(2L)
+        // Only VACATION days queried (not SPECIAL_VACATION)
+        whenever(workDayDao.getWorkDaysByType("VACATION")).thenReturn(listOf(
+            WorkDayEntity(1L, "2026-04-07", "OFFICE", "VACATION"),
+            WorkDayEntity(2L, "2026-04-08", "OFFICE", "VACATION"),
+        ))
+
+        repository.saveWorkDay(newDay)
+
+        val captor = argumentCaptor<List<WorkDay>>()
+        verify(calendarSyncService).syncVacationGroup(captor.capture(), eq(settings))
+        assertThat(captor.firstValue.all { it.dayType == DayType.VACATION }).isTrue()
+    }
+
+    @Test
+    fun `saveWorkDay for WORK still calls syncWorkDay not syncVacationGroup`() = runTest {
+        val settings = Settings(calendarSyncEnabled = true, calendarId = 42L)
+        whenever(settingsRepository.getSettings()).thenReturn(flowOf(settings))
+
+        val workDay = WorkDay(id = 0L, date = LocalDate.of(2026, 4, 7), location = WorkLocation.OFFICE, dayType = DayType.WORK)
+        whenever(workDayDao.insert(any())).thenReturn(1L)
+        whenever(timeBlockDao.getTimeBlocksForDays(any())).thenReturn(emptyList())
+
+        repository.saveWorkDay(workDay)
+
+        verify(calendarSyncService).syncWorkDay(any(), any())
+        verify(calendarSyncService, never()).syncVacationGroup(any(), any())
+    }
+
+    @Test
+    fun `deleteWorkDay for VACATION calls deleteGroupEventForWorkDay`() = runTest {
+        val settings = Settings(calendarSyncEnabled = true, calendarId = 42L)
+        whenever(settingsRepository.getSettings()).thenReturn(flowOf(settings))
+
+        val workDay = WorkDay(id = 5L, date = LocalDate.of(2026, 4, 9), location = WorkLocation.OFFICE, dayType = DayType.VACATION)
+        whenever(calendarSyncService.deleteGroupEventForWorkDay(5L)).thenReturn(emptyList())
+
+        repository.deleteWorkDay(workDay)
+
+        verify(calendarSyncService).deleteGroupEventForWorkDay(5L)
+        verify(workDayDao).delete(any())
+        // No individual deleteCalendarEvent call
+        verify(calendarSyncService, never()).deleteCalendarEvent(any(), any())
+    }
+
+    @Test
+    fun `deleteWorkDay for VACATION re-syncs remaining group members`() = runTest {
+        val settings = Settings(calendarSyncEnabled = true, calendarId = 42L, calendarSyncTypes = "VACATION")
+        whenever(settingsRepository.getSettings()).thenReturn(flowOf(settings))
+
+        // Deleting middle day of a 3-day group → remaining: Apr 7 and Apr 9 (now separate groups)
+        val workDay = WorkDay(id = 2L, date = LocalDate.of(2026, 4, 8), location = WorkLocation.OFFICE, dayType = DayType.VACATION)
+        whenever(calendarSyncService.deleteGroupEventForWorkDay(2L)).thenReturn(listOf(1L, 3L))
+        whenever(workDayDao.getWorkDayById(1L)).thenReturn(WorkDayEntity(1L, "2026-04-07", "OFFICE", "VACATION"))
+        whenever(workDayDao.getWorkDayById(3L)).thenReturn(WorkDayEntity(3L, "2026-04-09", "OFFICE", "VACATION"))
+
+        repository.deleteWorkDay(workDay)
+
+        // Apr 7 and Apr 9 have a gap of 2 days → they ARE still bridged (gap ≤ 3)
+        // So they form one group and syncVacationGroup is called once
+        val captor = argumentCaptor<List<WorkDay>>()
+        verify(calendarSyncService).syncVacationGroup(captor.capture(), eq(settings))
+        assertThat(captor.firstValue).hasSize(2)
+    }
+
+    @Test
+    fun `deleteWorkDay for VACATION with large gap re-syncs as two separate groups`() = runTest {
+        val settings = Settings(calendarSyncEnabled = true, calendarId = 42L, calendarSyncTypes = "VACATION")
+        whenever(settingsRepository.getSettings()).thenReturn(flowOf(settings))
+
+        // Deleting a day that bridged two distant periods: Apr 7 and Apr 14 remain
+        val workDay = WorkDay(id = 2L, date = LocalDate.of(2026, 4, 10), location = WorkLocation.OFFICE, dayType = DayType.VACATION)
+        whenever(calendarSyncService.deleteGroupEventForWorkDay(2L)).thenReturn(listOf(1L, 3L))
+        // Apr 7 and Apr 14 have a gap of 7 days → two separate groups
+        whenever(workDayDao.getWorkDayById(1L)).thenReturn(WorkDayEntity(1L, "2026-04-07", "OFFICE", "VACATION"))
+        whenever(workDayDao.getWorkDayById(3L)).thenReturn(WorkDayEntity(3L, "2026-04-14", "OFFICE", "VACATION"))
+
+        repository.deleteWorkDay(workDay)
+
+        val captor = argumentCaptor<List<WorkDay>>()
+        verify(calendarSyncService, org.mockito.kotlin.times(2)).syncVacationGroup(captor.capture(), eq(settings))
+        assertThat(captor.allValues).hasSize(2)
+        assertThat(captor.allValues[0]).hasSize(1)
+        assertThat(captor.allValues[1]).hasSize(1)
+    }
+
+    @Test
+    fun `deleteWorkDay for WORK still uses deleteCalendarEvent`() = runTest {
+        val workDay = WorkDay(id = 3L, date = LocalDate.of(2026, 4, 7), location = WorkLocation.OFFICE, dayType = DayType.WORK)
+
+        repository.deleteWorkDay(workDay)
+
+        verify(calendarSyncService).deleteCalendarEvent(any(), any())
+        verify(calendarSyncService, never()).deleteGroupEventForWorkDay(any())
     }
 }
