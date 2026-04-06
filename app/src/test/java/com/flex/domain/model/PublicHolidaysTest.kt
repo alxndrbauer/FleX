@@ -85,6 +85,15 @@ class PublicHolidaysTest {
     }
 
     @Test
+    fun testOstersonntag2026ExpectCorrectDate() {
+        // Easter Sunday 2026: April 5
+        val ostersonntag = LocalDate.of(2026, 4, 5)
+
+        assertThat(PublicHolidays.isHoliday(ostersonntag)).isTrue()
+        assertThat(PublicHolidays.getHolidayName(ostersonntag)).isEqualTo("Ostersonntag")
+    }
+
+    @Test
     fun testOstermontag2026ExpectCorrectDate() {
         // Easter Monday: 1 day after Easter = April 6
         val ostermontag = LocalDate.of(2026, 4, 6)
@@ -100,6 +109,15 @@ class PublicHolidaysTest {
 
         assertThat(PublicHolidays.isHoliday(christiHimmelfahrt)).isTrue()
         assertThat(PublicHolidays.getHolidayName(christiHimmelfahrt)).isEqualTo("Christi Himmelfahrt")
+    }
+
+    @Test
+    fun testPfingstsonntag2026ExpectCorrectDate() {
+        // Whit Sunday (Pfingstsonntag): 49 days after Easter = May 24
+        val pfingstsonntag = LocalDate.of(2026, 5, 24)
+
+        assertThat(PublicHolidays.isHoliday(pfingstsonntag)).isTrue()
+        assertThat(PublicHolidays.getHolidayName(pfingstsonntag)).isEqualTo("Pfingstsonntag")
     }
 
     @Test
@@ -188,11 +206,11 @@ class PublicHolidaysTest {
     fun testGetHolidaysForYear2026ExpectCorrectCount() {
         val holidays = PublicHolidays.getHolidaysForYear(2026)
 
-        // Hamburg public holidays: 12 total
-        // Neujahr, Karfreitag, Ostermontag, Tag der Arbeit,
-        // Christi Himmelfahrt, Pfingstmontag, Tag der Dt. Einheit,
+        // Hamburg public holidays: 14 total
+        // Neujahr, Karfreitag, Ostersonntag, Ostermontag, Tag der Arbeit,
+        // Christi Himmelfahrt, Pfingstsonntag, Pfingstmontag, Tag der Dt. Einheit,
         // Reformationstag, Heiligabend, 1. Weihnachtstag, 2. Weihnachtstag, Silvester
-        assertThat(holidays).hasSize(12)
+        assertThat(holidays).hasSize(14)
     }
 
     @Test
@@ -229,7 +247,7 @@ class PublicHolidaysTest {
         // 2024 is a leap year
         val holidays2024 = PublicHolidays.getHolidaysForYear(2024)
 
-        assertThat(holidays2024).hasSize(12)
+        assertThat(holidays2024).hasSize(14)
         // Verify fixed holidays still work
         assertThat(holidays2024).containsKey(LocalDate.of(2024, 1, 1))
         assertThat(holidays2024).containsKey(LocalDate.of(2024, 12, 25))
@@ -240,7 +258,7 @@ class PublicHolidaysTest {
         // Test around year 2000 (century transition)
         val holidays2000 = PublicHolidays.getHolidaysForYear(2000)
 
-        assertThat(holidays2000).hasSize(12)
+        assertThat(holidays2000).hasSize(14)
         // Easter 2000 was April 23
         val ostermontag = holidays2000.entries.find { it.value == "Ostermontag" }?.key
         assertThat(ostermontag?.month?.value).isEqualTo(4) // April
@@ -251,7 +269,7 @@ class PublicHolidaysTest {
         // Test year 2100 (far future)
         val holidays2100 = PublicHolidays.getHolidaysForYear(2100)
 
-        assertThat(holidays2100).hasSize(12)
+        assertThat(holidays2100).hasSize(14)
         assertThat(holidays2100).containsKey(LocalDate.of(2100, 1, 1))
     }
 }

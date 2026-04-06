@@ -222,15 +222,15 @@ class MonthViewModelTest : BaseUnitTest() {
 
     @Test
     fun `selectDay sets editingDay when day exists`() = runTest {
-        // Given: ViewModel with existing work day
-        val today = LocalDate.now()
+        // Given: ViewModel with existing work day (fixed date — not a public holiday)
+        val date = LocalDate.of(2026, 4, 7)
         val workDay = WorkDay(
             id = 1,
-            date = today,
+            date = date,
             location = WorkLocation.OFFICE,
             timeBlocks = listOf(TimeBlock(workDayId = 1, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 0)))
         )
-        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+        whenever(workDayRepository.getWorkDay(date)).thenReturn(flowOf(workDay))
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
@@ -240,7 +240,7 @@ class MonthViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         // When: Selecting a day
-        viewModel.selectDay(today)
+        viewModel.selectDay(date)
         advanceUntilIdle()
 
         // Then: editingDay should be set

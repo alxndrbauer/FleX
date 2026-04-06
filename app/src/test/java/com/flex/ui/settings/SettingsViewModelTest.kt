@@ -14,6 +14,9 @@ import com.flex.domain.model.ThemeMode
 import com.flex.geofence.GeofenceManager
 import com.flex.wifi.WifiMonitor
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.calendar.CalendarSyncService
+import com.flex.domain.repository.WorkDayRepository
+import com.flex.data.export.IcsExportService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -23,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.YearMonth
@@ -56,6 +60,15 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Mock
     private lateinit var appIconPreferences: AppIconPreferences
 
+    @Mock
+    private lateinit var calendarSyncService: CalendarSyncService
+
+    @Mock
+    private lateinit var workDayRepository: WorkDayRepository
+
+    @Mock
+    private lateinit var icsExportService: IcsExportService
+
     private lateinit var viewModel: SettingsViewModel
 
     @BeforeEach
@@ -84,7 +97,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
         advanceUntilIdle()
 
         // Then: Settings state should be loaded
@@ -98,7 +111,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
         advanceUntilIdle()
 
         // Then: QuotaRules state should be empty
@@ -116,7 +129,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(expectedRules))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
         advanceUntilIdle()
 
         // Then: QuotaRules state should be loaded
@@ -129,7 +142,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `updateSettings persists settings to repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
         advanceUntilIdle()
 
         val updatedSettings = Settings(
@@ -150,7 +163,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `updateSettings with different values persists correctly`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
         advanceUntilIdle()
 
         val newSettings = Settings(
@@ -178,7 +191,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `addQuotaRule persists rule to repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
         advanceUntilIdle()
 
         val newRule = QuotaRule(
@@ -199,7 +212,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `addQuotaRule with different month persists correctly`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
         advanceUntilIdle()
 
         val rule = QuotaRule(
@@ -222,7 +235,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `deleteQuotaRule removes rule from repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
         advanceUntilIdle()
 
         val ruleToDelete = QuotaRule(
@@ -252,7 +265,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
         advanceUntilIdle()
 
         // Then: State should reflect the latest settings
@@ -272,7 +285,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(initialRules, updatedRules))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
         advanceUntilIdle()
 
         // Then: State should reflect the rules
@@ -289,7 +302,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
         advanceUntilIdle()
 
         // Then: Settings should have default value
@@ -304,10 +317,106 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor)
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
         advanceUntilIdle()
 
         // Then: QuotaRules should be empty list
         assertThat(viewModel.quotaRules.value).isEmpty()
+    }
+
+    // ========== saveCalendarSettings Tests ==========
+
+    @Test
+    fun `saveCalendarSettings persists noAlarm flag to repository`() = runTest {
+        // Given
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        advanceUntilIdle()
+
+        // When: Saving with noAlarm = true
+        viewModel.saveCalendarSettings(
+            enabled = true, calendarId = 1L, syncTypes = "WORK", syncOffice = true,
+            syncHomeOffice = true, eventPrefix = "FleX", noAlarm = true
+        )
+        advanceUntilIdle()
+
+        // Then: settings saved with calendarEventNoAlarm = true
+        val captor = argumentCaptor<Settings>()
+        verify(settingsRepository).saveSettings(captor.capture())
+        assertThat(captor.firstValue.calendarEventNoAlarm).isEqualTo(true)
+    }
+
+    @Test
+    fun `saveCalendarSettings persists noAlarm false to repository`() = runTest {
+        // Given
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        advanceUntilIdle()
+
+        // When: Saving with noAlarm = false
+        viewModel.saveCalendarSettings(
+            enabled = true, calendarId = 1L, syncTypes = "WORK", syncOffice = true,
+            syncHomeOffice = true, eventPrefix = "FleX", noAlarm = false
+        )
+        advanceUntilIdle()
+
+        // Then: settings saved with calendarEventNoAlarm = false
+        val captor = argumentCaptor<Settings>()
+        verify(settingsRepository).saveSettings(captor.capture())
+        assertThat(captor.firstValue.calendarEventNoAlarm).isEqualTo(false)
+    }
+
+    // ========== cleanupOrphanedMappings Tests ==========
+
+    @Test
+    fun `cleanupOrphanedMappings calls calendarSyncService`() = runTest {
+        // Given: Initialized ViewModel
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        advanceUntilIdle()
+
+        whenever(calendarSyncService.cleanupOrphanedMappings()).thenReturn(Pair(0, 0))
+
+        // When: Calling cleanupOrphanedMappings
+        viewModel.cleanupOrphanedMappings { _, _ -> }
+        advanceUntilIdle()
+
+        // Then: calendarSyncService.cleanupOrphanedMappings should be called
+        verify(calendarSyncService).cleanupOrphanedMappings()
+    }
+
+    @Test
+    fun `cleanupOrphanedMappings calls onResult with removed and total count`() = runTest {
+        // Given: Initialized ViewModel
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        advanceUntilIdle()
+
+        whenever(calendarSyncService.cleanupOrphanedMappings()).thenReturn(Pair(3, 7))
+
+        // When: Calling cleanupOrphanedMappings with callback
+        var resultRemoved = -1
+        var resultTotal = -1
+        viewModel.cleanupOrphanedMappings { removed, total -> resultRemoved = removed; resultTotal = total }
+        advanceUntilIdle()
+
+        // Then: onResult should be called with removed=3, total=7
+        assertThat(resultRemoved).isEqualTo(3)
+        assertThat(resultTotal).isEqualTo(7)
+    }
+
+    @Test
+    fun `cleanupOrphanedMappings with no mappings calls onResult with 0 and 0`() = runTest {
+        // Given: Initialized ViewModel
+        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        advanceUntilIdle()
+
+        whenever(calendarSyncService.cleanupOrphanedMappings()).thenReturn(Pair(0, 0))
+
+        // When: Calling cleanupOrphanedMappings with callback
+        var resultRemoved = -1
+        var resultTotal = -1
+        viewModel.cleanupOrphanedMappings { removed, total -> resultRemoved = removed; resultTotal = total }
+        advanceUntilIdle()
+
+        // Then: onResult should be called with 0, 0
+        assertThat(resultRemoved).isEqualTo(0)
+        assertThat(resultTotal).isEqualTo(0)
     }
 }

@@ -19,9 +19,11 @@ object PublicHolidays {
         return mapOf(
             LocalDate.of(year, 1, 1) to "Neujahr",
             easter.minusDays(2) to "Karfreitag",
+            easter to "Ostersonntag",
             easter.plusDays(1) to "Ostermontag",
             LocalDate.of(year, 5, 1) to "Tag der Arbeit",
             easter.plusDays(39) to "Christi Himmelfahrt",
+            easter.plusDays(49) to "Pfingstsonntag",
             easter.plusDays(50) to "Pfingstmontag",
             LocalDate.of(year, 10, 3) to "Tag der Dt. Einheit",
             LocalDate.of(year, 10, 31) to "Reformationstag",

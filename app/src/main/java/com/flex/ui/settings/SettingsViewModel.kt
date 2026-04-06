@@ -7,16 +7,23 @@ import android.net.wifi.WifiManager
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.flex.calendar.CalendarInfo
+import com.flex.calendar.CalendarSyncService
 import com.flex.data.local.AppIconPreferences
 import com.flex.data.local.ThemePreferences
+import com.flex.data.export.IcsExportService
 import com.flex.domain.model.AppIconVariant
+import com.flex.domain.model.DayType
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.Settings
 import com.flex.domain.model.ThemeMode
 import com.flex.domain.repository.SettingsRepository
+import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.geofence.GeofenceManager
 import com.flex.wifi.WifiMonitor
+import kotlinx.coroutines.flow.firstOrNull
+import java.time.LocalDate
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -37,7 +44,10 @@ class SettingsViewModel @Inject constructor(
     private val themePreferences: ThemePreferences,
     private val appIconPreferences: AppIconPreferences,
     private val geofenceManager: GeofenceManager,
-    private val wifiMonitor: WifiMonitor
+    private val wifiMonitor: WifiMonitor,
+    private val calendarSyncService: CalendarSyncService,
+    private val workDayRepository: WorkDayRepository,
+    private val icsExportService: IcsExportService
 ) : ViewModel() {
 
     private val _settings = MutableStateFlow(Settings())
@@ -147,6 +157,69 @@ class SettingsViewModel @Inject constructor(
             } else {
                 wifiMonitor.unregister()
             }
+        }
+    }
+
+    fun getAvailableCalendars(): List<CalendarInfo> = calendarSyncService.getAvailableCalendars()
+
+    fun saveCalendarSettings(
+        enabled: Boolean,
+        calendarId: Long,
+        syncTypes: String,
+        syncOffice: Boolean,
+        syncHomeOffice: Boolean,
+        eventPrefix: String,
+        noAlarm: Boolean
+    ) {
+        viewModelScope.launch {
+            settingsRepository.saveSettings(
+                _settings.value.copy(
+                    calendarSyncEnabled = enabled,
+                    calendarId = calendarId,
+                    calendarSyncTypes = syncTypes,
+                    calendarSyncOffice = syncOffice,
+                    calendarSyncHomeOffice = syncHomeOffice,
+                    calendarEventPrefix = eventPrefix,
+                    calendarEventNoAlarm = noAlarm
+                )
+            )
+        }
+    }
+
+    fun cleanupOrphanedMappings(onResult: (removed: Int, total: Int) -> Unit) {
+        viewModelScope.launch {
+            val (removed, total) = calendarSyncService.cleanupOrphanedMappings()
+            onResult(removed, total)
+        }
+    }
+
+    fun syncAllToCalendar(start: LocalDate, end: LocalDate, onResult: (synced: Int, total: Int) -> Unit) {
+        viewModelScope.launch {
+            val settings = _settings.value
+            if (!settings.calendarSyncEnabled || settings.calendarId == -1L) return@launch
+            val days = workDayRepository.getWorkDaysInRange(start, end).firstOrNull() ?: return@launch
+            val (synced, total) = calendarSyncService.syncAll(days, settings)
+            onResult(synced, total)
+        }
+    }
+
+    fun exportToIcs(
+        start: LocalDate,
+        end: LocalDate,
+        syncTypes: String,
+        syncOffice: Boolean,
+        syncHomeOffice: Boolean,
+        onResult: (String, Int) -> Unit
+    ) {
+        viewModelScope.launch {
+            val settings = _settings.value.copy(
+                calendarSyncTypes = syncTypes,
+                calendarSyncOffice = syncOffice,
+                calendarSyncHomeOffice = syncHomeOffice
+            )
+            val days = workDayRepository.getWorkDaysInRange(start, end).firstOrNull() ?: emptyList()
+            val (content, count) = icsExportService.exportToIcs(days, settings)
+            onResult(content, count)
         }
     }
 

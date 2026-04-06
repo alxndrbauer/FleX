@@ -69,7 +69,14 @@ class SettingsRepositoryImpl @Inject constructor(
         wifiAutoStampEnabled = wifiAutoStampEnabled,
         wifiSsid = wifiSsid,
         breakWarningEnabled = breakWarningEnabled,
-        workTimerNotificationEnabled = workTimerNotificationEnabled
+        workTimerNotificationEnabled = workTimerNotificationEnabled,
+        calendarSyncEnabled = calendarSyncEnabled,
+        calendarId = calendarId,
+        calendarSyncTypes = calendarSyncTypes,
+        calendarSyncOffice = calendarSyncOffice,
+        calendarSyncHomeOffice = calendarSyncHomeOffice,
+        calendarEventPrefix = calendarEventPrefix,
+        calendarEventNoAlarm = calendarEventNoAlarm
     )
 
     private fun Settings.toEntity() = SettingsEntity(
@@ -92,7 +99,14 @@ class SettingsRepositoryImpl @Inject constructor(
         wifiAutoStampEnabled = wifiAutoStampEnabled,
         wifiSsid = wifiSsid,
         breakWarningEnabled = breakWarningEnabled,
-        workTimerNotificationEnabled = workTimerNotificationEnabled
+        workTimerNotificationEnabled = workTimerNotificationEnabled,
+        calendarSyncEnabled = calendarSyncEnabled,
+        calendarId = calendarId,
+        calendarSyncTypes = calendarSyncTypes,
+        calendarSyncOffice = calendarSyncOffice,
+        calendarSyncHomeOffice = calendarSyncHomeOffice,
+        calendarEventPrefix = calendarEventPrefix,
+        calendarEventNoAlarm = calendarEventNoAlarm
     )
 
     private fun QuotaRuleEntity.toDomain() = QuotaRule(

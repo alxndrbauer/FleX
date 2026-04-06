@@ -57,17 +57,17 @@ private val pages = listOf(
     OnboardingPage(
         icon = Icons.Outlined.PhoneAndroid,
         title = "Automatisch stempeln",
-        description = "Richte Geofencing oder WLAN-Erkennung ein – FleX stempelt dich dann automatisch ein und aus. Aktivierbar in den Einstellungen."
+        description = "Richte Geofencing oder WLAN-Erkennung ein – FleX stempelt dich dann automatisch ein und aus. Eine Pausenwarnung erinnert dich nach 6 Stunden. Beides aktivierbar in den Einstellungen."
     ),
     OnboardingPage(
         icon = Icons.Outlined.CalendarMonth,
         title = "Planung & Quote",
-        description = "Plane deine Büro- und Homeoffice-Tage im Voraus und behalte deine Büro-Quote im Blick."
+        description = "Plane deine Büro- und Homeoffice-Tage im Voraus, behalte deine Büro-Quote im Blick und synchronisiere deine Arbeitstage automatisch mit deinem Gerätekalender."
     ),
     OnboardingPage(
         icon = Icons.Outlined.BarChart,
         title = "Flextime & Auswertung",
-        description = "Sieh auf einen Blick wie viel Flextime du angesammelt hast und wie dein Monat läuft. Exportiere deine Daten als CSV oder PDF."
+        description = "Sieh auf einen Blick wie viel Flextime du angesammelt hast und wie dein Monat läuft. Exportiere deine Daten als CSV, JSON, PDF oder ICS-Kalenderdatei."
     ),
     OnboardingPage(
         icon = Icons.Outlined.Settings,

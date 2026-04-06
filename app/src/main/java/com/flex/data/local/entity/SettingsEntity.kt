@@ -25,5 +25,12 @@ data class SettingsEntity(
     val wifiAutoStampEnabled: Boolean = false,
     val wifiSsid: String = "",
     val breakWarningEnabled: Boolean = true,
-    val workTimerNotificationEnabled: Boolean = true
+    val workTimerNotificationEnabled: Boolean = true,
+    val calendarSyncEnabled: Boolean = false,
+    val calendarId: Long = -1L,
+    val calendarSyncTypes: String = "WORK,VACATION,SICK_DAY,FLEX_DAY,SPECIAL_VACATION,OVERTIME_DAY,SATURDAY_BONUS",
+    val calendarSyncOffice: Boolean = true,
+    val calendarSyncHomeOffice: Boolean = true,
+    val calendarEventPrefix: String = "FleX",
+    val calendarEventNoAlarm: Boolean = true
 )

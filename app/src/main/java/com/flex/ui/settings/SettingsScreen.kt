@@ -19,13 +19,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
@@ -34,6 +37,7 @@ import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Wifi
@@ -75,9 +79,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.flex.BuildConfig
 import com.flex.R
+import android.content.Intent
+import android.net.Uri
+import androidx.core.content.FileProvider
 import com.flex.data.update.UpdateChecker
 import com.flex.data.update.UpdateDownloader
 import com.flex.data.update.UpdateInfo
+import java.io.File
 import com.flex.domain.model.AppIconVariant
 import com.flex.domain.model.ThemeMode
 import com.flex.ui.update.UpdateDialog
@@ -93,6 +101,7 @@ fun SettingsScreen(
     onNavigateToGeofence: () -> Unit = {},
     onNavigateToWifi: () -> Unit = {},
     onNavigateToQuotaRules: () -> Unit = {},
+    onNavigateToCalendar: () -> Unit = {},
     onShowOnboarding: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     yearChangeViewModel: YearChangeViewModel = hiltViewModel()
@@ -306,6 +315,23 @@ fun SettingsScreen(
                         )
                     },
                     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                )
+            }
+        }
+
+        // ── Kalender ──────────────────────────────────────────────────────
+        item { SettingsSectionHeader("Kalender") }
+        item {
+            SettingsGroup {
+                ListItem(
+                    headlineContent = { Text("Kalender-Synchronisation & Export") },
+                    supportingContent = {
+                        if (settings.calendarSyncEnabled) Text("Synchronisation aktiv") else Text("Deaktiviert")
+                    },
+                    leadingContent = { SettingsIcon(Icons.Default.CalendarToday, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer) },
+                    trailingContent = { ChevronTrailing() },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    modifier = Modifier.clickable { onNavigateToCalendar() }
                 )
             }
         }
@@ -531,6 +557,7 @@ fun SettingsScreen(
             onSave = { a, c, s -> viewModel.updateSettings(settings.copy(annualVacationDays = a, carryOverVacationDays = c, specialVacationDays = s)); showVacationDialog = false }
         )
     }
+
 }
 
 // ── Helper Composables ──────────────────────────────────────────────────

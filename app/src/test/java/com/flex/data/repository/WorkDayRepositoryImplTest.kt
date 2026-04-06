@@ -2,20 +2,26 @@ package com.flex.data.repository
 
 import com.google.common.truth.Truth.assertThat
 import com.flex.BaseUnitTest
+import com.flex.calendar.CalendarSyncService
 import com.flex.data.local.dao.TimeBlockDao
 import com.flex.data.local.dao.WorkDayDao
 import com.flex.data.local.entity.TimeBlockEntity
 import com.flex.data.local.entity.WorkDayEntity
 import com.flex.domain.model.DayType
+import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mock
+import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.LocalDate
@@ -34,12 +40,19 @@ class WorkDayRepositoryImplTest : BaseUnitTest() {
     @Mock
     private lateinit var timeBlockDao: TimeBlockDao
 
+    @Mock
+    private lateinit var calendarSyncService: CalendarSyncService
+
+    @Mock
+    private lateinit var settingsRepository: SettingsRepository
+
     private lateinit var repository: WorkDayRepositoryImpl
 
     @BeforeEach
     override fun setUp() {
         super.setUp()
-        repository = WorkDayRepositoryImpl(workDayDao, timeBlockDao)
+        whenever(settingsRepository.getSettings()).thenReturn(flowOf(Settings()))
+        repository = WorkDayRepositoryImpl(workDayDao, timeBlockDao, calendarSyncService, settingsRepository)
     }
 
     // ========== getWorkDay Tests ==========
@@ -525,5 +538,58 @@ class WorkDayRepositoryImplTest : BaseUnitTest() {
 
         // Then: DAO should be called with correct range
         verify(workDayDao).confirmPlannedDays("2025-02-01", "2025-02-28")
+    }
+
+    // ========== CalendarSync Block-Loading Tests ==========
+
+    @Test
+    fun `saveWorkDay passes loaded blocks to calendarSync when blocks exist`() = runTest {
+        // Given
+        val date = LocalDate.of(2025, 3, 1)
+        val workDay = WorkDay(id = 0L, date = date, location = WorkLocation.OFFICE, dayType = DayType.WORK)
+        val savedId = 10L
+        val blockEntity = TimeBlockEntity(
+            id = 1L,
+            workDayId = savedId,
+            startTime = "09:00",
+            endTime = "17:00",
+            isDuration = false,
+            location = "HOME_OFFICE"
+        )
+        val settings = Settings(calendarSyncEnabled = true, calendarId = 42L)
+
+        whenever(workDayDao.insert(any())).thenReturn(savedId)
+        whenever(settingsRepository.getSettings()).thenReturn(flowOf(settings))
+        whenever(timeBlockDao.getTimeBlocksForDays(listOf(savedId))).thenReturn(listOf(blockEntity))
+
+        // When
+        repository.saveWorkDay(workDay)
+
+        // Then: calendarSync receives WorkDay WITH loaded blocks
+        val captor = argumentCaptor<WorkDay>()
+        verify(calendarSyncService).syncWorkDay(captor.capture(), eq(settings))
+        assertThat(captor.firstValue.timeBlocks).hasSize(1)
+        assertThat(captor.firstValue.timeBlocks[0].location).isEqualTo(WorkLocation.HOME_OFFICE)
+    }
+
+    @Test
+    fun `saveWorkDay passes empty blocks to calendarSync when no blocks exist`() = runTest {
+        // Given
+        val date = LocalDate.of(2025, 3, 1)
+        val workDay = WorkDay(id = 0L, date = date, location = WorkLocation.OFFICE, dayType = DayType.WORK)
+        val savedId = 10L
+        val settings = Settings(calendarSyncEnabled = true, calendarId = 42L)
+
+        whenever(workDayDao.insert(any())).thenReturn(savedId)
+        whenever(settingsRepository.getSettings()).thenReturn(flowOf(settings))
+        whenever(timeBlockDao.getTimeBlocksForDays(listOf(savedId))).thenReturn(emptyList())
+
+        // When
+        repository.saveWorkDay(workDay)
+
+        // Then: calendarSync receives WorkDay with empty blocks
+        val captor = argumentCaptor<WorkDay>()
+        verify(calendarSyncService).syncWorkDay(captor.capture(), eq(settings))
+        assertThat(captor.firstValue.timeBlocks).isEmpty()
     }
 }

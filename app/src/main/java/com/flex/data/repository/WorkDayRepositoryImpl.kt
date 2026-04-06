@@ -1,5 +1,6 @@
 package com.flex.data.repository
 
+import com.flex.calendar.CalendarSyncService
 import com.flex.data.local.dao.TimeBlockDao
 import com.flex.data.local.dao.WorkDayDao
 import com.flex.data.local.entity.TimeBlockEntity
@@ -8,9 +9,11 @@ import com.flex.domain.model.DayType
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -23,7 +26,9 @@ import javax.inject.Singleton
 @Singleton
 class WorkDayRepositoryImpl @Inject constructor(
     private val workDayDao: WorkDayDao,
-    private val timeBlockDao: TimeBlockDao
+    private val timeBlockDao: TimeBlockDao,
+    private val calendarSyncService: CalendarSyncService,
+    private val settingsRepository: SettingsRepository
 ) : WorkDayRepository {
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -56,24 +61,57 @@ class WorkDayRepositoryImpl @Inject constructor(
 
     override suspend fun saveWorkDay(workDay: WorkDay): Long {
         val entity = workDay.toEntity()
-        return if (entity.id == 0L) {
+        val savedId = if (entity.id == 0L) {
             workDayDao.insert(entity)
         } else {
             workDayDao.update(entity)
             entity.id
         }
+        val settings = settingsRepository.getSettings().firstOrNull()
+        if (settings != null && settings.calendarSyncEnabled) {
+            val blocks = timeBlockDao.getTimeBlocksForDays(listOf(savedId))
+            val workDayWithBlocks = workDay.copy(id = savedId, timeBlocks = blocks.map { it.toDomain() })
+            calendarSyncService.syncWorkDay(workDayWithBlocks, settings)
+        }
+        return savedId
     }
 
     override suspend fun deleteWorkDay(workDay: WorkDay) {
+        val prefix = settingsRepository.getSettings().firstOrNull()?.calendarEventPrefix ?: "FleX"
+        calendarSyncService.deleteCalendarEvent(workDay, prefix)
         workDayDao.delete(workDay.toEntity())
     }
 
     override suspend fun saveTimeBlock(timeBlock: TimeBlock): Long {
-        return timeBlockDao.insert(timeBlock.toEntity())
+        val savedId = timeBlockDao.insert(timeBlock.toEntity())
+        // Re-sync the parent WorkDay so block-location changes are reflected in the calendar
+        val settings = settingsRepository.getSettings().firstOrNull()
+        if (settings != null && settings.calendarSyncEnabled) {
+            val workDayEntity = workDayDao.getWorkDayById(timeBlock.workDayId)
+            if (workDayEntity != null) {
+                val allBlocks = timeBlockDao.getTimeBlocksForDays(listOf(timeBlock.workDayId))
+                val workDay = workDayEntity.toDomain().copy(
+                    timeBlocks = allBlocks.map { it.toDomain() }
+                )
+                calendarSyncService.syncWorkDay(workDay, settings)
+            }
+        }
+        return savedId
     }
 
     override suspend fun deleteTimeBlock(timeBlock: TimeBlock) {
         timeBlockDao.delete(timeBlock.toEntity())
+        val settings = settingsRepository.getSettings().firstOrNull()
+        if (settings != null && settings.calendarSyncEnabled) {
+            val workDayEntity = workDayDao.getWorkDayById(timeBlock.workDayId)
+            if (workDayEntity != null) {
+                val remainingBlocks = timeBlockDao.getTimeBlocksForDays(listOf(timeBlock.workDayId))
+                val workDay = workDayEntity.toDomain().copy(
+                    timeBlocks = remainingBlocks.map { it.toDomain() }
+                )
+                calendarSyncService.syncWorkDay(workDay, settings)
+            }
+        }
     }
 
     override fun getTimeBlocksForDay(workDayId: Long): Flow<List<TimeBlock>> {

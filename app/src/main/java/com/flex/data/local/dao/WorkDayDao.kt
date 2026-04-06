@@ -18,6 +18,9 @@ interface WorkDayDao {
     @Query("SELECT * FROM work_days WHERE date = :date LIMIT 1")
     fun getWorkDayByDate(date: String): Flow<WorkDayEntity?>
 
+    @Query("SELECT * FROM work_days WHERE id = :id LIMIT 1")
+    suspend fun getWorkDayById(id: Long): WorkDayEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(workDay: WorkDayEntity): Long
 

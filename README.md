@@ -15,12 +15,14 @@ Eine Android-App zur Erfassung von Arbeitszeiten mit Fokus auf Büro/Home-Office
 - Automatische Berechnung der Netto-Arbeitszeit (inkl. Pausenabzug)
 - Notizen zu jedem Arbeitstag
 
-### 📍 Automatisches Stempeln (Geofencing)
+### 📍 Automatisches Stempeln
 - Automatisch einstempeln beim Betreten des Büros
 - Automatisch ausstempeln beim Verlassen
 - Bürostandort per Adresse (Geocoding) oder aktuellem GPS-Standort konfigurieren
 - Benachrichtigung mit „Rückgängig"-Aktion bei automatischem Einstempeln
 - Opt-in, erfordert Standortberechtigung „Immer erlauben"
+- WLAN-basiertes Stempeln: automatisch ein-/ausstempeln wenn verbunden mit dem Büro-WLAN
+- Pausenwarnung: Benachrichtigung nach 6 Stunden ununterbrochener Arbeit (§4 ArbZG)
 
 ### 🏢 Büro-Quote Management
 - Konfigurierbares Soll-Quoten-Verhältnis (Standard: 40%)
@@ -43,6 +45,13 @@ Eine Android-App zur Erfassung von Arbeitszeiten mit Fokus auf Büro/Home-Office
 - Feiertage (Hamburg mit Gauß-Osteralgorithmus)
 - Geplante vs. tatsächliche Tage
 
+### 🗓️ Kalender-Synchronisation
+- Arbeitstage, Urlaub, Kranktage und Sondertypen mit beliebigem Gerätekalender synchronisieren
+- Konfigurierbar nach Tagestyp und Standort (Büro/Homeoffice)
+- Kein Löschen/Neu-Anlegen: Events werden direkt in-place aktualisiert
+- ICS-Export für Weitergabe oder Import in externe Kalender
+- Kein-Alarm-Option für stille Kalendereinträge
+
 ### 📈 Analytics
 - Gleitzeit-Verlauf als Zeitreihen-Chart (Monat / Jahr / Gesamt)
 - Überstunden-Verlauf als Chart
@@ -59,9 +68,9 @@ Eine Android-App zur Erfassung von Arbeitszeiten mit Fokus auf Büro/Home-Office
 
 ### 🔒 Datenverwaltung
 - Lokale SQLite-Datenbank (kein Cloud-Zwang)
-- JSON-Export/Import für Backups
+- JSON-Export/Import für Backups, PDF-Export, ICS-Kalender-Export
 - Automatische Sicherungen via WorkManager (max. 5 lokale Backups)
-- PDF-Export
+- In-App Update-Checker mit automatischem APK-Download
 
 ### ⌚ Wear OS Companion App
 - **App**: 2 wischbare Screens:
@@ -88,7 +97,7 @@ Eine Android-App zur Erfassung von Arbeitszeiten mit Fokus auf Büro/Home-Office
 - **Location**: Google Play Services Location 21.3.0
 - **Charts**: Vico 3.0.3
 - **Build**: Gradle 9.4.0, AGP 9.1.0
-- **Wear OS**: Wear Compose 1.4.1, Wear Tiles 1.4.1 + Protolayout 1.2.1
+- **Wear OS**: Wear Compose 1.6.0, Wear Tiles 1.6.0 + Protolayout 1.4.0
 
 ## Installation
 
@@ -152,7 +161,7 @@ GitHub Actions baut automatisch bei jedem Push auf `main`:
 - 🏷️ GitHub Release mit `flex-vX.Y.Z.apk` und `flex-wear-vX.Y.Z.apk`
 - ⚠️ Release wird nur erstellt wenn Build erfolgreich
 
-Releases: https://github.com/alxndrbauer/flexs/releases
+Releases: https://github.com/alxndrbauer/FleX/releases
 
 ## Database Migrations
 
@@ -166,6 +175,12 @@ Releases: https://github.com/alxndrbauer/flexs/releases
 | 6 | Time blocks `location` field |
 | 7 | Settings: Geofence-Felder (enabled, lat, lon, radius) |
 | 8 | Settings: `geofenceAddress` |
+| 9 | Settings: WLAN-Autostempel (`wifiAutoStampEnabled`, `wifiSsid`) |
+| 10 | Settings: `breakWarningEnabled` (Pausenwarnung nach 6h) |
+| 11 | Settings: `workTimerNotificationEnabled` |
+| 12 | Settings: Kalender-Sync (`calendarSyncEnabled`, `calendarId`, Typ-/Ort-Filter) + `calendar_events` Tabelle |
+| 13 | Settings: `calendarEventPrefix` |
+| 14 | Settings: `calendarEventNoAlarm` |
 
 ## Entwicklung
 

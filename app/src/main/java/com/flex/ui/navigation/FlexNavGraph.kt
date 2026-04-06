@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CalendarViewMonth
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EditCalendar
@@ -46,6 +47,7 @@ import com.flex.ui.month.MonthScreen
 import com.flex.ui.onboarding.OnboardingScreen
 import com.flex.ui.planning.PlanningScreen
 import com.flex.ui.quota.QuotaScreen
+import com.flex.ui.settings.CalendarSettingsScreen
 import com.flex.ui.settings.GeofenceSettingsScreen
 import com.flex.ui.settings.QuotaRulesScreen
 import com.flex.ui.settings.SettingsScreen
@@ -65,6 +67,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     data object About : Screen("about", "Info", Icons.Default.Settings)
     data object GeofenceSettings : Screen("geofence_settings", "Geofencing", Icons.Default.LocationOn)
     data object WifiSettings : Screen("wifi_settings", "WLAN", Icons.Default.Wifi)
+    data object CalendarSettings : Screen("calendar_settings", "Kalender", Icons.Default.CalendarToday)
     data object QuotaRules : Screen("quota_rules", "Quoten-Zeiträume", Icons.Default.DateRange)
     data object Onboarding : Screen("onboarding", "Onboarding", Icons.Default.Home)
 }
@@ -184,6 +187,7 @@ fun FlexNavGraph(
                     onNavigateToAbout = { navController.navigate(Screen.About.route) },
                     onNavigateToGeofence = { navController.navigate(Screen.GeofenceSettings.route) },
                     onNavigateToWifi = { navController.navigate(Screen.WifiSettings.route) },
+                    onNavigateToCalendar = { navController.navigate(Screen.CalendarSettings.route) },
                     onNavigateToQuotaRules = { navController.navigate(Screen.QuotaRules.route) },
                     onShowOnboarding = {
                         onOnboardingReset()
@@ -202,6 +206,9 @@ fun FlexNavGraph(
             }
             composable(Screen.WifiSettings.route) {
                 WifiSettingsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(Screen.CalendarSettings.route) {
+                CalendarSettingsScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(Screen.QuotaRules.route) {
                 QuotaRulesScreen(onNavigateBack = { navController.popBackStack() })
