@@ -267,7 +267,7 @@ fun CalendarSettingsScreen(
                     CalendarSettingsGroupDivider()
                     ListItem(
                         headlineContent = { Text("Keine Erinnerung") },
-                        supportingContent = { Text("Entfernt automatische Erinnerungen nach dem Sync (Google Calendar, Samsung Calendar, u.a.).") },
+                        supportingContent = { Text("Entfernt automatische Erinnerungen nach dem Sync. Deaktivieren, wenn du Erinnerungen lieber direkt in deiner Kalender-App konfigurierst.") },
                         trailingContent = {
                             Switch(
                                 checked = settings.calendarEventNoAlarm,

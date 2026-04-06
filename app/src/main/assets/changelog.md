@@ -10,6 +10,7 @@
 - Remove unnecessary non-null assertions in deleteTimeBlock
 - Rename FLEX_DAY calendar label to "Gleittag"
 - Actually suppress reminders via CalendarContract.Reminders
+- Change noAlarm default to off, improve UI hint
 
 ### Features
 

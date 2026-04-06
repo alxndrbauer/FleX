@@ -32,5 +32,5 @@ data class SettingsEntity(
     val calendarSyncOffice: Boolean = true,
     val calendarSyncHomeOffice: Boolean = true,
     val calendarEventPrefix: String = "FleX",
-    val calendarEventNoAlarm: Boolean = true
+    val calendarEventNoAlarm: Boolean = false
 )
