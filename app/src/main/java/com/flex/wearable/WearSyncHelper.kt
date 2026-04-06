@@ -21,7 +21,7 @@ import javax.inject.Singleton
 
 @Singleton
 class WearSyncHelper @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val workDayRepository: WorkDayRepository,
     private val getSettings: GetSettingsUseCase,
     private val getMonthWorkDays: GetMonthWorkDaysUseCase,

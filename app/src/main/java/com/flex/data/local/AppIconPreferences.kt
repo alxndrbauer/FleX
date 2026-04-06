@@ -14,7 +14,7 @@ import javax.inject.Singleton
 
 @Singleton
 class AppIconPreferences @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("app_icon_prefs", Context.MODE_PRIVATE)

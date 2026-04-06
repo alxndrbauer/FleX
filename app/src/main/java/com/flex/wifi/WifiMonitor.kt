@@ -25,7 +25,7 @@ import javax.inject.Singleton
 
 @Singleton
 class WifiMonitor @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val autoClockIn: AutoClockInUseCase,
     private val autoClockOut: AutoClockOutUseCase,
     private val notificationHelper: GeofenceNotificationHelper,

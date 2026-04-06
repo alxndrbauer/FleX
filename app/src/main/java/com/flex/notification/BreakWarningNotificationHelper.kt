@@ -15,7 +15,7 @@ import javax.inject.Singleton
 
 @Singleton
 class BreakWarningNotificationHelper @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     companion object {
         const val NOTIF_ID = 2001
