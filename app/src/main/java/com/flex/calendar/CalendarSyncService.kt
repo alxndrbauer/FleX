@@ -285,15 +285,17 @@ class CalendarSyncService @Inject constructor(
             put(CalendarContract.Events.EVENT_END_TIMEZONE, "UTC")
             put(CalendarContract.Events.HAS_ALARM, if (noAlarm) 0 else 1)
         }
-        return withContext(Dispatchers.IO) {
+        val eventId = withContext(Dispatchers.IO) {
             try {
-                val uri = context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
-                uri?.lastPathSegment?.toLongOrNull()
+                context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
+                    ?.lastPathSegment?.toLongOrNull()
             } catch (e: Exception) {
                 Log.e(TAG, "insertMultiDayEventToCalendar: exception ${e::class.simpleName}: ${e.message}", e)
                 null
             }
         }
+        if (eventId != null && noAlarm) deleteRemindersForEvent(eventId)
+        return eventId
     }
 
     private suspend fun insertEventToCalendar(workDay: WorkDay, calendarId: Long, prefix: String, noAlarm: Boolean): Long? {
@@ -316,7 +318,7 @@ class CalendarSyncService @Inject constructor(
             }
         }
 
-        return withContext(Dispatchers.IO) {
+        val eventId = withContext(Dispatchers.IO) {
             try {
                 val uri = context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
                 Log.d(TAG, "insertEventToCalendar: uri=$uri")
@@ -326,6 +328,8 @@ class CalendarSyncService @Inject constructor(
                 null
             }
         }
+        if (eventId != null && noAlarm) deleteRemindersForEvent(eventId)
+        return eventId
     }
 
     private suspend fun updateEventInCalendar(eventId: Long, workDay: WorkDay, prefix: String, noAlarm: Boolean) {
@@ -360,6 +364,7 @@ class CalendarSyncService @Inject constructor(
                 Log.e(TAG, "updateEventInCalendar: exception ${e::class.simpleName}: ${e.message}", e)
             }
         }
+        if (noAlarm) deleteRemindersForEvent(eventId)
     }
 
     private suspend fun deleteEventFromCalendar(eventId: Long) {
@@ -373,6 +378,21 @@ class CalendarSyncService @Inject constructor(
                 Log.d(TAG, "deleteEventFromCalendar: eventId=$eventId deleted=$rows rows")
             } catch (e: Exception) {
                 Log.e(TAG, "deleteEventFromCalendar: exception ${e::class.simpleName}: ${e.message}", e)
+            }
+        }
+    }
+
+    private suspend fun deleteRemindersForEvent(eventId: Long) {
+        withContext(Dispatchers.IO) {
+            try {
+                context.contentResolver.delete(
+                    CalendarContract.Reminders.CONTENT_URI,
+                    "${CalendarContract.Reminders.EVENT_ID} = ?",
+                    arrayOf(eventId.toString())
+                )
+                Log.d(TAG, "deleteRemindersForEvent: eventId=$eventId")
+            } catch (e: Exception) {
+                Log.e(TAG, "deleteRemindersForEvent: eventId=$eventId ${e::class.simpleName}: ${e.message}", e)
             }
         }
     }
