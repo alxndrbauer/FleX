@@ -6,6 +6,7 @@
 - Make remainingWorkDays test time-independent
 - Add WhatsNewPreferences mock to HomeViewModelTest
 - Prevent phantom clock-outs from stale state
+- Resolve all compiler warnings
 
 ### Features
 

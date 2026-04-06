@@ -334,7 +334,7 @@ fun HomeScreen(
                                     unfocusedLeadingIconColor = currentColor
                                 ),
                                 modifier = Modifier
-                                    .menuAnchor(androidx.compose.material3.MenuAnchorType.PrimaryNotEditable)
+                                    .menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                                     .fillMaxWidth()
                             )
                             ExposedDropdownMenu(

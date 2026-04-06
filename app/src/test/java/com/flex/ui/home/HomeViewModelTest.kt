@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.kotlin.any
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.LocalDate
@@ -551,6 +552,51 @@ class HomeViewModelTest : BaseUnitTest() {
 
         // Then: TimeBlock should be deleted
         verify(workDayRepository).deleteTimeBlock(timeBlock)
+    }
+
+    @Test
+    fun `deleteTimeBlock when last block also deletes WorkDay`() = runTest {
+        // Given: WorkDay with exactly one TimeBlock
+        val today = LocalDate.now()
+        val timeBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(12, 0))
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(timeBlock))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = HomeViewModel(
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler, whatsNewPreferences
+        )
+        advanceUntilIdle()
+
+        // When: Deleting the only TimeBlock
+        viewModel.deleteTimeBlock(timeBlock)
+        advanceUntilIdle()
+
+        // Then: WorkDay should also be deleted
+        verify(workDayRepository).deleteWorkDay(workDay)
+    }
+
+    @Test
+    fun `deleteTimeBlock when not last block does NOT delete WorkDay`() = runTest {
+        // Given: WorkDay with two TimeBlocks
+        val today = LocalDate.now()
+        val timeBlock1 = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(12, 0))
+        val timeBlock2 = TimeBlock(id = 2, workDayId = 1, startTime = LocalTime.of(13, 0), endTime = LocalTime.of(17, 0))
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(timeBlock1, timeBlock2))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = HomeViewModel(
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler, whatsNewPreferences
+        )
+        advanceUntilIdle()
+
+        // When: Deleting one of two TimeBlocks
+        viewModel.deleteTimeBlock(timeBlock1)
+        advanceUntilIdle()
+
+        // Then: WorkDay should NOT be deleted
+        verify(workDayRepository, never()).deleteWorkDay(any())
     }
 
     // ========== saveDayType Tests ==========

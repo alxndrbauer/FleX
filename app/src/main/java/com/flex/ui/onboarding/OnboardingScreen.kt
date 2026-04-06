@@ -18,7 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Login
+import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
@@ -50,7 +50,7 @@ private val pages = listOf(
         description = "Deine persönliche Arbeitszeitverfolgung – einfach, schnell, übersichtlich."
     ),
     OnboardingPage(
-        icon = Icons.Outlined.Login,
+        icon = Icons.AutoMirrored.Outlined.Login,
         title = "Einstempeln & Ausstempeln",
         description = "Tippe auf den Button auf dem Heute-Screen um deinen Arbeitstag zu starten und zu beenden. Solange du eingestempelt bist, zeigt eine Benachrichtigung die laufende Arbeitszeit – mit direktem Ausstempel-Button. Tippe auf das angezeigte Datum, um direkt zu einem beliebigen Tag zu springen."
     ),
