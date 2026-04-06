@@ -413,6 +413,6 @@ class CalendarEventMapperTest {
     @Test
     fun `eventTitle for FLEX_DAY returns flex day title`() {
         val workDay = WorkDay(id = 1, date = LocalDate.of(2026, 4, 5), location = WorkLocation.OFFICE, dayType = DayType.FLEX_DAY)
-        assertThat(mapper.eventTitle(workDay, "FleX")).isEqualTo("FleX: Flextag 💪")
+        assertThat(mapper.eventTitle(workDay, "FleX")).isEqualTo("FleX: Gleittag ☀️")
     }
 }

@@ -8,6 +8,7 @@
 - Prevent phantom clock-outs from stale state
 - Resolve all compiler warnings
 - Remove unnecessary non-null assertions in deleteTimeBlock
+- Rename FLEX_DAY calendar label to "Gleittag"
 
 ### Features
 

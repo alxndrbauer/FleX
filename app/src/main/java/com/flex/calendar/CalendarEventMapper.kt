@@ -44,7 +44,7 @@ class CalendarEventMapper @Inject constructor() {
             }
             DayType.VACATION -> "Urlaub 🏖"
             DayType.SICK_DAY -> "Krank 🤒"
-            DayType.FLEX_DAY -> "Flextag 💪"
+            DayType.FLEX_DAY -> "Gleittag ☀️"
             DayType.SPECIAL_VACATION -> "Sonderurlaub"
             DayType.OVERTIME_DAY -> "Überstunden-Tag"
             DayType.SATURDAY_BONUS -> "Samstag-Bonus"
