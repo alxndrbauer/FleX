@@ -5,6 +5,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import com.flex.calendar.CalendarEventMapper
+import com.flex.calendar.CalendarSyncService
 import com.flex.data.local.FlexDatabase
 import com.flex.data.local.dao.SettingsDao
 import com.flex.data.local.dao.TimeBlockDao
@@ -58,8 +60,9 @@ class EndToEndWorkflowTest {
         timeBlockDao = database.timeBlockDao()
         settingsDao = database.settingsDao()
 
-        workDayRepository = WorkDayRepositoryImpl(workDayDao, timeBlockDao)
         settingsRepository = SettingsRepositoryImpl(settingsDao, database.quotaRuleDao())
+        val calendarSyncService = CalendarSyncService(context, database.calendarEventDao(), CalendarEventMapper())
+        workDayRepository = WorkDayRepositoryImpl(workDayDao, timeBlockDao, calendarSyncService, settingsRepository)
 
         calculateDayWorkTimeUseCase = CalculateDayWorkTimeUseCase()
         calculateFlextimeUseCase = CalculateFlextimeUseCase(calculateDayWorkTimeUseCase)
@@ -92,7 +95,7 @@ class EndToEndWorkflowTest {
 
         // Scenario: Add work day with 8h 30min (510 minutes)
         val workDay = WorkDay(
-            date = LocalDate.of(2026, 2, 15),
+            date = LocalDate.of(2026, 2, 11),
             location = WorkLocation.OFFICE,
             dayType = DayType.WORK,
             isPlanned = false,
@@ -305,7 +308,7 @@ class EndToEndWorkflowTest {
 
         // Add work day with 8h
         val workDay = WorkDay(
-            date = LocalDate.of(2026, 2, 15),
+            date = LocalDate.of(2026, 2, 11),
             location = WorkLocation.OFFICE,
             dayType = DayType.WORK,
             isPlanned = false,
@@ -386,7 +389,7 @@ class EndToEndWorkflowTest {
                 dayType = DayType.WORK,
                 isPlanned = false,
                 note = null,
-                timeBlocks = listOf(TimeBlock(workDayId = 0, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 30), isDuration = true))
+                timeBlocks = listOf(TimeBlock(workDayId = 0, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 30), isDuration = true, location = WorkLocation.HOME_OFFICE))
             ),
             WorkDay(
                 date = LocalDate.of(2026, 2, 7),
@@ -394,7 +397,7 @@ class EndToEndWorkflowTest {
                 dayType = DayType.WORK,
                 isPlanned = false,
                 note = null,
-                timeBlocks = listOf(TimeBlock(workDayId = 0, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 30), isDuration = true))
+                timeBlocks = listOf(TimeBlock(workDayId = 0, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 30), isDuration = true, location = WorkLocation.HOME_OFFICE))
             ),
 
             // Vacation (neutral for quota)

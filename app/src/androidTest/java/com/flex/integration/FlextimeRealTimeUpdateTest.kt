@@ -5,6 +5,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import com.flex.calendar.CalendarEventMapper
+import com.flex.calendar.CalendarSyncService
 import com.flex.data.local.FlexDatabase
 import com.flex.data.repository.SettingsRepositoryImpl
 import com.flex.data.repository.WorkDayRepositoryImpl
@@ -54,8 +56,9 @@ class FlextimeRealTimeUpdateTest {
             FlexDatabase::class.java
         ).build()
 
-        workDayRepository = WorkDayRepositoryImpl(database.workDayDao(), database.timeBlockDao())
         settingsRepository = SettingsRepositoryImpl(database.settingsDao(), database.quotaRuleDao())
+        val calendarSyncService = CalendarSyncService(context, database.calendarEventDao(), CalendarEventMapper())
+        workDayRepository = WorkDayRepositoryImpl(database.workDayDao(), database.timeBlockDao(), calendarSyncService, settingsRepository)
 
         calculateDayWorkTimeUseCase = CalculateDayWorkTimeUseCase()
         calculateFlextimeUseCase = CalculateFlextimeUseCase(calculateDayWorkTimeUseCase)
@@ -101,7 +104,7 @@ class FlextimeRealTimeUpdateTest {
         // Step 2: Add a work day with 8.5 hours
         // This simulates user tapping "Add Work Day" in MonthScreen
         val workDay = WorkDay(
-            date = LocalDate.of(2026, 2, 15),
+            date = LocalDate.of(2026, 2, 11),
             location = WorkLocation.OFFICE,
             dayType = DayType.WORK,
             isPlanned = false,
@@ -131,7 +134,7 @@ class FlextimeRealTimeUpdateTest {
         assertThat(updatedWorkDays).hasSize(1)
 
         val addedDay = updatedWorkDays[0]
-        assertThat(addedDay.date).isEqualTo(LocalDate.of(2026, 2, 15))
+        assertThat(addedDay.date).isEqualTo(LocalDate.of(2026, 2, 11))
         assertThat(addedDay.timeBlocks).hasSize(1)
         assertThat(addedDay.timeBlocks[0].startTime).isEqualTo(LocalTime.of(8, 0))
         assertThat(addedDay.timeBlocks[0].endTime).isEqualTo(LocalTime.of(16, 30))
@@ -199,7 +202,7 @@ class FlextimeRealTimeUpdateTest {
 
         // Add second work day: 8 hours = 480 min
         val day2 = WorkDay(
-            date = LocalDate.of(2026, 2, 15),
+            date = LocalDate.of(2026, 2, 11),
             location = WorkLocation.OFFICE,
             dayType = DayType.WORK,
             isPlanned = false,

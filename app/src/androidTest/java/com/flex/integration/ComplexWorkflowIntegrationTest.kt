@@ -5,6 +5,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import com.flex.calendar.CalendarEventMapper
+import com.flex.calendar.CalendarSyncService
 import com.flex.data.local.FlexDatabase
 import com.flex.data.repository.SettingsRepositoryImpl
 import com.flex.data.repository.WorkDayRepositoryImpl
@@ -50,8 +52,9 @@ class ComplexWorkflowIntegrationTest {
             FlexDatabase::class.java
         ).build()
 
-        workDayRepository = WorkDayRepositoryImpl(database.workDayDao(), database.timeBlockDao())
         settingsRepository = SettingsRepositoryImpl(database.settingsDao(), database.quotaRuleDao())
+        val calendarSyncService = CalendarSyncService(context, database.calendarEventDao(), CalendarEventMapper())
+        workDayRepository = WorkDayRepositoryImpl(database.workDayDao(), database.timeBlockDao(), calendarSyncService, settingsRepository)
 
         calculateDayWorkTimeUseCase = CalculateDayWorkTimeUseCase()
         calculateFlextimeUseCase = CalculateFlextimeUseCase(calculateDayWorkTimeUseCase)
@@ -340,7 +343,7 @@ class ComplexWorkflowIntegrationTest {
                 dayType = DayType.WORK,
                 isPlanned = false,
                 timeBlocks = listOf(
-                    TimeBlock(workDayId = 0, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 0), isDuration = true)
+                    TimeBlock(workDayId = 0, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 0), isDuration = true, location = WorkLocation.HOME_OFFICE)
                 )
             )
         }
@@ -419,7 +422,7 @@ class ComplexWorkflowIntegrationTest {
                     dayType = DayType.WORK,
                     isPlanned = false,
                     timeBlocks = listOf(
-                        TimeBlock(workDayId = 0, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 0), isDuration = true)
+                        TimeBlock(workDayId = 0, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 0), isDuration = true, location = WorkLocation.HOME_OFFICE)
                     )
                 )
             )
@@ -506,7 +509,7 @@ class ComplexWorkflowIntegrationTest {
         settingsRepository.saveSettings(settings)
 
         // Work 5 days with 10h each to recover
-        val workDays = (3..7).map { day ->
+        val workDays = (2..6).map { day ->
             WorkDay(
                 date = LocalDate.of(2026, 2, day),
                 location = WorkLocation.OFFICE,
