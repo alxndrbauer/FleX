@@ -17,6 +17,9 @@ concurrency:
   group: pr-check-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,7 +34,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Run Unit Tests
         run: xvfb-run ./gradlew testDebugUnitTest --no-daemon
