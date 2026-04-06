@@ -481,12 +481,12 @@ class HomeViewModel @Inject constructor(
             val isLastBlock = workDay != null && workDay.timeBlocks.all { it.id == timeBlock.id }
             workDayRepository.deleteTimeBlock(timeBlock)
             if (isLastBlock) {
-                workDayRepository.deleteWorkDay(workDay!!)
+                workDayRepository.deleteWorkDay(workDay)
             }
             wearSyncHelper.push()
             _undoEvent.emit(UndoEvent("Block gelöscht") {
                 if (isLastBlock) {
-                    val newId = workDayRepository.saveWorkDay(workDay!!.copy(id = 0L))
+                    val newId = workDayRepository.saveWorkDay(workDay.copy(id = 0L))
                     workDayRepository.saveTimeBlock(timeBlock.copy(id = 0L, workDayId = newId))
                 } else {
                     workDayRepository.saveTimeBlock(timeBlock.copy(id = 0L))

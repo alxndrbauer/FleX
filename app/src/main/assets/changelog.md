@@ -7,6 +7,7 @@
 - Add WhatsNewPreferences mock to HomeViewModelTest
 - Prevent phantom clock-outs from stale state
 - Resolve all compiler warnings
+- Remove unnecessary non-null assertions in deleteTimeBlock
 
 ### Features
 
