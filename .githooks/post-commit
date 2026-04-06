@@ -1,0 +1,20 @@
+#!/bin/sh
+# Regenerate changelog after every commit and amend it in silently.
+# Guard file prevents infinite loop when we amend below.
+[ -f .git/CHANGELOG_AMENDING ] && exit 0
+
+if ! command -v git-cliff >/dev/null 2>&1; then
+  echo "⚠️  git-cliff not found — skipping changelog update (brew install git-cliff)"
+  exit 0
+fi
+
+mkdir -p app/src/main/assets
+git cliff -o app/src/main/assets/changelog.md 2>/dev/null
+git add app/src/main/assets/changelog.md
+
+# Only amend if the changelog actually changed
+if ! git diff --cached --quiet app/src/main/assets/changelog.md; then
+  touch .git/CHANGELOG_AMENDING
+  git commit --amend --no-edit
+  rm -f .git/CHANGELOG_AMENDING
+fi

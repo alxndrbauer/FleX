@@ -22,6 +22,7 @@ filter_unconventional = true
 split_commits = false
 commit_preprocessors = []
 commit_parsers = [
+  { message = ".*changelog", skip = true },
   { message = "^feat", group = "Features" },
   { message = "^fix", group = "Bugfixes" },
   { message = "^refactor", group = "Verbesserungen" },

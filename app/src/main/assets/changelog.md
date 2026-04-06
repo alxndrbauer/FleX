@@ -1,10 +1,20 @@
 # Changelog
-
-## [1.5.5] - 2026-04-02
-
-### Features
-- In-App Update-Checker mit automatischem APK-Download
-- Automatischer Changelog in der Info-Ansicht
+## [Unreleased]
 
 ### Bugfixes
-- Verbleibende Arbeitstage im Quota-Test zeitunabhängig berechnet
+
+- Make remainingWorkDays test time-independent
+- Add WhatsNewPreferences mock to HomeViewModelTest
+- Prevent phantom clock-outs from stale state
+
+### Features
+
+- Add Geleistet column and rename month summary card
+- Add calendar sync and ICS export
+## [1.5.5] - 2026-03-25
+
+### Features
+
+- FleX time tracking app v1.5.0
+- Add in-app update checker with automatic APK download
+
