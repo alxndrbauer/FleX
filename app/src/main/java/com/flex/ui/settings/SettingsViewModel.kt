@@ -14,6 +14,7 @@ import com.flex.data.local.ThemePreferences
 import com.flex.data.export.IcsExportService
 import com.flex.domain.model.AppIconVariant
 import com.flex.domain.model.DayType
+import com.flex.domain.model.FederalState
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.Settings
 import com.flex.domain.model.ThemeMode
@@ -83,6 +84,12 @@ class SettingsViewModel @Inject constructor(
     fun updateSettings(settings: Settings) {
         viewModelScope.launch {
             settingsRepository.saveSettings(settings)
+        }
+    }
+
+    fun updateFederalState(state: FederalState) {
+        viewModelScope.launch {
+            settingsRepository.saveSettings(_settings.value.copy(federalState = state))
         }
     }
 

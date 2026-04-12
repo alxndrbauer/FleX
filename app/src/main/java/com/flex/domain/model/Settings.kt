@@ -27,5 +27,6 @@ data class Settings(
     val calendarSyncOffice: Boolean = true,
     val calendarSyncHomeOffice: Boolean = true,
     val calendarEventPrefix: String = "FleX",
-    val calendarEventNoAlarm: Boolean = false
+    val calendarEventNoAlarm: Boolean = false,
+    val federalState: FederalState = FederalState.HAMBURG
 )

@@ -4,6 +4,7 @@ import com.flex.data.local.dao.QuotaRuleDao
 import com.flex.data.local.dao.SettingsDao
 import com.flex.data.local.entity.QuotaRuleEntity
 import com.flex.data.local.entity.SettingsEntity
+import com.flex.domain.model.FederalState
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.Settings
 import com.flex.domain.repository.SettingsRepository
@@ -76,7 +77,8 @@ class SettingsRepositoryImpl @Inject constructor(
         calendarSyncOffice = calendarSyncOffice,
         calendarSyncHomeOffice = calendarSyncHomeOffice,
         calendarEventPrefix = calendarEventPrefix,
-        calendarEventNoAlarm = calendarEventNoAlarm
+        calendarEventNoAlarm = calendarEventNoAlarm,
+        federalState = FederalState.entries.find { it.code == federalState } ?: FederalState.HAMBURG
     )
 
     private fun Settings.toEntity() = SettingsEntity(
@@ -106,7 +108,8 @@ class SettingsRepositoryImpl @Inject constructor(
         calendarSyncOffice = calendarSyncOffice,
         calendarSyncHomeOffice = calendarSyncHomeOffice,
         calendarEventPrefix = calendarEventPrefix,
-        calendarEventNoAlarm = calendarEventNoAlarm
+        calendarEventNoAlarm = calendarEventNoAlarm,
+        federalState = federalState.code
     )
 
     private fun QuotaRuleEntity.toDomain() = QuotaRule(

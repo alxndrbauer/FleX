@@ -17,6 +17,7 @@
 - Add Geleistet column and rename month summary card
 - Add calendar sync and ICS export
 - Merge consecutive vacation days into multi-day calendar events
+- Add public holidays API with persistent Room cache
 ## [1.5.5] - 2026-03-25
 
 ### Features

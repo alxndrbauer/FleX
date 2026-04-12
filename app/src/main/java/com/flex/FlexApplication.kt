@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.flex.data.holidays.HolidaySyncService
 import com.flex.data.local.AppIconPreferences
 import com.flex.domain.repository.SettingsRepository
 import com.flex.geofence.GeofenceManager
@@ -30,11 +31,21 @@ class FlexApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var wifiMonitor: WifiMonitor
 
+    @Inject
+    lateinit var holidaySyncService: HolidaySyncService
+
     override fun onCreate() {
         // Fix PackageManager alias state before Hilt init — prevents stuck launcher icon
         AppIconPreferences.fixOnStartup(this)
         super.onCreate()
         reRegisterGeofenceIfNeeded()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                holidaySyncService.syncForCurrentAndNextYear()
+            } catch (e: Exception) {
+                Log.e("FlexApplication", "Failed to sync holidays: ${e.message}")
+            }
+        }
     }
 
     private fun reRegisterGeofenceIfNeeded() {

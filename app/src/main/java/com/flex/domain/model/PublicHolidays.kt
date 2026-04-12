@@ -4,17 +4,33 @@ import java.time.LocalDate
 
 object PublicHolidays {
 
-    /**
-     * Returns the name of the public holiday for the given date in Hamburg, or null if it's not a holiday.
-     */
-    fun getHolidayName(date: LocalDate): String? {
-        val holidays = getHolidaysForYear(date.year)
-        return holidays[date]
+    // External cache set by HolidaySyncService
+    private val externalCache = mutableMapOf<Int, Map<LocalDate, String>>()
+
+    fun updateCache(year: Int, holidays: Map<LocalDate, String>) {
+        externalCache[year] = holidays
     }
+
+    /** For tests only — resets the cache between test runs. */
+    fun clearCache() {
+        externalCache.clear()
+    }
+
+    /**
+     * Returns the name of the public holiday for the given date, or null if it's not a holiday.
+     * Uses cached API data if available, falls back to built-in Hamburg holidays.
+     */
+    fun getHolidayName(date: LocalDate): String? = getHolidaysForYear(date.year)[date]
 
     fun isHoliday(date: LocalDate): Boolean = getHolidayName(date) != null
 
-    fun getHolidaysForYear(year: Int): Map<LocalDate, String> {
+    fun getHolidaysForYear(year: Int): Map<LocalDate, String> =
+        externalCache[year] ?: getBuiltinHolidays(year)
+
+    /**
+     * Built-in Hamburg holidays — used as fallback when the API is not reachable.
+     */
+    fun getBuiltinHolidays(year: Int): Map<LocalDate, String> {
         val easter = calculateEaster(year)
         return mapOf(
             LocalDate.of(year, 1, 1) to "Neujahr",
@@ -37,6 +53,9 @@ object PublicHolidays {
     /**
      * Gauss algorithm to calculate Easter Sunday for a given year.
      */
+    /** Exposed for use in data layer (e.g. cultural days calculation). */
+    fun calculateEasterPublic(year: Int): LocalDate = calculateEaster(year)
+
     private fun calculateEaster(year: Int): LocalDate {
         val a = year % 19
         val b = year / 100

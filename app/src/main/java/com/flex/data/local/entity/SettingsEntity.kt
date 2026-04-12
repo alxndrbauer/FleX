@@ -32,5 +32,6 @@ data class SettingsEntity(
     val calendarSyncOffice: Boolean = true,
     val calendarSyncHomeOffice: Boolean = true,
     val calendarEventPrefix: String = "FleX",
-    val calendarEventNoAlarm: Boolean = false
+    val calendarEventNoAlarm: Boolean = false,
+    val federalState: String = "HH"
 )

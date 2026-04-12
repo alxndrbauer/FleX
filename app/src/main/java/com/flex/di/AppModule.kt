@@ -4,16 +4,20 @@ import android.content.Context
 import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.flex.data.holidays.HolidayApiService
 import com.flex.data.local.FlexDatabase
 import com.flex.data.local.dao.CalendarEventDao
+import com.flex.data.local.dao.HolidayCacheDao
 import com.flex.data.local.dao.QuotaRuleDao
 import com.flex.data.local.dao.SettingsDao
 import com.flex.data.local.dao.TimeBlockDao
 import com.flex.data.local.dao.WorkDayDao
 import com.flex.calendar.CalendarSyncService
+import com.flex.data.repository.HolidayRepositoryImpl
 import com.flex.data.repository.SettingsRepositoryImpl
 import com.flex.data.repository.WorkDayRepositoryImpl
 import com.flex.domain.events.DataChangeEventBus
+import com.flex.domain.repository.HolidayRepository
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import dagger.Module
@@ -100,6 +104,12 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
     }
 }
 
+val MIGRATION_14_15 = object : Migration(14, 15) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE settings ADD COLUMN federalState TEXT NOT NULL DEFAULT 'HH'")
+    }
+}
+
 val MIGRATION_13_14 = object : Migration(13, 14) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE settings ADD COLUMN calendarEventNoAlarm INTEGER NOT NULL DEFAULT 1")
@@ -140,7 +150,7 @@ object AppModule {
             context,
             FlexDatabase::class.java,
             "flex_database"
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14).build()
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, FlexDatabase.MIGRATION_15_16).build()
     }
 
     @Provides
@@ -157,6 +167,9 @@ object AppModule {
 
     @Provides
     fun provideCalendarEventDao(database: FlexDatabase): CalendarEventDao = database.calendarEventDao()
+
+    @Provides
+    fun provideHolidayCacheDao(database: FlexDatabase): HolidayCacheDao = database.holidayCacheDao()
 
     @Provides
     @Singleton
@@ -177,4 +190,15 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDataChangeEventBus(): DataChangeEventBus = DataChangeEventBus()
+
+    @Provides
+    @Singleton
+    fun provideHolidayApiService(): HolidayApiService = HolidayApiService()
+
+    @Provides
+    @Singleton
+    fun provideHolidayRepository(
+        apiService: HolidayApiService,
+        holidayCacheDao: HolidayCacheDao
+    ): HolidayRepository = HolidayRepositoryImpl(apiService, holidayCacheDao)
 }

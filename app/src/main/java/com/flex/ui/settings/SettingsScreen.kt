@@ -87,6 +87,7 @@ import com.flex.data.update.UpdateDownloader
 import com.flex.data.update.UpdateInfo
 import java.io.File
 import com.flex.domain.model.AppIconVariant
+import com.flex.domain.model.FederalState
 import com.flex.domain.model.ThemeMode
 import com.flex.ui.update.UpdateDialog
 import com.flex.ui.yearchange.YearChangeDialog
@@ -128,6 +129,7 @@ fun SettingsScreen(
     var showFlextimeDialog by remember { mutableStateOf(false) }
     var showOvertimeDialog by remember { mutableStateOf(false) }
     var showVacationDialog by remember { mutableStateOf(false) }
+    var showFederalStateDialog by remember { mutableStateOf(false) }
 
     // Format helpers
     fun Int.toHoursMinutes(): String {
@@ -336,6 +338,21 @@ fun SettingsScreen(
             }
         }
 
+        // ── Regional ─────────────────────────────────────────────────
+        item { SettingsSectionHeader("Regional") }
+        item {
+            SettingsGroup {
+                ListItem(
+                    headlineContent = { Text("Bundesland") },
+                    supportingContent = { Text(settings.federalState.displayName) },
+                    leadingContent = { SettingsIcon(Icons.Default.LocationOn, MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer) },
+                    trailingContent = { ChevronTrailing() },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    modifier = Modifier.clickable { showFederalStateDialog = true }
+                )
+            }
+        }
+
         // ── Datenverwaltung ───────────────────────────────────────────
         item { SettingsSectionHeader("Datenverwaltung") }
         item {
@@ -444,6 +461,36 @@ fun SettingsScreen(
             onConfirm = { carryOver, annual ->
                 yearChangeViewModel.applyYearChange(carryOver, annual)
             }
+        )
+    }
+
+    if (showFederalStateDialog) {
+        AlertDialog(
+            onDismissRequest = { showFederalStateDialog = false },
+            title = { Text("Bundesland") },
+            text = {
+                LazyColumn {
+                    items(FederalState.entries) { state ->
+                        ListItem(
+                            headlineContent = { Text(state.displayName) },
+                            modifier = Modifier.clickable {
+                                viewModel.updateFederalState(state)
+                                showFederalStateDialog = false
+                            },
+                            trailingContent = {
+                                if (settings.federalState == state) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = "Ausgewählt",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showFederalStateDialog = false }) { Text("Abbrechen") } }
         )
     }
 

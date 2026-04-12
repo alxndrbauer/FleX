@@ -14,8 +14,6 @@ data class UpdateInfo(
 )
 
 object UpdateChecker {
-    // TODO: Replace with your Gist raw URL after creating it
-    // Format: https://gist.githubusercontent.com/YOUR_USERNAME/YOUR_GIST_ID/raw/version.json
     private const val MANIFEST_URL = "https://gist.githubusercontent.com/alxndrbauer/1eddf47c2c689bdc8b27ca2ef7395b02/raw/version.json"
 
     suspend fun checkForUpdate(currentVersionCode: Int): UpdateInfo? =
