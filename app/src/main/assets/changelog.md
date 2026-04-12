@@ -11,6 +11,7 @@
 - Rename FLEX_DAY calendar label to "Gleittag"
 - Actually suppress reminders via CalendarContract.Reminders
 - Change noAlarm default to off, improve UI hint
+- Stabilize geofence and WiFi auto-stamp against spurious clock events
 
 ### Features
 

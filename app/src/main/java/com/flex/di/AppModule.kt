@@ -25,6 +25,8 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import javax.inject.Singleton
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -194,6 +196,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideHolidayApiService(): HolidayApiService = HolidayApiService()
+
+    @Provides
+    @Singleton
+    @IoDispatcher
+    fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
 
     @Provides
     @Singleton

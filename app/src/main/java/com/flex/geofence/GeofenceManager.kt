@@ -38,13 +38,14 @@ class GeofenceManager @Inject constructor(
             .setRequestId("office")
             .setCircularRegion(lat, lon, radiusMeters)
             .setExpirationDuration(Geofence.NEVER_EXPIRE)
+            .setLoiteringDelay(60 * 1000) // 1 Minute – verhindert Boundary Flickering
             .setTransitionTypes(
-                Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT
+                Geofence.GEOFENCE_TRANSITION_DWELL or Geofence.GEOFENCE_TRANSITION_EXIT
             )
             .build()
 
         val request = GeofencingRequest.Builder()
-            .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+            .setInitialTrigger(0) // Kein Initial-Trigger – kein spuriöses Clock-In bei App-Start
             .addGeofence(geofence)
             .build()
 
