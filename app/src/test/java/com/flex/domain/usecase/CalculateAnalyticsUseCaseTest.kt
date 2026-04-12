@@ -372,6 +372,68 @@ class CalculateAnalyticsUseCaseTest {
         assertThat(firstWeek.homeOfficeMinutes).isEqualTo(480) // 1 * 480
     }
 
+    // 8. Week Comparison Tests
+
+    @Test
+    fun testWeekComparisonWhenTwoWeeksDataExpectCorrectDelta() {
+        val today = LocalDate.now()
+        val prevWeekBase = today.minusWeeks(1)
+
+        // Previous week: 3 days × 480 min = 1440 min
+        val prevWeekDays = (0..2).map { offset ->
+            createWorkDay(prevWeekBase.with(DayOfWeek.MONDAY).plusDays(offset.toLong()), 480)
+        }
+        // Current week: 2 days × 480 min = 960 min
+        val currentWeekDays = (0..1).map { offset ->
+            createWorkDay(today.with(DayOfWeek.MONDAY).plusDays(offset.toLong()), 480)
+        }
+        val workDays = prevWeekDays + currentWeekDays
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 0, exceedsMaxHours = false)
+        )
+        whenever(calculateFlextime.invoke(any(), any(), any())).thenReturn(
+            FlextimeBalance(earnedMinutes = 0, totalMinutes = 0, overtimeMinutes = 0, targetMinutes = 0, initialMinutes = 0)
+        )
+
+        val result = useCase(workDays, settings, TimeRange.Custom(prevWeekBase.minusDays(7), today.plusDays(7)))
+
+        assertThat(result.weekComparison).isNotNull()
+        assertThat(result.weekComparison!!.currentWeekMinutes).isEqualTo(960)
+        assertThat(result.weekComparison!!.previousWeekMinutes).isEqualTo(1440)
+        assertThat(result.weekComparison!!.deltaMinutes).isEqualTo(-480)
+    }
+
+    @Test
+    fun testWeekComparisonWhenOnlyCurrentWeekExpectPreviousZero() {
+        val today = LocalDate.now()
+
+        // Current week only: 2 days × 480 min = 960 min
+        val currentWeekDays = (0..1).map { offset ->
+            createWorkDay(today.with(DayOfWeek.MONDAY).plusDays(offset.toLong()), 480)
+        }
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 0, exceedsMaxHours = false)
+        )
+        whenever(calculateFlextime.invoke(any(), any(), any())).thenReturn(
+            FlextimeBalance(earnedMinutes = 0, totalMinutes = 0, overtimeMinutes = 0, targetMinutes = 0, initialMinutes = 0)
+        )
+
+        val result = useCase(currentWeekDays, settings, TimeRange.Custom(today.minusDays(7), today.plusDays(7)))
+
+        assertThat(result.weekComparison).isNotNull()
+        assertThat(result.weekComparison!!.currentWeekMinutes).isEqualTo(960)
+        assertThat(result.weekComparison!!.previousWeekMinutes).isEqualTo(0)
+    }
+
+    @Test
+    fun testWeekComparisonWhenEmptyExpectNull() {
+        val result = useCase(emptyList(), settings, TimeRange.Month(YearMonth.of(2025, 2)))
+
+        assertThat(result.weekComparison).isNull()
+    }
+
     // Helper functions
 
     private fun createWorkDay(

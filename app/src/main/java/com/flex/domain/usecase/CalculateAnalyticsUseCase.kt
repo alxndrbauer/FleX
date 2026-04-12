@@ -6,12 +6,15 @@ import com.flex.domain.model.LocationDistribution
 import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeRange
 import com.flex.domain.model.TimeSeriesPoint
+import com.flex.domain.model.WeekComparison
 import com.flex.domain.model.WeeklyWorkHours
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.temporal.ChronoField
+import java.time.temporal.IsoFields
 import javax.inject.Inject
 import kotlin.math.roundToLong
 
@@ -43,7 +46,8 @@ class CalculateAnalyticsUseCase @Inject constructor(
             overtimeSeries = calculateOvertimeSeries(actualWorkDays, settings, timeRange),
             weeklyHours = calculateWeeklyHours(actualWorkDays),
             monthlyHours = calculateMonthlyHours(actualWorkDays),
-            locationDistribution = calculateLocationDistribution(actualWorkDays)
+            locationDistribution = calculateLocationDistribution(actualWorkDays),
+            weekComparison = calculateWeekComparison(actualWorkDays)
         )
     }
 
@@ -181,6 +185,32 @@ class CalculateAnalyticsUseCase @Inject constructor(
             }
             TimeSeriesPoint(yearMonth.atDay(1), totalMinutes)
         }
+    }
+
+    private fun calculateWeekComparison(workDays: List<WorkDay>): WeekComparison? {
+        if (workDays.isEmpty()) return null
+        val today = LocalDate.now()
+        val currentIsoWeek = today.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
+        val currentIsoYear = today.get(IsoFields.WEEK_BASED_YEAR)
+        val prevDate = today.minusWeeks(1)
+        val prevIsoWeek = prevDate.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
+        val prevIsoYear = prevDate.get(IsoFields.WEEK_BASED_YEAR)
+
+        val currentMinutes = workDays
+            .filter {
+                it.date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR) == currentIsoWeek &&
+                it.date.get(IsoFields.WEEK_BASED_YEAR) == currentIsoYear
+            }
+            .sumOf { calculateDayWorkTime(it.timeBlocks).netMinutes }
+        val prevMinutes = workDays
+            .filter {
+                it.date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR) == prevIsoWeek &&
+                it.date.get(IsoFields.WEEK_BASED_YEAR) == prevIsoYear
+            }
+            .sumOf { calculateDayWorkTime(it.timeBlocks).netMinutes }
+
+        return if (currentMinutes == 0L && prevMinutes == 0L) null
+        else WeekComparison(currentMinutes, prevMinutes)
     }
 
     private fun calculateLocationDistribution(workDays: List<WorkDay>): LocationDistribution {

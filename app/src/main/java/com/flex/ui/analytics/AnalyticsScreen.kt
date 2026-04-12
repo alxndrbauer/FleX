@@ -2,6 +2,7 @@ package com.flex.ui.analytics
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -14,8 +15,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.flex.ui.analytics.components.FlextimeLineChart
@@ -74,6 +77,27 @@ fun AnalyticsScreen(
                 }
             }
 
+            data.weekComparison?.let { comparison ->
+                if (comparison.hasData) {
+                    item {
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("Wochenvergleich", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    WeekStatColumn("Vorwoche", comparison.previousWeekMinutes)
+                                    WeekDeltaColumn(comparison.deltaMinutes)
+                                    WeekStatColumn("Diese Woche", comparison.currentWeekMinutes)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -104,5 +128,49 @@ fun AnalyticsScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun WeekStatColumn(label: String, minutes: Long) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        val hours = minutes / 60
+        val mins = minutes % 60
+        Text(
+            text = "${hours}h ${mins}m",
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun WeekDeltaColumn(deltaMinutes: Long) {
+    val arrow = if (deltaMinutes >= 0) "▲" else "▼"
+    val color = if (deltaMinutes >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+    val absDelta = kotlin.math.abs(deltaMinutes)
+    val hours = absDelta / 60
+    val mins = absDelta % 60
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = arrow,
+            style = MaterialTheme.typography.labelSmall,
+            color = color
+        )
+        Text(
+            text = "${hours}h ${mins}m",
+            style = MaterialTheme.typography.bodyMedium,
+            color = color,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center
+        )
     }
 }
