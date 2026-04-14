@@ -23,9 +23,12 @@ import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.geofence.GeofenceManager
 import com.flex.wifi.WifiMonitor
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import java.time.LocalDate
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -115,7 +118,7 @@ class SettingsViewModel @Inject constructor(
 
     // Returns Pair(lat, lon) or null if address not found
     fun geocodeAddress(address: String, onResult: (Double, Double) -> Unit, onError: () -> Unit) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 @Suppress("DEPRECATION")
                 val results = Geocoder(context, Locale.getDefault()).getFromLocationName(address, 1)
@@ -130,7 +133,9 @@ class SettingsViewModel @Inject constructor(
     @SuppressLint("MissingPermission")
     fun fetchCurrentLocation(onResult: (Double, Double) -> Unit, onError: () -> Unit) {
         try {
-            LocationServices.getFusedLocationProviderClient(context).lastLocation
+            val cts = CancellationTokenSource()
+            LocationServices.getFusedLocationProviderClient(context)
+                .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token)
                 .addOnSuccessListener { loc ->
                     if (loc != null) onResult(loc.latitude, loc.longitude) else onError()
                 }
@@ -243,10 +248,12 @@ class SettingsViewModel @Inject constructor(
                 )
             )
             if (enabled && lat != 0.0 && lon != 0.0) {
-                Log.d("GeoDebug", "saveGeofenceSettings: setting status → REGISTERED")
-                _geofenceStatus.value = GeofenceStatus.REGISTERED
                 geofenceManager.registerGeofence(
                     lat, lon, radius,
+                    onSuccess = {
+                        Log.d("GeoDebug", "registerGeofence SUCCESS → REGISTERED")
+                        _geofenceStatus.value = GeofenceStatus.REGISTERED
+                    },
                     onFailure = { e ->
                         Log.e("GeoDebug", "registerGeofence FAILED: ${e.message}")
                         _geofenceStatus.value = GeofenceStatus.FAILED

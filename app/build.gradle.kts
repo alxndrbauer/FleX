@@ -13,8 +13,8 @@ android {
         applicationId = "com.flex"
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.5.9"
+        versionCode = 7
+        versionName = "1.6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -157,6 +157,7 @@ dependencies {
 
     // Google Play Services Location (Geofencing)
     implementation(libs.play.services.location)
+    implementation(libs.osmdroid)
 
     // Wearable Data Layer
     implementation(libs.play.services.wearable)

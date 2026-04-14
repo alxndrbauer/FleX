@@ -29,6 +29,7 @@ testCore = "1.7.0"
 archCoreTesting = "2.2.0"
 playServicesLocation = "21.3.0"
 playServicesWearable = "18.2.0"
+osmdroid = "6.1.20"
 wearCompose = "1.6.0"
 wearComposeMaterial3 = "1.6.0"
 wearTiles = "1.6.0"
@@ -107,6 +108,7 @@ androidx-test-core = { group = "androidx.test", name = "core", version.ref = "te
 androidx-test-core-ktx = { group = "androidx.test", name = "core-ktx", version.ref = "testCore" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
+osmdroid = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
 wear-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "wearCompose" }
 wear-compose-material3 = { group = "androidx.wear.compose", name = "compose-material3", version.ref = "wearComposeMaterial3" }
 wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }

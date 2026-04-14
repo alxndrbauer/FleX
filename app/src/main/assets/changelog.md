@@ -21,6 +21,7 @@
 - Add public holidays API with persistent Room cache
 - Add week comparison
 - Live work timer notification with Android 16 Live Updates
+- Fix bugs and add interactive map preview
 ## [1.5.5] - 2026-03-25
 
 ### Features

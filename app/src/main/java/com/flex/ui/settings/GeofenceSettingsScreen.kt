@@ -188,6 +188,40 @@ fun GeofenceSettingsScreen(
                         GeofenceStatus.UNKNOWN -> {}
                     }
                 }
+
+                val savedLat = settings.geofenceLat
+                val savedLon = settings.geofenceLon
+                val savedRadius = settings.geofenceRadiusMeters
+                if (savedLat != 0.0 && savedLon != 0.0) {
+                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Abgedeckter Bereich",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "Radius: ${savedRadius.toInt()} m",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    androidx.compose.material3.Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        tonalElevation = 2.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        GeofenceMapPreview(
+                            lat = savedLat,
+                            lon = savedLon,
+                            radiusMeters = savedRadius
+                        )
+                    }
+                }
             }
 
             HorizontalDivider()
