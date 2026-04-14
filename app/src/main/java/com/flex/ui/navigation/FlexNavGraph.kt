@@ -174,7 +174,10 @@ fun FlexNavGraph(
                 )
             }
             composable(Screen.Home.route) {
-                HomeScreen(onNavigateToAbout = { navController.navigate(Screen.About.route) })
+                HomeScreen(
+                    onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                    onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
+                )
             }
             composable(Screen.Month.route) { MonthScreen() }
             composable(Screen.Planning.route) { PlanningScreen() }

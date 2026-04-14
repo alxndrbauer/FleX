@@ -28,6 +28,10 @@ import com.flex.notification.BreakWarningScheduler
 import com.flex.wearable.WearSyncHelper
 import android.content.Context
 import android.content.Intent
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import com.flex.notification.WorkTimerService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -69,7 +73,8 @@ data class HomeUiState(
     val effectiveQuotaMinDays: Int = 8,
     val officeMinutes: Long = 0,
     val requiredOfficeMinutes: Long = 0,
-    val breakCheckResult: BreakCheckResult = BreakCheckResult(emptyList(), skipped = false)
+    val breakCheckResult: BreakCheckResult = BreakCheckResult(emptyList(), skipped = false),
+    val permissionIssues: List<String> = emptyList()
 )
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -87,7 +92,8 @@ class HomeViewModel @Inject constructor(
     private val wearSyncHelper: WearSyncHelper,
     private val checkBreakViolation: CheckBreakViolationUseCase,
     private val breakWarningScheduler: BreakWarningScheduler,
-    private val whatsNewPreferences: WhatsNewPreferences
+    private val whatsNewPreferences: WhatsNewPreferences,
+    private val backupPreferences: com.flex.data.backup.BackupPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -284,6 +290,7 @@ class HomeViewModel @Inject constructor(
                     val wasRunning = _uiState.value.isClockRunning
                     _uiState.value = state
                     _remainingMinutes.value = computeRemainingMinutes(state)
+                    checkPermissions(state.settings)
                     // Restart service if clocked in and it was just loaded (first emission)
                     if (!wasRunning && state.isClockRunning && state.settings.workTimerNotificationEnabled) {
                         startWorkTimerService()
@@ -292,8 +299,35 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun goToPreviousDay() {
-        _localDayTypeOverride.value = null
+    fun checkPermissions(settings: Settings = _uiState.value.settings) {
+        fun granted(permission: String) =
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
+        val issues = buildList {
+            if (settings.geofenceEnabled) {
+                val bgOk = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                    granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION) else true
+                if (!granted(Manifest.permission.ACCESS_FINE_LOCATION) || !bgOk)
+                    add("Geofencing")
+            }
+            if (settings.wifiAutoStampEnabled && !granted(Manifest.permission.ACCESS_FINE_LOCATION))
+                add("WLAN-Stempel")
+            if (settings.calendarSyncEnabled && settings.calendarId != -1L &&
+                (!granted(Manifest.permission.READ_CALENDAR) || !granted(Manifest.permission.WRITE_CALENDAR)))
+                add("Kalender-Sync")
+            if (backupPreferences.isAutoBackupEnabled) {
+                val dirUriString = backupPreferences.autoBackupDirectoryUri
+                if (dirUriString != null) {
+                    val hasPersistedPermission = context.contentResolver.persistedUriPermissions
+                        .any { it.uri.toString() == dirUriString && it.isWritePermission }
+                    if (!hasPersistedPermission) add("Auto-Backup")
+                }
+            }
+        }
+        _uiState.update { it.copy(permissionIssues = issues) }
+    }
+
+    fun goToPreviousDay() {        _localDayTypeOverride.value = null
         _selectedDate.value = _selectedDate.value.minusDays(1)
     }
 
