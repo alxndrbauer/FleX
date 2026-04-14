@@ -1,5 +1,7 @@
 package com.flex.ui.home
 
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -425,12 +427,19 @@ fun HomeScreen(
                     Text("Zeitblöcke", style = MaterialTheme.typography.labelLarge)
                 }
 
-                items(state.timeBlocks) { block ->
-                    TimelineBlockItem(
-                        block = block,
-                        onEdit = { editingBlock = it },
-                        onDelete = { viewModel.deleteTimeBlock(it) }
-                    )
+                item {
+                    Column {
+                        state.timeBlocks.forEachIndexed { index, block ->
+                            TimelineBlockItem(
+                                block = block,
+                                isFirst = index == 0,
+                                isLast = index == state.timeBlocks.lastIndex,
+                                isWorkDayPlanned = state.workDay?.isPlanned == true,
+                                onEdit = { editingBlock = it },
+                                onDelete = { viewModel.deleteTimeBlock(it) }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -476,7 +485,11 @@ fun HomeScreen(
             onDelete = {
                 viewModel.deleteTimeBlock(block)
                 editingBlock = null
-            }
+            },
+            onUnplan = if (state.workDay?.isPlanned == true) ({
+                viewModel.unplanWorkDay()
+                editingBlock = null
+            }) else null
         )
     }
 }
@@ -936,6 +949,9 @@ private fun CompactProgressRow(
 @Composable
 private fun TimelineBlockItem(
     block: TimeBlock,
+    isFirst: Boolean,
+    isLast: Boolean,
+    isWorkDayPlanned: Boolean = false,
     onEdit: (TimeBlock) -> Unit,
     onDelete: (TimeBlock) -> Unit
 ) {
@@ -949,77 +965,182 @@ private fun TimelineBlockItem(
     }
     val startStr = block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
     val endStr = block.endTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "laufend…"
+    val dotColor = locationColor
+    val lineColor = locationColor.copy(alpha = 0.3f)
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-            .clickable { onEdit(block) },
-        verticalAlignment = Alignment.Top
-    ) {
-        // Left: colored timeline indicator
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.width(20.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .clip(CircleShape)
-                    .background(locationColor)
-            )
-            Box(
-                modifier = Modifier
-                    .width(2.dp)
-                    .fillMaxHeight()
-                    .background(locationColor.copy(alpha = 0.3f))
-            )
+    Column {
+        // Start cap: horizontal tick above first item
+        if (isFirst) {
+            Row {
+                Box(
+                    modifier = Modifier
+                        .width(20.dp)
+                        .height(12.dp)
+                        .drawBehind {
+                            val cx = size.width / 2
+                            val capHalf = 5.dp.toPx()
+                            // Vertical line from cap to bottom
+                            drawLine(
+                                color = lineColor,
+                                start = Offset(cx, 4.dp.toPx()),
+                                end = Offset(cx, size.height),
+                                strokeWidth = 2.dp.toPx()
+                            )
+                            // Horizontal cap
+                            drawLine(
+                                color = lineColor,
+                                start = Offset(cx - capHalf, 4.dp.toPx()),
+                                end = Offset(cx + capHalf, 4.dp.toPx()),
+                                strokeWidth = 2.dp.toPx()
+                            )
+                        }
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // Right: content card
-        Card(
-            modifier = Modifier.weight(1f),
-            colors = CardDefaults.cardColors(
-                containerColor = locationColor.copy(alpha = 0.08f)
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "$startStr – $endStr",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+        // Card row: dot + connecting line drawn on the Row canvas via drawBehind
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    val cx = 10.dp.toPx()
+                    val dotRadius = 5.dp.toPx()
+                    val dotY = size.height / 2
+                    // Line from top to dot
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(cx, 0f),
+                        end = Offset(cx, dotY - dotRadius),
+                        strokeWidth = 2.dp.toPx()
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = locationColor.copy(alpha = 0.15f),
-                        modifier = Modifier.wrapContentSize()
-                    ) {
+                    // Line from dot to bottom
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(cx, dotY + dotRadius),
+                        end = Offset(cx, size.height),
+                        strokeWidth = 2.dp.toPx()
+                    )
+                    drawCircle(
+                        color = dotColor,
+                        radius = dotRadius,
+                        center = Offset(cx, dotY)
+                    )
+                }
+                .clickable { onEdit(block) },
+            verticalAlignment = Alignment.Top
+        ) {
+            Spacer(modifier = Modifier.width(20.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Content card
+            Card(
+                modifier = Modifier.weight(1f),
+                colors = CardDefaults.cardColors(
+                    containerColor = locationColor.copy(alpha = 0.08f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = locationLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = locationColor,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            text = "$startStr – $endStr",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = locationColor.copy(alpha = 0.15f),
+                                modifier = Modifier.wrapContentSize()
+                            ) {
+                                Text(
+                                    text = locationLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = locationColor,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                            if (isWorkDayPlanned) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                                    modifier = Modifier.wrapContentSize()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Schedule,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            modifier = Modifier.size(10.dp)
+                                        )
+                                        Text(
+                                            text = "Geplant",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    IconButton(onClick = { onDelete(block) }) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Löschen",
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }
-                IconButton(onClick = { onDelete(block) }) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Löschen",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
             }
+        }
+
+        // Gap connector (between items) or end cap (last item)
+        Row {
+            Box(
+                modifier = Modifier
+                    .width(20.dp)
+                    .height(16.dp)
+                    .drawBehind {
+                        val cx = size.width / 2
+                        if (!isLast) {
+                            // Connector line through the gap
+                            drawLine(
+                                color = lineColor,
+                                start = Offset(cx, 0f),
+                                end = Offset(cx, size.height),
+                                strokeWidth = 2.dp.toPx()
+                            )
+                        } else {
+                            // End cap: short line + horizontal tick
+                            val capHalf = 5.dp.toPx()
+                            drawLine(
+                                color = lineColor,
+                                start = Offset(cx, 0f),
+                                end = Offset(cx, size.height * 0.7f),
+                                strokeWidth = 2.dp.toPx()
+                            )
+                            drawLine(
+                                color = lineColor,
+                                start = Offset(cx - capHalf, size.height * 0.7f),
+                                end = Offset(cx + capHalf, size.height * 0.7f),
+                                strokeWidth = 2.dp.toPx()
+                            )
+                        }
+                    }
+            )
         }
     }
 }
@@ -1145,7 +1266,8 @@ fun EditTimeBlockDialog(
     block: TimeBlock,
     onDismiss: () -> Unit,
     onSave: (startTime: LocalTime, endTime: LocalTime?, location: WorkLocation) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onUnplan: (() -> Unit)? = null
 ) {
     val fmt = DateTimeFormatter.ofPattern("HH:mm")
     var startText by remember { mutableStateOf(TextFieldValue(block.startTime.format(fmt))) }
@@ -1193,26 +1315,43 @@ fun EditTimeBlockDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                try {
-                    val start = LocalTime.parse(startText.text, DateTimeFormatter.ofPattern("HH:mm"))
-                    val end = if (endText.text.isBlank()) null
-                    else LocalTime.parse(endText.text, DateTimeFormatter.ofPattern("HH:mm"))
-                    onSave(start, end, dialogLocation)
-                } catch (_: Exception) { }
-            }) {
-                Text("Speichern")
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (onUnplan != null) {
+                    HorizontalDivider()
+                    TextButton(
+                        onClick = onUnplan,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Buchen")
+                    }
+                    HorizontalDivider()
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onDelete) {
+                        Text("Löschen", color = MaterialTheme.colorScheme.error)
+                    }
+                    Row {
+                        TextButton(onClick = onDismiss) {
+                            Text("Abbrechen")
+                        }
+                        TextButton(onClick = {
+                            try {
+                                val start = LocalTime.parse(startText.text, DateTimeFormatter.ofPattern("HH:mm"))
+                                val end = if (endText.text.isBlank()) null
+                                else LocalTime.parse(endText.text, DateTimeFormatter.ofPattern("HH:mm"))
+                                onSave(start, end, dialogLocation)
+                            } catch (_: Exception) { }
+                        }) {
+                            Text("Speichern")
+                        }
+                    }
+                }
             }
         },
-        dismissButton = {
-            Row {
-                TextButton(onClick = onDelete) {
-                    Text("Löschen", color = MaterialTheme.colorScheme.error)
-                }
-                TextButton(onClick = onDismiss) {
-                    Text("Abbrechen")
-                }
-            }
-        }
+        dismissButton = {}
     )
 }

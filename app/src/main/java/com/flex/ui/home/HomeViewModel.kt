@@ -475,6 +475,14 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun unplanWorkDay() {
+        viewModelScope.launch {
+            val workDay = _uiState.value.workDay ?: return@launch
+            workDayRepository.saveWorkDay(workDay.copy(isPlanned = false))
+            wearSyncHelper.push()
+        }
+    }
+
     fun deleteTimeBlock(timeBlock: TimeBlock) {
         viewModelScope.launch {
             val workDay = _uiState.value.workDay

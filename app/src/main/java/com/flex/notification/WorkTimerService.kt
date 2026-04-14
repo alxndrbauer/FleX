@@ -124,7 +124,7 @@ class WorkTimerService : Service() {
                 }
 
                 val notification = if (Build.VERSION.SDK_INT >= 36) {
-                    buildProgressStyleNotification(title, content, subText, netMinutes, targetMinutes, isOvertime, runningBlock.startTime)
+                    buildProgressStyleNotification(title, content, subText, netMinutes, targetMinutes, isOvertime, runningBlock.startTime, workTimeResult.breakMinutes)
                 } else {
                     buildLegacyNotification(title, content, subText, progress, progressMax)
                 }
@@ -152,13 +152,15 @@ class WorkTimerService : Service() {
         netMinutes: Long,
         targetMinutes: Long,
         isOvertime: Boolean,
-        runningBlockStart: LocalTime
+        runningBlockStart: LocalTime,
+        breakMinutes: Long
     ): Notification {
+        // Offset setWhen by the deducted break so the chronometer shows net time, not gross time.
         val startEpoch = LocalDate.now()
             .atTime(runningBlockStart)
             .atZone(ZoneId.systemDefault())
             .toInstant()
-            .toEpochMilli()
+            .toEpochMilli() + breakMinutes * 60_000L
         val primaryColor = getColor(android.R.color.system_accent1_500)
         val trackerIcon = Icon.createWithResource(this, R.drawable.ic_notification)
             .setTint(primaryColor)
