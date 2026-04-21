@@ -8,6 +8,7 @@
 - Add ENTER to transition types so DWELL fires correctly
 - Handle both ENTER and DWELL for clock-in
 - Revert to ENTER-only trigger for clock-in
+- Restore ENTER+DWELL clock-in with ENTER registered
 
 ### Features
 
