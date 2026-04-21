@@ -40,10 +40,8 @@ class GeofenceReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 when (event.geofenceTransition) {
-                    Geofence.GEOFENCE_TRANSITION_ENTER,
-                    Geofence.GEOFENCE_TRANSITION_DWELL -> {
-                        // ENTER: fires when GPS signal returns and device is detected inside
-                        // DWELL: fires after 60s continuous presence (backup, not reliable on all devices)
+                    Geofence.GEOFENCE_TRANSITION_ENTER -> {
+                        // Fires when device enters geofence, or when GPS signal returns while inside
                         WorkManager.getInstance(context).cancelUniqueWork(CLOCK_OUT_WORK)
                         val blockId = autoClockIn()
                         if (blockId != null) {
