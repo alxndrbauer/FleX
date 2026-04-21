@@ -133,13 +133,22 @@ class SettingsViewModel @Inject constructor(
     @SuppressLint("MissingPermission")
     fun fetchCurrentLocation(onResult: (Double, Double) -> Unit, onError: () -> Unit) {
         try {
+            val client = LocationServices.getFusedLocationProviderClient(context)
             val cts = CancellationTokenSource()
-            LocationServices.getFusedLocationProviderClient(context)
-                .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token)
+
+            fun fallbackToLastLocation() {
+                client.lastLocation
+                    .addOnSuccessListener { loc ->
+                        if (loc != null) onResult(loc.latitude, loc.longitude) else onError()
+                    }
+                    .addOnFailureListener { onError() }
+            }
+
+            client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token)
                 .addOnSuccessListener { loc ->
-                    if (loc != null) onResult(loc.latitude, loc.longitude) else onError()
+                    if (loc != null) onResult(loc.latitude, loc.longitude) else fallbackToLastLocation()
                 }
-                .addOnFailureListener { onError() }
+                .addOnFailureListener { fallbackToLastLocation() }
         } catch (_: Exception) {
             onError()
         }

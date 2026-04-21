@@ -4,6 +4,7 @@
 ### Bugfixes
 
 - Stabilize geofence and WiFi auto-stamp against spurious clock events
+- Replace DWELL with ENTER trigger for reliable clock-in
 
 ### Features
 
