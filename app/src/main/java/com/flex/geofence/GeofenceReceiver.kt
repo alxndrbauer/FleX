@@ -40,8 +40,8 @@ class GeofenceReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 when (event.geofenceTransition) {
-                    Geofence.GEOFENCE_TRANSITION_ENTER -> {
-                        // User entered geofence → clock in (also fires when GPS signal returns)
+                    Geofence.GEOFENCE_TRANSITION_DWELL -> {
+                        // User lingered 1 minute inside geofence → clock in
                         // Cancel any pending delayed clock-out (e.g. quick exit + re-entry)
                         WorkManager.getInstance(context).cancelUniqueWork(CLOCK_OUT_WORK)
                         val blockId = autoClockIn()

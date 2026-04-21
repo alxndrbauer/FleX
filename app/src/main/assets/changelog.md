@@ -5,6 +5,7 @@
 
 - Stabilize geofence and WiFi auto-stamp against spurious clock events
 - Replace DWELL with ENTER trigger for reliable clock-in
+- Add ENTER to transition types so DWELL fires correctly
 
 ### Features
 
