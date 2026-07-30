@@ -52,6 +52,7 @@ import com.flex.ui.settings.GeofenceSettingsScreen
 import com.flex.ui.settings.QuotaRulesScreen
 import com.flex.ui.settings.SettingsScreen
 import com.flex.ui.settings.WifiSettingsScreen
+import com.flex.ui.settings.WorkTimeRulesScreen
 import com.flex.ui.year.YearOverviewScreen
 import kotlinx.coroutines.launch
 
@@ -69,6 +70,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     data object WifiSettings : Screen("wifi_settings", "WLAN", Icons.Default.Wifi)
     data object CalendarSettings : Screen("calendar_settings", "Kalender", Icons.Default.CalendarToday)
     data object QuotaRules : Screen("quota_rules", "Quoten-Zeiträume", Icons.Default.DateRange)
+    data object WorkTimeRules : Screen("work_time_rules", "Arbeitszeit-Zeiträume", Icons.Default.DateRange)
     data object Onboarding : Screen("onboarding", "Onboarding", Icons.Default.Home)
 }
 
@@ -192,6 +194,7 @@ fun FlexNavGraph(
                     onNavigateToWifi = { navController.navigate(Screen.WifiSettings.route) },
                     onNavigateToCalendar = { navController.navigate(Screen.CalendarSettings.route) },
                     onNavigateToQuotaRules = { navController.navigate(Screen.QuotaRules.route) },
+                    onNavigateToWorkTimeRules = { navController.navigate(Screen.WorkTimeRules.route) },
                     onShowOnboarding = {
                         onOnboardingReset()
                         navController.navigate(Screen.Onboarding.route)
@@ -215,6 +218,9 @@ fun FlexNavGraph(
             }
             composable(Screen.QuotaRules.route) {
                 QuotaRulesScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(Screen.WorkTimeRules.route) {
+                WorkTimeRulesScreen(onNavigateBack = { navController.popBackStack() })
             }
         }
     }

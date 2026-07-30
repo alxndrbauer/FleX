@@ -101,10 +101,11 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(getMonthWorkDays(any())).thenReturn(flowOf(emptyList()))
         whenever(getSettings()).thenReturn(flowOf(Settings()))
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
+        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(emptyList()))
         whenever(calculateDayWorkTime(any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
-        whenever(calculateFlextime(any(), any(), any())).thenReturn(FlextimeBalance())
-        whenever(calculateQuota(any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
+        whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(FlextimeBalance())
+        whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
         whenever(dataChangeEventBus.events).thenReturn(MutableSharedFlow())
         whenever(checkBreakViolation(any(), any())).thenReturn(BreakCheckResult(emptyList(), skipped = false))
         whenever(whatsNewPreferences.getLastSeenVersionCode()).thenReturn(0)
@@ -241,7 +242,7 @@ class HomeViewModelTest : BaseUnitTest() {
             targetMinutes = 9266,
             overtimeMinutes = -9146
         )
-        whenever(calculateFlextime(any(), any(), any())).thenReturn(expectedFlextime)
+        whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(expectedFlextime)
 
         // When: ViewModel is created
         viewModel = HomeViewModel(
@@ -266,7 +267,7 @@ class HomeViewModelTest : BaseUnitTest() {
             percentQuotaMet = true,
             daysQuotaMet = true
         )
-        whenever(calculateQuota(any(), any(), any(), any(), any())).thenReturn(expectedQuota)
+        whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(expectedQuota)
 
         // When: ViewModel is created
         viewModel = HomeViewModel(

@@ -77,6 +77,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         // Default mock behavior
         whenever(getSettings()).thenReturn(flowOf(Settings()))
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
+        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
         whenever(themePreferences.themeModeFlow).thenReturn(MutableStateFlow(ThemeMode.SYSTEM))
         whenever(appIconPreferences.variantFlow).thenReturn(MutableStateFlow(AppIconVariant.CLASSIC))
     }

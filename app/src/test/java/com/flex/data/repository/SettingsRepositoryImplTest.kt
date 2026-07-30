@@ -4,10 +4,13 @@ import com.google.common.truth.Truth.assertThat
 import com.flex.BaseUnitTest
 import com.flex.data.local.dao.QuotaRuleDao
 import com.flex.data.local.dao.SettingsDao
+import com.flex.data.local.dao.WorkTimeRuleDao
 import com.flex.data.local.entity.QuotaRuleEntity
 import com.flex.data.local.entity.SettingsEntity
+import com.flex.data.local.entity.WorkTimeRuleEntity
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.Settings
+import com.flex.domain.model.WorkTimeRule
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -30,12 +33,15 @@ class SettingsRepositoryImplTest : BaseUnitTest() {
     @Mock
     private lateinit var quotaRuleDao: QuotaRuleDao
 
+    @Mock
+    private lateinit var workTimeRuleDao: WorkTimeRuleDao
+
     private lateinit var repository: SettingsRepositoryImpl
 
     @BeforeEach
     override fun setUp() {
         super.setUp()
-        repository = SettingsRepositoryImpl(settingsDao, quotaRuleDao)
+        repository = SettingsRepositoryImpl(settingsDao, quotaRuleDao, workTimeRuleDao)
     }
 
     // ========== Settings Tests ==========
@@ -376,5 +382,150 @@ class SettingsRepositoryImplTest : BaseUnitTest() {
         // Then: Should return the rule
         assertThat(result).isNotNull()
         assertThat(result?.id).isEqualTo(1L)
+    }
+
+    // ========== WorkTimeRule Tests ==========
+
+    @Test
+    fun `getWorkTimeRules returns mapped WorkTimeRule list`() = runTest {
+        // Given: DAO returns WorkTimeRuleEntities
+        val entities = listOf(
+            WorkTimeRuleEntity(
+                id = 1L,
+                validFrom = "2025-01-01",
+                dailyWorkMinutes = 480,
+                monthlyWorkMinutes = 10000
+            ),
+            WorkTimeRuleEntity(
+                id = 2L,
+                validFrom = "2026-08-15",
+                dailyWorkMinutes = 360,
+                monthlyWorkMinutes = 7200
+            )
+        )
+        whenever(workTimeRuleDao.getAllRules()).thenReturn(flowOf(entities))
+
+        // When: Getting work time rules
+        val result = repository.getWorkTimeRules().first()
+
+        // Then: Should return correctly mapped WorkTimeRules
+        assertThat(result).hasSize(2)
+        assertThat(result[0].id).isEqualTo(1L)
+        assertThat(result[0].validFrom).isEqualTo(java.time.LocalDate.of(2025, 1, 1))
+        assertThat(result[0].dailyWorkMinutes).isEqualTo(480)
+        assertThat(result[0].monthlyWorkMinutes).isEqualTo(10000)
+
+        assertThat(result[1].id).isEqualTo(2L)
+        assertThat(result[1].validFrom).isEqualTo(java.time.LocalDate.of(2026, 8, 15))
+        assertThat(result[1].dailyWorkMinutes).isEqualTo(360)
+        assertThat(result[1].monthlyWorkMinutes).isEqualTo(7200)
+    }
+
+    @Test
+    fun `saveWorkTimeRule persists WorkTimeRule as WorkTimeRuleEntity`() = runTest {
+        // Given: A WorkTimeRule to save
+        val rule = com.flex.domain.model.WorkTimeRule(
+            id = 0L,
+            validFrom = java.time.LocalDate.of(2026, 8, 1),
+            dailyWorkMinutes = 360,
+            monthlyWorkMinutes = 7200
+        )
+        val expectedId = 3L
+        whenever(workTimeRuleDao.insert(
+            WorkTimeRuleEntity(
+                id = 0L,
+                validFrom = "2026-08-01",
+                dailyWorkMinutes = 360,
+                monthlyWorkMinutes = 7200
+            )
+        )).thenReturn(expectedId)
+
+        // When: Saving work time rule
+        val resultId = repository.saveWorkTimeRule(rule)
+
+        // Then: Should return the ID from DAO
+        assertThat(resultId).isEqualTo(expectedId)
+        verify(workTimeRuleDao).insert(
+            WorkTimeRuleEntity(
+                id = 0L,
+                validFrom = "2026-08-01",
+                dailyWorkMinutes = 360,
+                monthlyWorkMinutes = 7200
+            )
+        )
+    }
+
+    @Test
+    fun `deleteWorkTimeRule removes WorkTimeRule`() = runTest {
+        // Given: A WorkTimeRule to delete
+        val rule = com.flex.domain.model.WorkTimeRule(
+            id = 2L,
+            validFrom = java.time.LocalDate.of(2026, 8, 1),
+            dailyWorkMinutes = 360,
+            monthlyWorkMinutes = 7200
+        )
+
+        // When: Deleting rule
+        repository.deleteWorkTimeRule(rule)
+
+        // Then: DAO delete should be called with correct entity
+        verify(workTimeRuleDao).delete(
+            WorkTimeRuleEntity(
+                id = 2L,
+                validFrom = "2026-08-01",
+                dailyWorkMinutes = 360,
+                monthlyWorkMinutes = 7200
+            )
+        )
+    }
+
+    @Test
+    fun `getWorkTimeRuleForDate returns most recent rule valid for given date`() {
+        // Given: Rules with different validFrom dates
+        val rules = listOf(
+            com.flex.domain.model.WorkTimeRule(
+                id = 1L,
+                validFrom = java.time.LocalDate.of(2025, 1, 1),
+                dailyWorkMinutes = 480,
+                monthlyWorkMinutes = 10000
+            ),
+            com.flex.domain.model.WorkTimeRule(
+                id = 2L,
+                validFrom = java.time.LocalDate.of(2026, 8, 15),
+                dailyWorkMinutes = 360,
+                monthlyWorkMinutes = 7200
+            )
+        )
+
+        // When: Getting rule for 2026-08-14 (day before rule 2)
+        val ruleBefore = repository.getWorkTimeRuleForDate(java.time.LocalDate.of(2026, 8, 14), rules)
+        // When: Getting rule for 2026-08-15 (exact start date of rule 2)
+        val ruleStart = repository.getWorkTimeRuleForDate(java.time.LocalDate.of(2026, 8, 15), rules)
+        // When: Getting rule for 2026-09-01 (after rule 2)
+        val ruleAfter = repository.getWorkTimeRuleForDate(java.time.LocalDate.of(2026, 9, 1), rules)
+
+        // Then:
+        assertThat(ruleBefore?.id).isEqualTo(1L)
+        assertThat(ruleStart?.id).isEqualTo(2L)
+        assertThat(ruleAfter?.id).isEqualTo(2L)
+    }
+
+    @Test
+    fun `getWorkTimeRuleForDate returns null when date is before any rule`() {
+        // Given: A rule starting on 2026-08-01
+        val rules = listOf(
+            com.flex.domain.model.WorkTimeRule(
+                id = 1L,
+                validFrom = java.time.LocalDate.of(2026, 8, 1),
+                dailyWorkMinutes = 360,
+                monthlyWorkMinutes = 7200
+            )
+        )
+
+        // When: Getting rule for 2026-07-31
+        val result = repository.getWorkTimeRuleForDate(java.time.LocalDate.of(2026, 7, 31), rules)
+
+        // Then: Should return null
+        assertThat(result).isNull()
     }
 }

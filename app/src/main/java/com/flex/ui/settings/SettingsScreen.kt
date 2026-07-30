@@ -102,6 +102,7 @@ fun SettingsScreen(
     onNavigateToGeofence: () -> Unit = {},
     onNavigateToWifi: () -> Unit = {},
     onNavigateToQuotaRules: () -> Unit = {},
+    onNavigateToWorkTimeRules: () -> Unit = {},
     onNavigateToCalendar: () -> Unit = {},
     onShowOnboarding: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
@@ -109,6 +110,7 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsState()
     val quotaRules by viewModel.quotaRules.collectAsState()
+    val workTimeRules by viewModel.workTimeRules.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
     val appIconVariant by viewModel.appIconVariant.collectAsState()
     val yearChangeState by yearChangeViewModel.uiState.collectAsState()
@@ -194,6 +196,17 @@ fun SettingsScreen(
                     trailingContent = { ChevronTrailing() },
                     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                     modifier = Modifier.clickable { showMonthlyWorkTimeDialog = true }
+                )
+                SettingsGroupDivider()
+                ListItem(
+                    headlineContent = { Text("Arbeitszeit-Zeiträume") },
+                    supportingContent = {
+                        Text(if (workTimeRules.isEmpty()) "Keine Regeln – Standard gilt" else "${workTimeRules.size} ${if (workTimeRules.size == 1) "Regel" else "Regeln"} aktiv")
+                    },
+                    leadingContent = { SettingsIcon(Icons.Default.DateRange, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
+                    trailingContent = { ChevronTrailing() },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    modifier = Modifier.clickable { onNavigateToWorkTimeRules() }
                 )
             }
         }

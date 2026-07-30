@@ -10,12 +10,14 @@ import com.flex.data.local.dao.QuotaRuleDao
 import com.flex.data.local.dao.SettingsDao
 import com.flex.data.local.dao.TimeBlockDao
 import com.flex.data.local.dao.WorkDayDao
+import com.flex.data.local.dao.WorkTimeRuleDao
 import com.flex.data.local.entity.CalendarEventEntity
 import com.flex.data.local.entity.HolidayCacheEntity
 import com.flex.data.local.entity.QuotaRuleEntity
 import com.flex.data.local.entity.SettingsEntity
 import com.flex.data.local.entity.TimeBlockEntity
 import com.flex.data.local.entity.WorkDayEntity
+import com.flex.data.local.entity.WorkTimeRuleEntity
 
 @Database(
     entities = [
@@ -24,9 +26,10 @@ import com.flex.data.local.entity.WorkDayEntity
         SettingsEntity::class,
         QuotaRuleEntity::class,
         CalendarEventEntity::class,
-        HolidayCacheEntity::class
+        HolidayCacheEntity::class,
+        WorkTimeRuleEntity::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = false
 )
 abstract class FlexDatabase : RoomDatabase() {
@@ -36,6 +39,7 @@ abstract class FlexDatabase : RoomDatabase() {
     abstract fun quotaRuleDao(): QuotaRuleDao
     abstract fun calendarEventDao(): CalendarEventDao
     abstract fun holidayCacheDao(): HolidayCacheDao
+    abstract fun workTimeRuleDao(): WorkTimeRuleDao
 
     companion object {
         val MIGRATION_15_16 = object : Migration(15, 16) {
@@ -47,6 +51,19 @@ abstract class FlexDatabase : RoomDatabase() {
                         name TEXT NOT NULL,
                         federalState TEXT NOT NULL,
                         year INTEGER NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
+
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS work_time_rules (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        validFrom TEXT NOT NULL,
+                        dailyWorkMinutes INTEGER NOT NULL,
+                        monthlyWorkMinutes INTEGER NOT NULL
                     )
                 """.trimIndent())
             }

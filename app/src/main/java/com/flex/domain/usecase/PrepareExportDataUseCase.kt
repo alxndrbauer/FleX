@@ -20,11 +20,17 @@ class PrepareExportDataUseCase @Inject constructor(
     suspend operator fun invoke(yearMonth: YearMonth): ExportData {
         val workDays = workDayRepository.getWorkDaysForMonth(yearMonth).firstOrNull() ?: emptyList()
         val settings = settingsRepository.getSettings().firstOrNull() ?: Settings()
+        val workTimeRules = settingsRepository.getWorkTimeRules().firstOrNull() ?: emptyList()
         val workDayMap = workDays.filter { !it.isPlanned }.associateBy { it.date }
 
         val rows = mutableListOf<ExportDayRow>()
         var totalNet = 0L
         var totalTarget = 0L
+
+        fun getDailyTarget(date: java.time.LocalDate): Int {
+            return settingsRepository.getWorkTimeRuleForDate(date, workTimeRules)?.dailyWorkMinutes
+                ?: settings.dailyWorkMinutes
+        }
 
         for (day in 1..yearMonth.lengthOfMonth()) {
             val date = yearMonth.atDay(day)
@@ -32,6 +38,7 @@ class PrepareExportDataUseCase @Inject constructor(
             val dayOfWeek = date.dayOfWeek
             val isWeekend = dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY
             val isHoliday = PublicHolidays.isHoliday(date)
+            val dailyTarget = getDailyTarget(date)
 
             if (workDay != null) {
                 val result = calculateDayWorkTime(workDay.timeBlocks)
@@ -42,7 +49,7 @@ class PrepareExportDataUseCase @Inject constructor(
                 val endTime = completedBlocks.lastOrNull()?.endTime
 
                 val isWorkType = workDay.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
-                val target = if (isWorkType) settings.dailyWorkMinutes else 0
+                val target = if (isWorkType) dailyTarget else 0
 
                 rows.add(ExportDayRow(
                     date = date,
@@ -59,7 +66,7 @@ class PrepareExportDataUseCase @Inject constructor(
                 if (isWorkType) totalNet += result.netMinutes
                 totalTarget += target
             } else {
-                val target = if (!isWeekend && !isHoliday) settings.dailyWorkMinutes else 0
+                val target = if (!isWeekend && !isHoliday) dailyTarget else 0
                 rows.add(ExportDayRow(
                     date = date,
                     dayType = null,

@@ -5,6 +5,7 @@ import com.flex.domain.model.QuotaStatus
 import com.flex.domain.model.Settings
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.model.WorkTimeRule
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -19,7 +20,8 @@ class CalculateQuotaUseCase @Inject constructor(
         settings: Settings,
         yearMonth: YearMonth,
         quotaPercent: Int = settings.officeQuotaPercent,
-        quotaMinDays: Int = settings.officeQuotaMinDays
+        quotaMinDays: Int = settings.officeQuotaMinDays,
+        workTimeRules: List<WorkTimeRule> = emptyList()
     ): QuotaStatus {
         val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
         val workingDays = workDays.filter { it.dayType !in neutralTypes }
@@ -57,8 +59,24 @@ class CalculateQuotaUseCase @Inject constructor(
             }
         }
 
-        val neutralDayCount = workDays.count { it.dayType in neutralTypes }
-        val fixedTarget = (settings.monthlyWorkMinutes - neutralDayCount.toLong() * settings.dailyWorkMinutes).coerceAtLeast(0)
+        fun getDailyTarget(date: LocalDate): Int {
+            return workTimeRules
+                .filter { !it.validFrom.isAfter(date) }
+                .maxByOrNull { it.validFrom }
+                ?.dailyWorkMinutes ?: settings.dailyWorkMinutes
+        }
+
+        fun getMonthlyTarget(ym: YearMonth): Int {
+            val rule = workTimeRules
+                .filter { !it.validFrom.isAfter(ym.atDay(1)) }
+                .maxByOrNull { it.validFrom }
+            return rule?.monthlyWorkMinutes ?: settings.monthlyWorkMinutes
+        }
+
+        val neutralDays = workDays.filter { it.dayType in neutralTypes }
+        val neutralDaysDeduction = neutralDays.sumOf { getDailyTarget(it.date).toLong() }
+        val baseMonthlyTarget = getMonthlyTarget(yearMonth).toLong()
+        val fixedTarget = (baseMonthlyTarget - neutralDaysDeduction).coerceAtLeast(0)
         val officePercent = if (fixedTarget > 0) {
             (officeMinutes.toDouble() / fixedTarget) * 100
         } else 0.0

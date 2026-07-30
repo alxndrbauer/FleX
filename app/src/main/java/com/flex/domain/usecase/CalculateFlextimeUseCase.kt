@@ -5,7 +5,9 @@ import com.flex.domain.model.FlextimeBalance
 import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.Settings
 import com.flex.domain.model.WorkDay
+import com.flex.domain.model.WorkTimeRule
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.YearMonth
 import kotlin.math.roundToLong
 import javax.inject.Inject
@@ -14,11 +16,24 @@ class CalculateFlextimeUseCase @Inject constructor(
     private val calculateDayWorkTime: CalculateDayWorkTimeUseCase
 ) {
 
-    operator fun invoke(workDays: List<WorkDay>, settings: Settings, yearMonth: YearMonth? = null): FlextimeBalance {
+    operator fun invoke(
+        workDays: List<WorkDay>,
+        settings: Settings,
+        yearMonth: YearMonth? = null,
+        workTimeRules: List<WorkTimeRule> = emptyList()
+    ): FlextimeBalance {
         var earnedMinutes = 0L
         var overtimeMinutes = 0L
 
+        fun getDailyTarget(date: LocalDate): Int {
+            return workTimeRules
+                .filter { !it.validFrom.isAfter(date) }
+                .maxByOrNull { it.validFrom }
+                ?.dailyWorkMinutes ?: settings.dailyWorkMinutes
+        }
+
         for (day in workDays) {
+            val dailyTarget = getDailyTarget(day.date)
             when (day.dayType) {
                 DayType.WORK -> {
                     val result = calculateDayWorkTime(day.timeBlocks)
@@ -30,7 +45,7 @@ class CalculateFlextimeUseCase @Inject constructor(
                         earnedMinutes += result.netMinutes
                     } else {
                         // Weekday work: count only extra hours over daily target
-                        earnedMinutes += result.netMinutes - settings.dailyWorkMinutes
+                        earnedMinutes += result.netMinutes - dailyTarget
                     }
                 }
                 DayType.SATURDAY_BONUS -> {
@@ -39,10 +54,10 @@ class CalculateFlextimeUseCase @Inject constructor(
                     overtimeMinutes += (result.netMinutes * 0.5).roundToLong() // 50% Bonus auf Überstunden
                 }
                 DayType.FLEX_DAY -> {
-                    earnedMinutes += -settings.dailyWorkMinutes.toLong() // voller Tag wird abgezogen
+                    earnedMinutes += -dailyTarget.toLong() // voller Tag wird abgezogen
                 }
                 DayType.OVERTIME_DAY -> {
-                    overtimeMinutes += -settings.dailyWorkMinutes.toLong()
+                    overtimeMinutes += -dailyTarget.toLong()
                     // earnedMinutes bleibt unberührt → Gleitzeit neutral
                 }
                 DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY -> {
@@ -53,19 +68,16 @@ class CalculateFlextimeUseCase @Inject constructor(
 
         val total = settings.initialFlextimeMinutes + earnedMinutes
 
-        // Dynamic target: actual working days (Mon-Fri minus holidays) × dailyWorkMinutes
-        val targetMinutes = if (yearMonth != null) {
-            var workingDays = 0
+        // Dynamic target: actual working days (Mon-Fri minus holidays) × daily target for each date
+        var targetMinutes = 0L
+        if (yearMonth != null) {
             for (day in 1..yearMonth.lengthOfMonth()) {
                 val date = yearMonth.atDay(day)
                 if (date.dayOfWeek != DayOfWeek.SATURDAY && date.dayOfWeek != DayOfWeek.SUNDAY
                     && !PublicHolidays.isHoliday(date)) {
-                    workingDays++
+                    targetMinutes += getDailyTarget(date)
                 }
             }
-            workingDays.toLong() * settings.dailyWorkMinutes
-        } else {
-            0L
         }
 
         return FlextimeBalance(

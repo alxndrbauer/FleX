@@ -17,6 +17,7 @@
 - Live work timer notification with Android 16 Live Updates
 - Fix bugs and add interactive map preview
 - Warn when enabled features lose permissions
+- Flexible arbeitszeit-zeiträume mit tagesgenauer gültigkeit
 ## [1.5.8] - 2026-04-06
 
 ### Bugfixes

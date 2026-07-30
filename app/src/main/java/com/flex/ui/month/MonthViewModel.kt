@@ -98,21 +98,29 @@ class MonthViewModel @Inject constructor(
         loadMonth()
     }
 
+private data class MonthConfig(
+    val month: YearMonth,
+    val settings: Settings,
+    val quotaRules: List<com.flex.domain.model.QuotaRule>,
+    val workTimeRules: List<com.flex.domain.model.WorkTimeRule>
+)
+
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private fun loadMonth() {
         viewModelScope.launch {
             combine(
                 _selectedMonth,
                 getSettings(),
-                settingsRepository.getQuotaRules()
-            ) { month, settings, rules ->
-                Triple(month, settings, rules)
-            }.flatMapLatest { (month, settings, rules) ->
+                settingsRepository.getQuotaRules(),
+                settingsRepository.getWorkTimeRules()
+            ) { month, settings, rules, workTimeRules ->
+                MonthConfig(month, settings, rules, workTimeRules)
+            }.flatMapLatest { (month, settings, rules, workTimeRules) ->
                 combine(
                     getMonthWorkDays(month),
                     workDayRepository.getWorkDaysForYear(month.year)
                 ) { days, yearDays ->
-                    arrayOf(month, settings, rules, days, yearDays)
+                    arrayOf(month, settings, rules, workTimeRules, days, yearDays)
                 }
             }.collect { arr ->
                 @Suppress("UNCHECKED_CAST")
@@ -121,9 +129,11 @@ class MonthViewModel @Inject constructor(
                 @Suppress("UNCHECKED_CAST")
                 val rules = arr[2] as List<com.flex.domain.model.QuotaRule>
                 @Suppress("UNCHECKED_CAST")
-                val days = arr[3] as List<WorkDay>
+                val workTimeRules = arr[3] as List<com.flex.domain.model.WorkTimeRule>
                 @Suppress("UNCHECKED_CAST")
-                val yearDays = arr[4] as List<WorkDay>
+                val days = arr[4] as List<WorkDay>
+                @Suppress("UNCHECKED_CAST")
+                val yearDays = arr[5] as List<WorkDay>
 
                 val rule = settingsRepository.getQuotaRuleForMonth(month, rules)
                 val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
@@ -134,15 +144,15 @@ class MonthViewModel @Inject constructor(
                 val daysForCalc = if (isCurrentOrPast) days.filter { !it.isPlanned } else days
                 val hasPlanned = days.any { it.isPlanned }
 
-                val prognosisDays = buildPrognosisDays(month, daysForCalc, settings)
-                val quota = calculateQuota(prognosisDays, settings, month, qPercent, qDays)
+                val prognosisDays = buildPrognosisDays(month, daysForCalc, settings, workTimeRules)
+                val quota = calculateQuota(prognosisDays, settings, month, qPercent, qDays, workTimeRules)
 
                 // Cumulative flextime: actual year days (before this month) + this month's prognosis
                 val previousMonthsDays = yearDays.filter {
                     YearMonth.from(it.date).isBefore(month) && !it.isPlanned
                 }
                 val flextimeDays = previousMonthsDays + prognosisDays
-                val flextime = calculateFlextime(flextimeDays, settings, month)
+                val flextime = calculateFlextime(flextimeDays, settings, month, workTimeRules)
 
                 // Fixed monthly target, reduced by neutral days (vacation, flex, etc.)
                 val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
@@ -184,23 +194,26 @@ class MonthViewModel @Inject constructor(
                     it.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
                 }
                 val creditTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY, DayType.FLEX_DAY)
-                val creditDaysInMonth = prognosisDays.count { it.dayType in creditTypes }
+                val creditDaysInMonth = prognosisDays.filter { it.dayType in creditTypes }
                 val actualWorkedMinutesMonth = workingDaysMonth.sumOf { day ->
                     calculateDayWorkTime(day.timeBlocks).netMinutes
                 }
-                val totalWorkMinutesMonth = actualWorkedMinutesMonth + creditDaysInMonth.toLong() * settings.dailyWorkMinutes
+                val creditMinutesMonth = creditDaysInMonth.sumOf { day ->
+                    (settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
+                }
+                val totalWorkMinutesMonth = actualWorkedMinutesMonth + creditMinutesMonth
 
                 // Calculate target work days for the month (Mon-Fri excluding holidays)
-                var targetWorkDaysMonth = 0
+                var targetMinutesMonth = 0L
                 for (day in 1..month.lengthOfMonth()) {
                     val date = month.atDay(day)
                     if (date.dayOfWeek !in listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
                         && !PublicHolidays.isHoliday(date)
                     ) {
-                        targetWorkDaysMonth++
+                        val dailyTarget = settingsRepository.getWorkTimeRuleForDate(date, workTimeRules)?.dailyWorkMinutes ?: settings.dailyWorkMinutes
+                        targetMinutesMonth += dailyTarget
                     }
                 }
-                val targetMinutesMonth = targetWorkDaysMonth.toLong() * settings.dailyWorkMinutes
                 val differenceMinutesMonth = totalWorkMinutesMonth - targetMinutesMonth
 
                 _uiState.value = _uiState.value.copy(

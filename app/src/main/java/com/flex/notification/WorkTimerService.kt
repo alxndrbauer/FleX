@@ -86,7 +86,9 @@ class WorkTimerService : Service() {
                 val netMinutes = workTimeResult.netMinutes
 
                 val settings = settingsRepository.getSettings().first()
-                val targetMinutes = settings.dailyWorkMinutes.toLong()
+                val workTimeRules = settingsRepository.getWorkTimeRules().first()
+                val targetMinutes = (settingsRepository.getWorkTimeRuleForDate(LocalDate.now(), workTimeRules)?.dailyWorkMinutes
+                    ?: settings.dailyWorkMinutes).toLong()
                 val flexDelta = netMinutes - targetMinutes
 
                 val locationLabel = when (runningBlock.location) {

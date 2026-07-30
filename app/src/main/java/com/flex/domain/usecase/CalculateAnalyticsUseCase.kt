@@ -10,6 +10,7 @@ import com.flex.domain.model.WeekComparison
 import com.flex.domain.model.WeeklyWorkHours
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.model.WorkTimeRule
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -26,7 +27,8 @@ class CalculateAnalyticsUseCase @Inject constructor(
     operator fun invoke(
         workDays: List<WorkDay>,
         settings: Settings,
-        timeRange: TimeRange
+        timeRange: TimeRange,
+        workTimeRules: List<WorkTimeRule> = emptyList()
     ): AnalyticsData {
         // Filter out planned days - only analyze actual work
         val actualWorkDays = workDays.filter { !it.isPlanned }
@@ -42,8 +44,8 @@ class CalculateAnalyticsUseCase @Inject constructor(
         }
 
         return AnalyticsData(
-            flextimeSeries = calculateFlextimeSeries(actualWorkDays, settings, timeRange),
-            overtimeSeries = calculateOvertimeSeries(actualWorkDays, settings, timeRange),
+            flextimeSeries = calculateFlextimeSeries(actualWorkDays, settings, timeRange, workTimeRules),
+            overtimeSeries = calculateOvertimeSeries(actualWorkDays, settings, timeRange, workTimeRules),
             weeklyHours = calculateWeeklyHours(actualWorkDays),
             monthlyHours = calculateMonthlyHours(actualWorkDays),
             locationDistribution = calculateLocationDistribution(actualWorkDays),
@@ -51,17 +53,25 @@ class CalculateAnalyticsUseCase @Inject constructor(
         )
     }
 
+    private fun getDailyTarget(date: LocalDate, settings: Settings, workTimeRules: List<WorkTimeRule>): Int {
+        return workTimeRules
+            .filter { !it.validFrom.isAfter(date) }
+            .maxByOrNull { it.validFrom }
+            ?.dailyWorkMinutes ?: settings.dailyWorkMinutes
+    }
+
     private fun calculateFlextimeSeries(
         workDays: List<WorkDay>,
         settings: Settings,
-        timeRange: TimeRange
+        timeRange: TimeRange,
+        workTimeRules: List<WorkTimeRule>
     ): List<TimeSeriesPoint> {
         return when (timeRange) {
             is TimeRange.Month -> {
                 val sortedDays = workDays.sortedBy { it.date }
                 var cumulativeFlextime = settings.initialFlextimeMinutes.toLong()
                 sortedDays.map { day ->
-                    cumulativeFlextime += calculateDayFlextime(day, settings)
+                    cumulativeFlextime += calculateDayFlextime(day, settings, workTimeRules)
                     TimeSeriesPoint(day.date, cumulativeFlextime)
                 }
             }
@@ -70,7 +80,7 @@ class CalculateAnalyticsUseCase @Inject constructor(
                 var cumulativeFlextime = settings.initialFlextimeMinutes.toLong()
                 val series = mutableListOf<TimeSeriesPoint>()
                 for ((yearMonth, daysInMonth) in monthlyGroups) {
-                    val balance = calculateFlextimeUseCase(daysInMonth, settings, yearMonth)
+                    val balance = calculateFlextimeUseCase(daysInMonth, settings, yearMonth, workTimeRules)
                     cumulativeFlextime += balance.earnedMinutes
                     series.add(TimeSeriesPoint(yearMonth.atDay(1), cumulativeFlextime))
                 }
@@ -82,14 +92,15 @@ class CalculateAnalyticsUseCase @Inject constructor(
     private fun calculateOvertimeSeries(
         workDays: List<WorkDay>,
         settings: Settings,
-        timeRange: TimeRange
+        timeRange: TimeRange,
+        workTimeRules: List<WorkTimeRule>
     ): List<TimeSeriesPoint> {
         return when (timeRange) {
             is TimeRange.Month -> {
                 val sortedDays = workDays.sortedBy { it.date }
                 var cumulativeOvertime = settings.initialOvertimeMinutes.toLong()
                 sortedDays.map { day ->
-                    cumulativeOvertime += calculateDayOvertime(day, settings)
+                    cumulativeOvertime += calculateDayOvertime(day, settings, workTimeRules)
                     TimeSeriesPoint(day.date, cumulativeOvertime)
                 }
             }
@@ -98,7 +109,7 @@ class CalculateAnalyticsUseCase @Inject constructor(
                 var cumulativeOvertime = settings.initialOvertimeMinutes.toLong()
                 val series = mutableListOf<TimeSeriesPoint>()
                 for ((yearMonth, daysInMonth) in monthlyGroups) {
-                    val balance = calculateFlextimeUseCase(daysInMonth, settings, yearMonth)
+                    val balance = calculateFlextimeUseCase(daysInMonth, settings, yearMonth, workTimeRules)
                     cumulativeOvertime += balance.earnedOvertimeMinutes
                     series.add(TimeSeriesPoint(yearMonth.atDay(1), cumulativeOvertime))
                 }
@@ -107,24 +118,26 @@ class CalculateAnalyticsUseCase @Inject constructor(
         }
     }
 
-    private fun calculateDayFlextime(day: WorkDay, settings: Settings): Long {
+    private fun calculateDayFlextime(day: WorkDay, settings: Settings, workTimeRules: List<WorkTimeRule>): Long {
+        val dailyTarget = getDailyTarget(day.date, settings, workTimeRules)
         return when (day.dayType) {
             DayType.WORK -> {
                 val result = calculateDayWorkTime(day.timeBlocks)
                 val isWeekend = day.date.dayOfWeek == DayOfWeek.SATURDAY || day.date.dayOfWeek == DayOfWeek.SUNDAY
-                if (isWeekend) result.netMinutes else result.netMinutes - settings.dailyWorkMinutes
+                if (isWeekend) result.netMinutes else result.netMinutes - dailyTarget
             }
             DayType.SATURDAY_BONUS -> calculateDayWorkTime(day.timeBlocks).netMinutes
-            DayType.FLEX_DAY -> -settings.dailyWorkMinutes.toLong()
+            DayType.FLEX_DAY -> -dailyTarget.toLong()
             DayType.OVERTIME_DAY -> 0L
             DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY -> 0L
         }
     }
 
-    private fun calculateDayOvertime(day: WorkDay, settings: Settings): Long {
+    private fun calculateDayOvertime(day: WorkDay, settings: Settings, workTimeRules: List<WorkTimeRule>): Long {
+        val dailyTarget = getDailyTarget(day.date, settings, workTimeRules)
         return when (day.dayType) {
             DayType.SATURDAY_BONUS -> (calculateDayWorkTime(day.timeBlocks).netMinutes * 0.5).roundToLong()
-            DayType.OVERTIME_DAY -> -settings.dailyWorkMinutes.toLong()
+            DayType.OVERTIME_DAY -> -dailyTarget.toLong()
             else -> 0L
         }
     }

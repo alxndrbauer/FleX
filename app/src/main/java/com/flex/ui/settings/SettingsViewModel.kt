@@ -60,6 +60,9 @@ class SettingsViewModel @Inject constructor(
     private val _quotaRules = MutableStateFlow<List<QuotaRule>>(emptyList())
     val quotaRules: StateFlow<List<QuotaRule>> = _quotaRules.asStateFlow()
 
+    private val _workTimeRules = MutableStateFlow<List<com.flex.domain.model.WorkTimeRule>>(emptyList())
+    val workTimeRules: StateFlow<List<com.flex.domain.model.WorkTimeRule>> = _workTimeRules.asStateFlow()
+
     private val _geofenceStatus = MutableStateFlow(GeofenceStatus.UNKNOWN)
     val geofenceStatus: StateFlow<GeofenceStatus> = _geofenceStatus.asStateFlow()
 
@@ -81,6 +84,9 @@ class SettingsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             settingsRepository.getQuotaRules().collect { _quotaRules.value = it }
+        }
+        viewModelScope.launch {
+            settingsRepository.getWorkTimeRules().collect { _workTimeRules.value = it }
         }
     }
 
@@ -105,6 +111,18 @@ class SettingsViewModel @Inject constructor(
     fun deleteQuotaRule(rule: QuotaRule) {
         viewModelScope.launch {
             settingsRepository.deleteQuotaRule(rule)
+        }
+    }
+
+    fun addWorkTimeRule(rule: com.flex.domain.model.WorkTimeRule) {
+        viewModelScope.launch {
+            settingsRepository.saveWorkTimeRule(rule)
+        }
+    }
+
+    fun deleteWorkTimeRule(rule: com.flex.domain.model.WorkTimeRule) {
+        viewModelScope.launch {
+            settingsRepository.deleteWorkTimeRule(rule)
         }
     }
 

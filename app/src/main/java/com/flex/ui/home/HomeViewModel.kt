@@ -12,6 +12,7 @@ import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
@@ -108,7 +109,9 @@ class HomeViewModel @Inject constructor(
     private val _remainingMinutes = MutableStateFlow<Int?>(null)
     val remainingMinutes: StateFlow<Int?> = _remainingMinutes.asStateFlow()
 
-    private fun computeRemainingMinutes(state: HomeUiState): Int? {
+    private var cachedWorkTimeRules: List<WorkTimeRule> = emptyList()
+
+    private fun computeRemainingMinutes(state: HomeUiState, workTimeRules: List<WorkTimeRule> = cachedWorkTimeRules): Int? {
         val today = LocalDate.now()
         if (state.selectedDate != today) return null
         if (state.timeBlocks.isEmpty()) return null
@@ -118,7 +121,9 @@ class HomeViewModel @Inject constructor(
             if (block.endTime == null) block.copy(endTime = now) else block
         }
         val result = calculateDayWorkTime(blocksForCalc)
-        return (state.settings.dailyWorkMinutes - result.netMinutes).toInt().coerceAtLeast(0)
+        val dailyTarget = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)?.dailyWorkMinutes
+            ?: state.settings.dailyWorkMinutes
+        return (dailyTarget - result.netMinutes).toInt().coerceAtLeast(0)
     }
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
@@ -197,7 +202,8 @@ class HomeViewModel @Inject constructor(
                         getSettings(),
                         getMonthWorkDays(yearMonth),
                         settingsRepository.getQuotaRules(),
-                        workDayRepository.getWorkDaysForYear(today.year)
+                        workDayRepository.getWorkDaysForYear(today.year),
+                        settingsRepository.getWorkTimeRules()
                     ) { arr ->
                         val workDay = arr[0] as WorkDay?
                         val settings = arr[1] as Settings
@@ -207,6 +213,8 @@ class HomeViewModel @Inject constructor(
                         val rules = arr[3] as List<com.flex.domain.model.QuotaRule>
                         @Suppress("UNCHECKED_CAST")
                         val yearDays = arr[4] as List<WorkDay>
+                        @Suppress("UNCHECKED_CAST")
+                        val workTimeRules = arr[5] as List<com.flex.domain.model.WorkTimeRule>
 
                         val rule = settingsRepository.getQuotaRuleForMonth(todayYearMonth, rules)
                         val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
@@ -236,14 +244,15 @@ class HomeViewModel @Inject constructor(
                             if (resolved.date == today && resolved.dayType == DayType.WORK && !hasCompletedBlocks(resolved)) null
                             else resolved
                         }
-                        val flextime = calculateFlextime(actualYearDays, settings, todayYearMonth)
-                        val monthlyFlextime = calculateFlextime(actualMonthDays, settings, yearMonth)
-                        val quota = calculateQuota(actualMonthDays, settings, yearMonth, qPercent, qDays)
+                        cachedWorkTimeRules = workTimeRules
+                        val flextime = calculateFlextime(actualYearDays, settings, todayYearMonth, workTimeRules)
+                        val monthlyFlextime = calculateFlextime(actualMonthDays, settings, yearMonth, workTimeRules)
+                        val quota = calculateQuota(actualMonthDays, settings, yearMonth, qPercent, qDays, workTimeRules)
 
-                        // Fixed monthly target, reduced by neutral days
+                        val baseMonthlyTarget = (settingsRepository.getWorkTimeRuleForDate(yearMonth.atDay(1), workTimeRules)?.monthlyWorkMinutes ?: settings.monthlyWorkMinutes).toLong()
                         val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
-                        val neutralDayCount = actualMonthDays.count { it.dayType in neutralTypes }
-                        val totalMin = (settings.monthlyWorkMinutes - neutralDayCount.toLong() * settings.dailyWorkMinutes).coerceAtLeast(0)
+                        val neutralDaysDeduction = actualMonthDays.filter { it.dayType in neutralTypes }.sumOf { (settingsRepository.getWorkTimeRuleForDate(it.date, workTimeRules)?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong() }
+                        val totalMin = (baseMonthlyTarget - neutralDaysDeduction).coerceAtLeast(0)
                         val requiredMin = (totalMin * qPercent / 100.0).toLong()
 
                         val workingDays = actualMonthDays.filter { it.dayType !in neutralTypes }
@@ -263,33 +272,36 @@ class HomeViewModel @Inject constructor(
                             officeMin += dayOfficeGross * dayResult.netMinutes / totalGross
                         }
 
-                        HomeUiState(
-                            today = today,
-                            selectedDate = date,
-                            workDay = workDay,
-                            timeBlocks = timeBlocks,
-                            isClockRunning = isRunning,
-                            selectedLocation = workDay?.location ?: WorkLocation.OFFICE,
-                            selectedDayType = override ?: workDay?.dayType ?: DayType.WORK,
-                            dayWorkTime = dayResult,
-                            baseDayNetMinutes = dayResult.netMinutes,
-                            liveFlextimeDelta = 0,
-                            flextimeBalance = flextime,
-                            monthlyFlextimeBalance = monthlyFlextime,
-                            quotaStatus = quota,
-                            settings = settings,
-                            effectiveQuotaPercent = qPercent,
-                            effectiveQuotaMinDays = qDays,
-                            officeMinutes = officeMin,
-                            requiredOfficeMinutes = requiredMin,
-                            breakCheckResult = breakCheckResult
+                        Pair(
+                            HomeUiState(
+                                today = today,
+                                selectedDate = date,
+                                workDay = workDay,
+                                timeBlocks = timeBlocks,
+                                isClockRunning = isRunning,
+                                selectedLocation = workDay?.location ?: WorkLocation.OFFICE,
+                                selectedDayType = override ?: workDay?.dayType ?: DayType.WORK,
+                                dayWorkTime = dayResult,
+                                baseDayNetMinutes = dayResult.netMinutes,
+                                liveFlextimeDelta = 0,
+                                flextimeBalance = flextime,
+                                monthlyFlextimeBalance = monthlyFlextime,
+                                quotaStatus = quota,
+                                settings = settings,
+                                effectiveQuotaPercent = qPercent,
+                                effectiveQuotaMinDays = qDays,
+                                officeMinutes = officeMin,
+                                requiredOfficeMinutes = requiredMin,
+                                breakCheckResult = breakCheckResult
+                            ),
+                            workTimeRules
                         )
                     }
                 }
-                .collect { state ->
+                .collect { (state, rules) ->
                     val wasRunning = _uiState.value.isClockRunning
                     _uiState.value = state
-                    _remainingMinutes.value = computeRemainingMinutes(state)
+                    _remainingMinutes.value = computeRemainingMinutes(state, rules)
                     checkPermissions(state.settings)
                     // Restart service if clocked in and it was just loaded (first emission)
                     if (!wasRunning && state.isClockRunning && state.settings.workTimerNotificationEnabled) {

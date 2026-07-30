@@ -2,14 +2,18 @@ package com.flex.data.repository
 
 import com.flex.data.local.dao.QuotaRuleDao
 import com.flex.data.local.dao.SettingsDao
+import com.flex.data.local.dao.WorkTimeRuleDao
 import com.flex.data.local.entity.QuotaRuleEntity
 import com.flex.data.local.entity.SettingsEntity
+import com.flex.data.local.entity.WorkTimeRuleEntity
 import com.flex.domain.model.FederalState
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.Settings
+import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,7 +21,8 @@ import javax.inject.Singleton
 @Singleton
 class SettingsRepositoryImpl @Inject constructor(
     private val settingsDao: SettingsDao,
-    private val quotaRuleDao: QuotaRuleDao
+    private val quotaRuleDao: QuotaRuleDao,
+    private val workTimeRuleDao: WorkTimeRuleDao
 ) : SettingsRepository {
 
     override fun getSettings(): Flow<Settings> {
@@ -47,6 +52,26 @@ class SettingsRepositoryImpl @Inject constructor(
     override fun getQuotaRuleForMonth(yearMonth: YearMonth, rules: List<QuotaRule>): QuotaRule? {
         return rules
             .filter { it.validFrom <= yearMonth }
+            .maxByOrNull { it.validFrom }
+    }
+
+    override fun getWorkTimeRules(): Flow<List<WorkTimeRule>> {
+        return workTimeRuleDao.getAllRules().map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override suspend fun saveWorkTimeRule(rule: WorkTimeRule): Long {
+        return workTimeRuleDao.insert(rule.toEntity())
+    }
+
+    override suspend fun deleteWorkTimeRule(rule: WorkTimeRule) {
+        workTimeRuleDao.delete(rule.toEntity())
+    }
+
+    override fun getWorkTimeRuleForDate(date: LocalDate, rules: List<WorkTimeRule>): WorkTimeRule? {
+        return rules
+            .filter { !it.validFrom.isAfter(date) }
             .maxByOrNull { it.validFrom }
     }
 
@@ -124,5 +149,19 @@ class SettingsRepositoryImpl @Inject constructor(
         validFrom = validFrom.toString(),
         officeQuotaPercent = officeQuotaPercent,
         officeQuotaMinDays = officeQuotaMinDays
+    )
+
+    private fun WorkTimeRuleEntity.toDomain() = WorkTimeRule(
+        id = id,
+        validFrom = java.time.LocalDate.parse(validFrom),
+        dailyWorkMinutes = dailyWorkMinutes,
+        monthlyWorkMinutes = monthlyWorkMinutes
+    )
+
+    private fun WorkTimeRule.toEntity() = WorkTimeRuleEntity(
+        id = id,
+        validFrom = validFrom.toString(),
+        dailyWorkMinutes = dailyWorkMinutes,
+        monthlyWorkMinutes = monthlyWorkMinutes
     )
 }

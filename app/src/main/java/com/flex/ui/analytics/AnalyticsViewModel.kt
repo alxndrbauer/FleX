@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.flex.domain.model.AnalyticsData
 import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeRange
+import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateAnalyticsUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
@@ -27,11 +28,25 @@ data class AnalyticsUiState(
     val isLoading: Boolean = false
 )
 
+private data class AnalyticsConfig(
+    val range: TimeRange,
+    val settings: Settings,
+    val workTimeRules: List<com.flex.domain.model.WorkTimeRule>
+)
+
+private data class AnalyticsDataRequest(
+    val workDays: List<com.flex.domain.model.WorkDay>,
+    val settings: Settings,
+    val range: TimeRange,
+    val workTimeRules: List<com.flex.domain.model.WorkTimeRule>
+)
+
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
     private val workDayRepository: WorkDayRepository,
     private val getSettingsUseCase: GetSettingsUseCase,
+    private val settingsRepository: SettingsRepository,
     private val calculateAnalyticsUseCase: CalculateAnalyticsUseCase
 ) : ViewModel() {
 
@@ -48,31 +63,33 @@ class AnalyticsViewModel @Inject constructor(
         viewModelScope.launch {
             combine(
                 _timeRange,
-                getSettingsUseCase()
-            ) { range, settings ->
+                getSettingsUseCase(),
+                settingsRepository.getWorkTimeRules()
+            ) { range, settings, workTimeRules ->
                 _uiState.value = _uiState.value.copy(
                     timeRange = range,
                     settings = settings,
                     isLoading = true
                 )
-                range to settings
-            }.flatMapLatest { (range, settings) ->
+                AnalyticsConfig(range, settings, workTimeRules)
+            }.flatMapLatest { (range, settings, workTimeRules) ->
                 val workDaysFlow = when (range) {
                     is TimeRange.Month -> workDayRepository.getWorkDaysForMonth(range.yearMonth)
                     is TimeRange.Year -> workDayRepository.getWorkDaysForYear(range.year)
                     is TimeRange.Custom -> workDayRepository.getWorkDaysInRange(range.start, range.end)
                 }
-                workDaysFlow.map { workDays -> Triple(workDays, settings, range) }
+                workDaysFlow.map { workDays -> AnalyticsDataRequest(workDays, settings, range, workTimeRules) }
             }.catch {
                 _uiState.value = _uiState.value.copy(
                     analyticsData = null,
                     isLoading = false
                 )
-            }.collect { (workDays, settings, range) ->
+            }.collect { (workDays, settings, range, workTimeRules) ->
                 val analyticsData = calculateAnalyticsUseCase(
                     workDays = workDays,
                     settings = settings,
-                    timeRange = range
+                    timeRange = range,
+                    workTimeRules = workTimeRules
                 )
 
                 _uiState.value = _uiState.value.copy(

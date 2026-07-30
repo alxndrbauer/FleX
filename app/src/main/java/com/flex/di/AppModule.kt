@@ -12,6 +12,7 @@ import com.flex.data.local.dao.QuotaRuleDao
 import com.flex.data.local.dao.SettingsDao
 import com.flex.data.local.dao.TimeBlockDao
 import com.flex.data.local.dao.WorkDayDao
+import com.flex.data.local.dao.WorkTimeRuleDao
 import com.flex.calendar.CalendarSyncService
 import com.flex.data.repository.HolidayRepositoryImpl
 import com.flex.data.repository.SettingsRepositoryImpl
@@ -152,7 +153,7 @@ object AppModule {
             context,
             FlexDatabase::class.java,
             "flex_database"
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, FlexDatabase.MIGRATION_15_16).build()
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, FlexDatabase.MIGRATION_15_16, FlexDatabase.MIGRATION_16_17).build()
     }
 
     @Provides
@@ -166,6 +167,9 @@ object AppModule {
 
     @Provides
     fun provideQuotaRuleDao(database: FlexDatabase): QuotaRuleDao = database.quotaRuleDao()
+
+    @Provides
+    fun provideWorkTimeRuleDao(database: FlexDatabase): WorkTimeRuleDao = database.workTimeRuleDao()
 
     @Provides
     fun provideCalendarEventDao(database: FlexDatabase): CalendarEventDao = database.calendarEventDao()
@@ -186,8 +190,9 @@ object AppModule {
     @Singleton
     fun provideSettingsRepository(
         settingsDao: SettingsDao,
-        quotaRuleDao: QuotaRuleDao
-    ): SettingsRepository = SettingsRepositoryImpl(settingsDao, quotaRuleDao)
+        quotaRuleDao: QuotaRuleDao,
+        workTimeRuleDao: WorkTimeRuleDao
+    ): SettingsRepository = SettingsRepositoryImpl(settingsDao, quotaRuleDao, workTimeRuleDao)
 
     @Provides
     @Singleton

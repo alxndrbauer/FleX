@@ -64,9 +64,10 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(getMonthWorkDays(any())).thenReturn(flowOf(emptyList()))
         whenever(getSettings()).thenReturn(flowOf(Settings()))
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
+        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(emptyList()))
-        whenever(calculateQuota(any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
-        whenever(calculateFlextime(any(), any(), any())).thenReturn(FlextimeBalance())
+        whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
+        whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(FlextimeBalance())
     }
 
     // ========== Initial State Tests ==========
@@ -96,7 +97,7 @@ class QuotaViewModelTest : BaseUnitTest() {
             percentQuotaMet = true,
             daysQuotaMet = true
         )
-        whenever(calculateQuota(any(), any(), any(), any(), any())).thenReturn(expectedQuota)
+        whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(expectedQuota)
 
         // When: ViewModel is created
         viewModel = QuotaViewModel(
@@ -119,7 +120,7 @@ class QuotaViewModelTest : BaseUnitTest() {
             targetMinutes = 0,
             overtimeMinutes = 240
         )
-        whenever(calculateFlextime(any(), any(), any())).thenReturn(expectedFlextime)
+        whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(expectedFlextime)
 
         // When: ViewModel is created
         viewModel = QuotaViewModel(
@@ -333,7 +334,7 @@ class QuotaViewModelTest : BaseUnitTest() {
             remainingWorkDays = 5,
             requiredOfficeDaysForQuota = 2
         )
-        whenever(calculateQuota(any(), any(), any(), any(), any())).thenReturn(expectedQuota)
+        whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(expectedQuota)
 
         // When: ViewModel is created
         viewModel = QuotaViewModel(
@@ -366,7 +367,7 @@ class QuotaViewModelTest : BaseUnitTest() {
             targetMinutes = 9266,
             overtimeMinutes = -8966
         )
-        whenever(calculateFlextime(any(), any(), any())).thenReturn(expectedFlextime)
+        whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(expectedFlextime)
 
         // When: ViewModel is created
         viewModel = QuotaViewModel(

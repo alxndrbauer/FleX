@@ -92,11 +92,13 @@ class MonthViewModelTest : BaseUnitTest() {
         whenever(getMonthWorkDays(any())).thenReturn(flowOf(emptyList()))
         whenever(getSettings()).thenReturn(flowOf(Settings()))
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
+        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(emptyList()))
-        whenever(calculateQuota(any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
-        whenever(calculateFlextime(any(), any(), any())).thenReturn(FlextimeBalance())
+        whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
+        whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(FlextimeBalance())
         whenever(calculateDayWorkTime(any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
         whenever(checkBreakViolation(any(), any())).thenReturn(BreakCheckResult(emptyList(), skipped = false))
+        whenever(buildPrognosisDays(any(), any(), any(), any())).thenAnswer { inv -> inv.getArgument(1) }
     }
 
     // ========== Initial State Tests ==========
@@ -477,7 +479,7 @@ class MonthViewModelTest : BaseUnitTest() {
             percentQuotaMet = true,
             daysQuotaMet = true
         )
-        whenever(calculateQuota(any(), any(), any(), any(), any())).thenReturn(expectedQuota)
+        whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(expectedQuota)
 
         // When: ViewModel is created
         viewModel = MonthViewModel(
@@ -501,7 +503,7 @@ class MonthViewModelTest : BaseUnitTest() {
             targetMinutes = 0,
             overtimeMinutes = 120
         )
-        whenever(calculateFlextime(any(), any(), any())).thenReturn(expectedFlextime)
+        whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(expectedFlextime)
 
         // When: ViewModel is created
         viewModel = MonthViewModel(

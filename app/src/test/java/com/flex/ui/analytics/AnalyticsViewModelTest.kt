@@ -12,6 +12,7 @@ import com.flex.domain.model.TimeSeriesPoint
 import com.flex.domain.model.WeeklyWorkHours
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateAnalyticsUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
@@ -47,6 +48,9 @@ class AnalyticsViewModelTest : BaseUnitTest() {
     private lateinit var getSettingsUseCase: GetSettingsUseCase
 
     @Mock
+    private lateinit var settingsRepository: SettingsRepository
+
+    @Mock
     private lateinit var calculateAnalyticsUseCase: CalculateAnalyticsUseCase
 
     private lateinit var viewModel: AnalyticsViewModel
@@ -65,10 +69,11 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         super.setUp()
         // Default mock behavior
         whenever(getSettingsUseCase()).thenReturn(flowOf(defaultSettings))
+        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
         whenever(workDayRepository.getWorkDaysForMonth(any())).thenReturn(flowOf(emptyList()))
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(emptyList()))
         whenever(workDayRepository.getWorkDaysInRange(any(), any())).thenReturn(flowOf(emptyList()))
-        whenever(calculateAnalyticsUseCase(any(), any(), any())).thenReturn(defaultAnalyticsData)
+        whenever(calculateAnalyticsUseCase(any(), any(), any(), any())).thenReturn(defaultAnalyticsData)
     }
 
     // ========== Initial State Tests ==========
@@ -79,6 +84,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         advanceUntilIdle()
@@ -94,6 +100,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         advanceUntilIdle()
@@ -116,6 +123,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         advanceUntilIdle()
@@ -132,6 +140,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         advanceUntilIdle()
@@ -157,6 +166,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         advanceUntilIdle()
@@ -177,6 +187,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         advanceUntilIdle()
@@ -216,6 +227,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         // Manually set time range to Feb
@@ -257,12 +269,13 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             monthlyHours = emptyList(),
             locationDistribution = LocationDistribution(480, 240)
         )
-        whenever(calculateAnalyticsUseCase(any(), any(), any())).thenReturn(expectedAnalytics)
+        whenever(calculateAnalyticsUseCase(any(), any(), any(), any())).thenReturn(expectedAnalytics)
 
         // When: ViewModel is created and time range set
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
@@ -272,7 +285,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         verify(calculateAnalyticsUseCase).invoke(
             workDays = eq(workDays),
             settings = eq(defaultSettings),
-            timeRange = eq(TimeRange.Month(febMonth))
+            timeRange = eq(TimeRange.Month(febMonth)),
+            workTimeRules = any()
         )
         assertThat(viewModel.uiState.value.analyticsData).isEqualTo(expectedAnalytics)
     }
@@ -285,6 +299,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         advanceUntilIdle()
@@ -337,13 +352,14 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             locationDistribution = LocationDistribution(480, 240)
         )
 
-        whenever(calculateAnalyticsUseCase(eq(febWorkDays), any(), any())).thenReturn(monthAnalytics)
-        whenever(calculateAnalyticsUseCase(eq(yearWorkDays), any(), any())).thenReturn(yearAnalytics)
+        whenever(calculateAnalyticsUseCase(eq(febWorkDays), any(), any(), any())).thenReturn(monthAnalytics)
+        whenever(calculateAnalyticsUseCase(eq(yearWorkDays), any(), any(), any())).thenReturn(yearAnalytics)
 
         // When: ViewModel initialized and set to month
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
@@ -380,6 +396,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
@@ -407,12 +424,13 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             monthlyHours = emptyList(),
             locationDistribution = LocationDistribution(0, 0)
         )
-        whenever(calculateAnalyticsUseCase(eq(emptyList()), any(), any())).thenReturn(emptyAnalytics)
+        whenever(calculateAnalyticsUseCase(eq(emptyList()), any(), any(), any())).thenReturn(emptyAnalytics)
 
         // When: ViewModel is created
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
@@ -432,6 +450,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         advanceUntilIdle()
@@ -449,6 +468,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
@@ -469,6 +489,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
@@ -489,6 +510,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
@@ -511,6 +533,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
@@ -534,6 +557,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(TimeRange.Year(2025))
@@ -553,6 +577,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(TimeRange.Year(2025))
@@ -572,6 +597,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(TimeRange.Year(2025))
@@ -599,6 +625,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(customRange)
@@ -644,6 +671,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
@@ -653,7 +681,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         verify(calculateAnalyticsUseCase).invoke(
             workDays = eq(listOf(actualWorkDay, plannedWorkDay)),
             settings = any(),
-            timeRange = any()
+            timeRange = any(),
+            workTimeRules = any()
         )
     }
 
@@ -664,6 +693,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(TimeRange.Month(decMonth))
@@ -684,6 +714,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         viewModel = AnalyticsViewModel(
             workDayRepository,
             getSettingsUseCase,
+            settingsRepository,
             calculateAnalyticsUseCase
         )
         viewModel.setTimeRange(TimeRange.Month(janMonth))

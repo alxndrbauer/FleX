@@ -476,6 +476,58 @@ class CalculateFlextimeUseCaseTest {
         assertThat(result.totalMinutes).isEqualTo(-126) // -180 + 54
     }
 
+    @Test
+    fun testWorkTimeRuleChangesDailyTarget() {
+        val workDay = createWorkDay(
+            date = LocalDate.of(2026, 8, 20),
+            dayType = DayType.WORK
+        )
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(netMinutes = 360, grossMinutes = 360, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val rules = listOf(
+            com.flex.domain.model.WorkTimeRule(
+                id = 1L,
+                validFrom = LocalDate.of(2026, 8, 15),
+                dailyWorkMinutes = 360,
+                monthlyWorkMinutes = 7200
+            )
+        )
+
+        val result = useCase(listOf(workDay), settings, workTimeRules = rules)
+
+        // Worked 360 min against 360 min rule daily target -> 0 earned
+        assertThat(result.earnedMinutes).isEqualTo(0)
+    }
+
+    @Test
+    fun testWorkTimeRuleMidMonthTransitionTargetMinutes() {
+        // Month: August 2026
+        // Rule 1: until Aug 14 (default 426 min)
+        // Rule 2: starting Aug 15 (360 min)
+        val rules = listOf(
+            com.flex.domain.model.WorkTimeRule(
+                id = 1L,
+                validFrom = LocalDate.of(2026, 8, 15),
+                dailyWorkMinutes = 360,
+                monthlyWorkMinutes = 7200
+            )
+        )
+
+        val yearMonth = YearMonth.of(2026, 8)
+        val result = useCase(emptyList(), settings, yearMonth = yearMonth, workTimeRules = rules)
+
+        // August 2026 working days (Mon-Fri):
+        // Aug 1 (Sat), Aug 2 (Sun)
+        // Aug 3..14: 10 working days @ 426 min = 4260 min
+        // Aug 15 (Sat), Aug 16 (Sun)
+        // Aug 17..31: 11 working days @ 360 min = 3960 min
+        // Total target: 4260 + 3960 = 8220 min
+        assertThat(result.targetMinutes).isEqualTo(8220L)
+    }
+
     // Helper function
     private fun createWorkDay(
         date: LocalDate,
