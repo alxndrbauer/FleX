@@ -249,7 +249,7 @@ class HomeViewModel @Inject constructor(
                         val monthlyFlextime = calculateFlextime(actualMonthDays, settings, yearMonth, workTimeRules)
                         val quota = calculateQuota(actualMonthDays, settings, yearMonth, qPercent, qDays, workTimeRules)
 
-                        val baseMonthlyTarget = (settingsRepository.getWorkTimeRuleForDate(yearMonth.atDay(1), workTimeRules)?.monthlyWorkMinutes ?: settings.monthlyWorkMinutes).toLong()
+                        val baseMonthlyTarget = (settingsRepository.getWorkTimeRuleForDate(yearMonth.atEndOfMonth(), workTimeRules)?.monthlyWorkMinutes ?: settings.monthlyWorkMinutes).toLong()
                         val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
                         val neutralDaysDeduction = actualMonthDays.filter { it.dayType in neutralTypes }.sumOf { (settingsRepository.getWorkTimeRuleForDate(it.date, workTimeRules)?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong() }
                         val totalMin = (baseMonthlyTarget - neutralDaysDeduction).coerceAtLeast(0)

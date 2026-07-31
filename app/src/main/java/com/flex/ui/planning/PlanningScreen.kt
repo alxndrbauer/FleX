@@ -526,11 +526,13 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
     state.editingDate?.let { date ->
         val existingDay = state.workDays.find { it.date == date }
         val isRealEntry = existingDay != null && !existingDay.isPlanned
+        val activeRule = state.workTimeRules.filter { !it.validFrom.isAfter(date) }.maxByOrNull { it.validFrom }
+        val dailyTarget = activeRule?.dailyWorkMinutes ?: state.settings.dailyWorkMinutes
         val existingMinutes = existingDay?.timeBlocks?.firstOrNull()?.let { block ->
             block.endTime?.let { end ->
                 java.time.Duration.between(block.startTime, end).toMinutes().toInt()
             }
-        } ?: state.settings.dailyWorkMinutes
+        } ?: dailyTarget
 
         PlanHoursDialog(
             date = date,
@@ -616,7 +618,7 @@ fun MonthSummaryCard(
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
-                "Büro-Std.: ${oh.plannedOfficeHours} / ${oh.requiredOfficeHours}",
+                "Soll: ${oh.targetMonthlyHours} · Büro-Std.: ${oh.plannedOfficeHours} / ${oh.requiredOfficeHours}",
                 style = MaterialTheme.typography.bodySmall,
                 color = if (oh.isMet) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.error

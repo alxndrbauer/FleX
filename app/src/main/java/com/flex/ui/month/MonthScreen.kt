@@ -554,9 +554,11 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
 
     // Edit dialog
     state.editingDay?.let { editDay ->
+        val activeRule = state.workTimeRules.filter { !it.validFrom.isAfter(editDay.date) }.maxByOrNull { it.validFrom }
+        val activeDailyTarget = activeRule?.dailyWorkMinutes ?: state.settings.dailyWorkMinutes
         EditDayDialog(
             workDay = editDay,
-            dailyWorkMinutes = state.settings.dailyWorkMinutes,
+            dailyWorkMinutes = activeDailyTarget,
             onDismiss = { viewModel.clearEditing() },
             onSave = { dayType, note, timeBlocks ->
                 viewModel.saveDay(editDay.date, dayType, note, timeBlocks)

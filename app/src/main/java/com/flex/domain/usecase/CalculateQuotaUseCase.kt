@@ -68,7 +68,7 @@ class CalculateQuotaUseCase @Inject constructor(
 
         fun getMonthlyTarget(ym: YearMonth): Int {
             val rule = workTimeRules
-                .filter { !it.validFrom.isAfter(ym.atDay(1)) }
+                .filter { !it.validFrom.isAfter(ym.atEndOfMonth()) }
                 .maxByOrNull { it.validFrom }
             return rule?.monthlyWorkMinutes ?: settings.monthlyWorkMinutes
         }

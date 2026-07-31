@@ -41,7 +41,8 @@ import javax.inject.Inject
 data class OfficeHoursDetail(
     val requiredOfficeMinutes: Long = 0,
     val plannedOfficeMinutes: Long = 0,
-    val plannedTotalMinutes: Long = 0
+    val plannedTotalMinutes: Long = 0,
+    val targetMonthlyMinutes: Long = 0
 ) {
     val requiredOfficeHours: String get() {
         val h = requiredOfficeMinutes / 60
@@ -57,6 +58,11 @@ data class OfficeHoursDetail(
         val h = plannedTotalMinutes / 60
         val m = plannedTotalMinutes % 60
         return "${h}h ${m}min"
+    }
+    val targetMonthlyHours: String get() {
+        val h = targetMonthlyMinutes / 60
+        val m = targetMonthlyMinutes % 60
+        return if (m > 0) "${h}h ${m}min" else "${h}h"
     }
     val isMet: Boolean get() = plannedOfficeMinutes >= requiredOfficeMinutes
 }
@@ -76,6 +82,7 @@ data class PlanningUiState(
     val yearMonth: YearMonth = YearMonth.now().plusMonths(1),
     val workDays: List<WorkDay> = emptyList(),
     val settings: Settings = Settings(),
+    val workTimeRules: List<com.flex.domain.model.WorkTimeRule> = emptyList(),
     val quotaStatus: QuotaStatus = QuotaStatus(),
     val flextimeBalance: FlextimeBalance = FlextimeBalance(),
     val officeHours: OfficeHoursDetail = OfficeHoursDetail(),
@@ -172,11 +179,12 @@ private data class PlanningConfig(
                         yearMonth = month,
                         workDays = days,
                         settings = settings.copy(officeQuotaPercent = qPercent, officeQuotaMinDays = qDays),
+                        workTimeRules = workTimeRules,
                         quotaStatus = quota,
                         flextimeBalance = flextime,
                         officeHours = officeHours
                     )
-                    refreshMonthSummaries(settings, rules)
+                    refreshMonthSummaries(settings, rules, workTimeRules)
                 }
         }
     }
@@ -185,15 +193,20 @@ private data class PlanningConfig(
         viewModelScope.launch {
             combine(
                 getSettings(),
-                settingsRepository.getQuotaRules()
-            ) { settings, rules -> settings to rules }
-                .collect { (settings, rules) ->
-                    refreshMonthSummaries(settings, rules)
+                settingsRepository.getQuotaRules(),
+                settingsRepository.getWorkTimeRules()
+            ) { settings, rules, workTimeRules -> Triple(settings, rules, workTimeRules) }
+                .collect { (settings, rules, workTimeRules) ->
+                    refreshMonthSummaries(settings, rules, workTimeRules)
                 }
         }
     }
 
-    private suspend fun refreshMonthSummaries(settings: Settings, rules: List<QuotaRule>) {
+    private suspend fun refreshMonthSummaries(
+        settings: Settings,
+        rules: List<QuotaRule>,
+        workTimeRules: List<com.flex.domain.model.WorkTimeRule>
+    ) {
         val currentMonth = YearMonth.now()
         val summaries = mutableListOf<MonthSummary>()
 
@@ -203,7 +216,6 @@ private data class PlanningConfig(
             val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
             val qDays = rule?.officeQuotaMinDays ?: settings.officeQuotaMinDays
             val days = getMonthWorkDays(month).firstOrNull() ?: emptyList()
-            val workTimeRules = settingsRepository.getWorkTimeRules().firstOrNull() ?: emptyList()
             val prognosisDays = buildPrognosisDays(month, days, settings, workTimeRules)
             val quota = calculateQuota(prognosisDays, settings, month, qPercent, qDays, workTimeRules)
             val officeHours = calculateOfficeHours(prognosisDays, qPercent, settings, workTimeRules, month)
@@ -241,7 +253,7 @@ private data class PlanningConfig(
         }
         fun getMonthlyTarget(ym: YearMonth): Int {
             val rule = workTimeRules
-                .filter { !it.validFrom.isAfter(ym.atDay(1)) }
+                .filter { !it.validFrom.isAfter(ym.atEndOfMonth()) }
                 .maxByOrNull { it.validFrom }
             return rule?.monthlyWorkMinutes ?: settings.monthlyWorkMinutes
         }
@@ -256,8 +268,10 @@ private data class PlanningConfig(
         val workingDays = prognosisDays.filter { it.dayType !in neutralTypes }
 
         var officeMinutes = 0L
+        var plannedTotalMinutes = 0L
         for (day in workingDays) {
             val result = calculateDayWorkTime(day.timeBlocks)
+            plannedTotalMinutes += result.netMinutes
             if (day.location == WorkLocation.OFFICE) {
                 officeMinutes += result.netMinutes
             }
@@ -268,7 +282,8 @@ private data class PlanningConfig(
         return OfficeHoursDetail(
             requiredOfficeMinutes = requiredOfficeMinutes,
             plannedOfficeMinutes = officeMinutes,
-            plannedTotalMinutes = totalMinutes
+            plannedTotalMinutes = plannedTotalMinutes,
+            targetMonthlyMinutes = baseMonthlyTarget
         )
     }
 
@@ -319,8 +334,10 @@ private data class PlanningConfig(
 
             if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)) {
                 existing?.timeBlocks?.forEach { workDayRepository.deleteTimeBlock(it) }
+                val dailyTarget = settingsRepository.getWorkTimeRuleForDate(date, state.workTimeRules)?.dailyWorkMinutes
+                    ?: state.settings.dailyWorkMinutes
                 val start = LocalTime.of(8, 0)
-                val end = start.plusMinutes(state.settings.dailyWorkMinutes.toLong())
+                val end = start.plusMinutes(dailyTarget.toLong())
                 workDayRepository.saveTimeBlock(
                     TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = location)
                 )
@@ -366,29 +383,16 @@ private data class PlanningConfig(
 
     fun savePlannedHours(date: LocalDate, totalMinutes: Int) {
         viewModelScope.launch {
-            val state = _uiState.value
-            val existing = state.workDays.find { it.date == date }
-            val planType = state.selectedPlanType
-
-            val (location, dayType) = when {
-                existing != null -> existing.location to existing.dayType
-                else -> when (planType) {
-                    PlanType.OFFICE -> WorkLocation.OFFICE to DayType.WORK
-                    PlanType.HOME_OFFICE -> WorkLocation.HOME_OFFICE to DayType.WORK
-                    PlanType.VACATION -> WorkLocation.HOME_OFFICE to DayType.VACATION
-                    PlanType.SPECIAL_VACATION -> WorkLocation.HOME_OFFICE to DayType.SPECIAL_VACATION
-                    PlanType.FLEX_DAY -> WorkLocation.HOME_OFFICE to DayType.FLEX_DAY
-                    PlanType.SATURDAY_BONUS -> WorkLocation.OFFICE to DayType.SATURDAY_BONUS
-                }
-            }
-
+            val existing = _uiState.value.workDays.find { it.date == date }
+            val isReal = existing != null && !existing.isPlanned
             val workDayId = workDayRepository.saveWorkDay(
                 WorkDay(
                     id = existing?.id ?: 0,
                     date = date,
-                    location = location,
-                    dayType = dayType,
-                    isPlanned = true
+                    location = existing?.location ?: WorkLocation.HOME_OFFICE,
+                    dayType = existing?.dayType ?: DayType.WORK,
+                    isPlanned = !isReal,
+                    note = existing?.note ?: ""
                 )
             )
 
@@ -397,9 +401,8 @@ private data class PlanningConfig(
             val start = LocalTime.of(8, 0)
             val end = start.plusMinutes(totalMinutes.toLong())
             workDayRepository.saveTimeBlock(
-                TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true)
+                TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = existing?.location ?: WorkLocation.HOME_OFFICE)
             )
-
             closeDayEditor()
         }
     }
@@ -411,7 +414,9 @@ private data class PlanningConfig(
         }
     }
 
-    fun planRemainingAs(planType: PlanType) {
+    fun planRemainingAs(planType: PlanType) = applyStandardMonth(planType)
+
+    fun applyStandardMonth(planType: PlanType) {
         viewModelScope.launch {
             val state = _uiState.value
             val month = state.yearMonth
@@ -439,8 +444,10 @@ private data class PlanningConfig(
                     )
                 )
 
+                val dailyTarget = settingsRepository.getWorkTimeRuleForDate(date, state.workTimeRules)?.dailyWorkMinutes
+                    ?: settings.dailyWorkMinutes
                 val start = LocalTime.of(8, 0)
-                val end = start.plusMinutes(settings.dailyWorkMinutes.toLong())
+                val end = start.plusMinutes(dailyTarget.toLong())
                 workDayRepository.saveTimeBlock(
                     TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = location)
                 )

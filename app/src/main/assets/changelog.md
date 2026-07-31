@@ -9,6 +9,7 @@
 - Handle both ENTER and DWELL for clock-in
 - Revert to ENTER-only trigger for clock-in
 - Restore ENTER+DWELL clock-in with ENTER registered
+- Dynamic resolution of monthly work time targets per period
 
 ### Features
 

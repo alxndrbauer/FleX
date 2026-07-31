@@ -487,6 +487,31 @@ class CalculateQuotaUseCaseTest {
         assertThat(result.daysQuotaMet).isFalse()
     }
 
+    @Test
+    fun testWorkTimeRulesTransitionExpectCorrectMonthlyTargetForJulyAndAugust() {
+        val ruleJan = com.flex.domain.model.WorkTimeRule(
+            id = 1,
+            validFrom = LocalDate.of(2026, 1, 1),
+            dailyWorkMinutes = 300, // 5h
+            monthlyWorkMinutes = 4920 // 82h
+        )
+        val ruleAug = com.flex.domain.model.WorkTimeRule(
+            id = 2,
+            validFrom = LocalDate.of(2026, 8, 1),
+            dailyWorkMinutes = 426, // 7h 6m
+            monthlyWorkMinutes = 9266 // 154h 26m
+        )
+        val rules = listOf(ruleJan, ruleAug)
+
+        val julyResult = useCase(emptyList(), settings, YearMonth.of(2026, 7), workTimeRules = rules)
+        // 40% of 4920 min = 1968 min
+        assertThat(julyResult.officePercent).isEqualTo(0.0)
+
+        val augResult = useCase(emptyList(), settings, YearMonth.of(2026, 8), workTimeRules = rules)
+        // 40% of 9266 min = 3706 min
+        assertThat(augResult.officePercent).isEqualTo(0.0)
+    }
+
     // Helper function
     private fun createWorkDay(
         date: LocalDate,
