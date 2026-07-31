@@ -7,8 +7,8 @@ import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.WorkTimeRule
+import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.getRuleForDate
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -47,17 +47,20 @@ class BuildPrognosisDaysUseCase @Inject constructor() {
                 } else {
                     allDays.add(existing)
                 }
-            } else if (date.dayOfWeek != DayOfWeek.SATURDAY && date.dayOfWeek != DayOfWeek.SUNDAY
-                && !PublicHolidays.isHoliday(date)) {
-                val start = LocalTime.of(8, 0)
-                val end = start.plusMinutes(dailyTarget.toLong())
-                allDays.add(WorkDay(
-                    date = date,
-                    location = WorkLocation.HOME_OFFICE,
-                    dayType = DayType.WORK,
-                    isPlanned = true,
-                    timeBlocks = listOf(TimeBlock(workDayId = 0, startTime = start, endTime = end, isDuration = true, location = WorkLocation.HOME_OFFICE))
-                ))
+            } else {
+                val activeRule = workTimeRules.getRuleForDate(date)
+                val activeWorkDays = activeRule?.workDays ?: DEFAULT_WORK_DAYS
+                if (date.dayOfWeek in activeWorkDays && !PublicHolidays.isHoliday(date)) {
+                    val start = LocalTime.of(8, 0)
+                    val end = start.plusMinutes(dailyTarget.toLong())
+                    allDays.add(WorkDay(
+                        date = date,
+                        location = WorkLocation.HOME_OFFICE,
+                        dayType = DayType.WORK,
+                        isPlanned = true,
+                        timeBlocks = listOf(TimeBlock(workDayId = 0, startTime = start, endTime = end, isDuration = true, location = WorkLocation.HOME_OFFICE))
+                    ))
+                }
             }
         }
         return allDays

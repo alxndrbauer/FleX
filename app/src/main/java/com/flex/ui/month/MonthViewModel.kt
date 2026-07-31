@@ -16,6 +16,8 @@ import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.model.DEFAULT_WORK_DAYS
+import com.flex.domain.model.getRuleForDate
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.BuildPrognosisDaysUseCase
@@ -204,14 +206,14 @@ private data class MonthConfig(
                 }
                 val totalWorkMinutesMonth = actualWorkedMinutesMonth + creditMinutesMonth
 
-                // Calculate target work days for the month (Mon-Fri excluding holidays)
+                // Calculate target work days for the month (active workDays per rule, excluding holidays)
                 var targetMinutesMonth = 0L
                 for (day in 1..month.lengthOfMonth()) {
                     val date = month.atDay(day)
-                    if (date.dayOfWeek !in listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
-                        && !PublicHolidays.isHoliday(date)
-                    ) {
-                        val dailyTarget = settingsRepository.getWorkTimeRuleForDate(date, workTimeRules)?.dailyWorkMinutes ?: settings.dailyWorkMinutes
+                    val ruleForDate = workTimeRules.getRuleForDate(date)
+                    val activeWorkDays = ruleForDate?.workDays ?: DEFAULT_WORK_DAYS
+                    if (date.dayOfWeek in activeWorkDays && !PublicHolidays.isHoliday(date)) {
+                        val dailyTarget = ruleForDate?.dailyWorkMinutes ?: settings.dailyWorkMinutes
                         targetMinutesMonth += dailyTarget
                     }
                 }

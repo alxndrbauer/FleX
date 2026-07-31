@@ -543,4 +543,81 @@ class CalculateFlextimeUseCaseTest {
             )
         )
     }
+
+    @Test
+    fun `4-day week Mo-Do - targetMinutes only counts Mon through Thu`() {
+        // August 2026: 21 working days (Mo-Fr), but only 16 Mon-Thu days
+        // Rule: Mo–Do only, 360 min/day
+        val rules = listOf(
+            com.flex.domain.model.WorkTimeRule(
+                id = 1L,
+                validFrom = YearMonth.of(2026, 8),
+                dailyWorkMinutes = 360,
+                monthlyWorkMinutes = 0,
+                workDays = setOf(
+                    java.time.DayOfWeek.MONDAY,
+                    java.time.DayOfWeek.TUESDAY,
+                    java.time.DayOfWeek.WEDNESDAY,
+                    java.time.DayOfWeek.THURSDAY
+                )
+            )
+        )
+        val yearMonth = YearMonth.of(2026, 8)
+        val result = useCase(emptyList(), settings, yearMonth = yearMonth, workTimeRules = rules)
+
+        // Aug 2026: Mo–Do days = 3.8.Mo, 4.8.Di, 5.8.Mi, 6.8.Do,
+        //                        10.Mo, 11.Di, 12.Mi, 13.Do,
+        //                        17.Mo, 18.Di, 19.Mi, 20.Do,
+        //                        24.Mo, 25.Di, 26.Mi, 27.Do,
+        //                        31.Mo = 17 days (note: 31.8 is Monday)
+        // Let's count: week 1: 3,4,5,6 = 4; week 2: 10,11,12,13 = 4; week 3: 17,18,19,20 = 4;
+        //              week 4: 24,25,26,27 = 4; week 5: 31 = 1 → total 17 days
+        assertThat(result.targetMinutes).isEqualTo(17L * 360L)
+    }
+
+    @Test
+    fun `5-day week default Mo-Fr - targetMinutes regression unchanged`() {
+        // Aug 2026 has 21 working days (Mo-Fr, no holidays in Hamburg)
+        val rules = listOf(
+            com.flex.domain.model.WorkTimeRule(
+                id = 1L,
+                validFrom = YearMonth.of(2026, 8),
+                dailyWorkMinutes = 300,
+                monthlyWorkMinutes = 0
+                // workDays defaults to Mo-Fr
+            )
+        )
+        val yearMonth = YearMonth.of(2026, 8)
+        val result = useCase(emptyList(), settings, yearMonth = yearMonth, workTimeRules = rules)
+
+        // 21 working days in Aug 2026 * 300 min = 6300 min
+        assertThat(result.targetMinutes).isEqualTo(21L * 300L)
+    }
+
+    @Test
+    fun `3-day week Mo Mi Fr - targetMinutes only counts those days`() {
+        // Aug 2026: only Mon, Wed, Fri count
+        val rules = listOf(
+            com.flex.domain.model.WorkTimeRule(
+                id = 1L,
+                validFrom = YearMonth.of(2026, 8),
+                dailyWorkMinutes = 480,
+                monthlyWorkMinutes = 0,
+                workDays = setOf(
+                    java.time.DayOfWeek.MONDAY,
+                    java.time.DayOfWeek.WEDNESDAY,
+                    java.time.DayOfWeek.FRIDAY
+                )
+            )
+        )
+        val yearMonth = YearMonth.of(2026, 8)
+        val result = useCase(emptyList(), settings, yearMonth = yearMonth, workTimeRules = rules)
+
+        // Aug 2026 Mo/Mi/Fr days:
+        // week 1: 3(Mo),5(Mi),7(Fr) = 3; week 2: 10(Mo),12(Mi),14(Fr) = 3
+        // week 3: 17(Mo),19(Mi),21(Fr) = 3; week 4: 24(Mo),26(Mi),28(Fr) = 3
+        // week 5: 31(Mo) = 1 → total 13 days
+        assertThat(result.targetMinutes).isEqualTo(13L * 480L)
+    }
 }
+

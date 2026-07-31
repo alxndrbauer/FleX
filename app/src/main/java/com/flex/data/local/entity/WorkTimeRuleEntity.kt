@@ -8,5 +8,6 @@ data class WorkTimeRuleEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val validFrom: String,
     val dailyWorkMinutes: Int,
-    val monthlyWorkMinutes: Int
+    val monthlyWorkMinutes: Int,
+    val workDays: String = "MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY"
 )

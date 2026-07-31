@@ -7,6 +7,7 @@ import com.flex.data.local.entity.QuotaRuleEntity
 import com.flex.data.local.entity.SettingsEntity
 import com.flex.data.local.entity.WorkTimeRuleEntity
 import com.flex.domain.model.FederalState
+import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.Settings
 import com.flex.domain.model.WorkTimeRule
@@ -158,11 +159,17 @@ class SettingsRepositoryImpl @Inject constructor(
         } catch (_: Exception) {
             java.time.YearMonth.from(java.time.LocalDate.parse(validFrom))
         }
+        val parsedDays = workDays
+            .split(",")
+            .mapNotNull { runCatching { java.time.DayOfWeek.valueOf(it.trim()) }.getOrNull() }
+            .toSet()
+            .ifEmpty { DEFAULT_WORK_DAYS }
         return WorkTimeRule(
             id = id,
             validFrom = ym,
             dailyWorkMinutes = dailyWorkMinutes,
-            monthlyWorkMinutes = monthlyWorkMinutes
+            monthlyWorkMinutes = monthlyWorkMinutes,
+            workDays = parsedDays
         )
     }
 
@@ -170,6 +177,7 @@ class SettingsRepositoryImpl @Inject constructor(
         id = id,
         validFrom = validFrom.toString(),
         dailyWorkMinutes = dailyWorkMinutes,
-        monthlyWorkMinutes = monthlyWorkMinutes
+        monthlyWorkMinutes = monthlyWorkMinutes,
+        workDays = workDays.joinToString(",") { it.name }
     )
 }

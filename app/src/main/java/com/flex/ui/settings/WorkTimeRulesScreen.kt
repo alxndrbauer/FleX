@@ -16,10 +16,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.WorkTimeRule
-import java.time.LocalDate
+import java.time.DayOfWeek
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
 import java.util.Locale
+
+private val WEEKDAY_OPTIONS = listOf(
+    DayOfWeek.MONDAY to "Montag",
+    DayOfWeek.TUESDAY to "Dienstag",
+    DayOfWeek.WEDNESDAY to "Mittwoch",
+    DayOfWeek.THURSDAY to "Donnerstag",
+    DayOfWeek.FRIDAY to "Freitag"
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,6 +98,14 @@ fun WorkTimeRulesScreen(
                                     "Täglich: ${dailyH}h ${dailyM}m | Monatlich: ${monthlyH}h ${monthlyM}m",
                                     style = MaterialTheme.typography.bodySmall
                                 )
+                                val dayLabels = rule.workDays
+                                    .sortedBy { it.value }
+                                    .joinToString(", ") { it.getDisplayName(TextStyle.SHORT, Locale.GERMAN) }
+                                Text(
+                                    "Arbeitstage: $dayLabels",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                             IconButton(onClick = { viewModel.deleteWorkTimeRule(rule) }) {
                                 Icon(
@@ -137,6 +155,7 @@ private fun AddWorkTimeRuleDialog(
     var dailyMinutesText by remember { mutableStateOf("6") }
     var monthlyHoursText by remember { mutableStateOf("154") }
     var monthlyMinutesText by remember { mutableStateOf("26") }
+    var selectedDays by remember { mutableStateOf(DEFAULT_WORK_DAYS) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -200,6 +219,21 @@ private fun AddWorkTimeRuleDialog(
                         singleLine = true
                     )
                 }
+                Text("Arbeitstage", style = MaterialTheme.typography.labelMedium)
+                WEEKDAY_OPTIONS.forEach { (day, label) ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Checkbox(
+                            checked = day in selectedDays,
+                            onCheckedChange = { checked ->
+                                selectedDays = if (checked) selectedDays + day else selectedDays - day
+                            }
+                        )
+                        Text(label, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
             }
         },
         confirmButton = {
@@ -226,7 +260,8 @@ private fun AddWorkTimeRuleDialog(
                     WorkTimeRule(
                         validFrom = validYm,
                         dailyWorkMinutes = dailyTotal,
-                        monthlyWorkMinutes = monthlyTotal
+                        monthlyWorkMinutes = monthlyTotal,
+                        workDays = selectedDays.ifEmpty { DEFAULT_WORK_DAYS }
                     )
                 )
             }) { Text("Hinzufügen") }

@@ -19,6 +19,7 @@
 - Fix bugs and add interactive map preview
 - Warn when enabled features lose permissions
 - Flexible arbeitszeit-zeiträume mit tagesgenauer gültigkeit
+- Arbeitstage pro woche konfigurierbar (4-Tage-Woche)
 
 ### Verbesserungen
 

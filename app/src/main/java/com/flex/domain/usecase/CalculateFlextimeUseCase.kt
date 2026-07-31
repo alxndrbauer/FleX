@@ -6,6 +6,7 @@ import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.Settings
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkTimeRule
+import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.getRuleForDate
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -66,13 +67,14 @@ class CalculateFlextimeUseCase @Inject constructor(
 
         val total = settings.initialFlextimeMinutes + earnedMinutes
 
-        // Dynamic target: actual working days (Mon-Fri minus holidays) × daily target for each date
+        // Dynamic target: actual work days per rule × daily target for each date
         var targetMinutes = 0L
         if (yearMonth != null) {
             for (day in 1..yearMonth.lengthOfMonth()) {
                 val date = yearMonth.atDay(day)
-                if (date.dayOfWeek != DayOfWeek.SATURDAY && date.dayOfWeek != DayOfWeek.SUNDAY
-                    && !PublicHolidays.isHoliday(date)) {
+                val ruleForDate = workTimeRules.getRuleForDate(date)
+                val activeWorkDays = ruleForDate?.workDays ?: DEFAULT_WORK_DAYS
+                if (date.dayOfWeek in activeWorkDays && !PublicHolidays.isHoliday(date)) {
                     targetMinutes += getDailyTarget(date)
                 }
             }
