@@ -11,6 +11,7 @@ import com.flex.domain.model.WeeklyWorkHours
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.WorkTimeRule
+import com.flex.domain.model.getRuleForDate
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -54,10 +55,7 @@ class CalculateAnalyticsUseCase @Inject constructor(
     }
 
     private fun getDailyTarget(date: LocalDate, settings: Settings, workTimeRules: List<WorkTimeRule>): Int {
-        return workTimeRules
-            .filter { !it.validFrom.isAfter(date) }
-            .maxByOrNull { it.validFrom }
-            ?.dailyWorkMinutes ?: settings.dailyWorkMinutes
+        return workTimeRules.getRuleForDate(date)?.dailyWorkMinutes ?: settings.dailyWorkMinutes
     }
 
     private fun calculateFlextimeSeries(

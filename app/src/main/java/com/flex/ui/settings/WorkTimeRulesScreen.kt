@@ -76,7 +76,7 @@ fun WorkTimeRulesScreen(
                         ) {
                             Column {
                                 Text(
-                                    "Ab ${rule.validFrom.format(DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.GERMAN))}",
+                                    "Ab ${rule.validFrom.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN))}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -130,8 +130,7 @@ private fun AddWorkTimeRuleDialog(
     onDismiss: () -> Unit,
     onConfirm: (WorkTimeRule) -> Unit
 ) {
-    val now = LocalDate.now()
-    var dayText by remember { mutableStateOf(now.dayOfMonth.toString()) }
+    val now = java.time.YearMonth.now()
     var monthText by remember { mutableStateOf(now.monthValue.toString()) }
     var yearText by remember { mutableStateOf(now.year.toString()) }
     var dailyHoursText by remember { mutableStateOf("7") }
@@ -144,20 +143,12 @@ private fun AddWorkTimeRuleDialog(
         title = { Text("Arbeitszeit-Regel hinzufügen") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Gültig ab (Datum)", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    OutlinedTextField(
-                        value = dayText,
-                        onValueChange = { dayText = it },
-                        label = { Text("Tag") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true
-                    )
+                Text("Gültig ab (Monat & Jahr)", style = MaterialTheme.typography.labelMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = monthText,
                         onValueChange = { monthText = it },
-                        label = { Text("Monat") },
+                        label = { Text("Monat (1-12)") },
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
@@ -166,7 +157,7 @@ private fun AddWorkTimeRuleDialog(
                         value = yearText,
                         onValueChange = { yearText = it },
                         label = { Text("Jahr") },
-                        modifier = Modifier.weight(1.5f),
+                        modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -213,10 +204,9 @@ private fun AddWorkTimeRuleDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                val d = dayText.toIntOrNull() ?: return@TextButton
                 val m = monthText.toIntOrNull() ?: return@TextButton
                 val y = yearText.toIntOrNull() ?: return@TextButton
-                if (m < 1 || m > 12 || d < 1 || d > 31) return@TextButton
+                if (m < 1 || m > 12) return@TextButton
 
                 val dH = dailyHoursText.toIntOrNull() ?: 0
                 val dM = dailyMinutesText.toIntOrNull() ?: 0
@@ -226,15 +216,15 @@ private fun AddWorkTimeRuleDialog(
                 val mM = monthlyMinutesText.toIntOrNull() ?: 0
                 val monthlyTotal = mH * 60 + mM
 
-                val validDate = try {
-                    LocalDate.of(y, m, d)
+                val validYm = try {
+                    java.time.YearMonth.of(y, m)
                 } catch (_: Exception) {
                     return@TextButton
                 }
 
                 onConfirm(
                     WorkTimeRule(
-                        validFrom = validDate,
+                        validFrom = validYm,
                         dailyWorkMinutes = dailyTotal,
                         monthlyWorkMinutes = monthlyTotal
                     )

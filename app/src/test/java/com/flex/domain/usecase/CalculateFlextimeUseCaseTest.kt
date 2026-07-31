@@ -490,7 +490,7 @@ class CalculateFlextimeUseCaseTest {
         val rules = listOf(
             com.flex.domain.model.WorkTimeRule(
                 id = 1L,
-                validFrom = LocalDate.of(2026, 8, 15),
+                validFrom = YearMonth.of(2026, 8),
                 dailyWorkMinutes = 360,
                 monthlyWorkMinutes = 7200
             )
@@ -503,14 +503,13 @@ class CalculateFlextimeUseCaseTest {
     }
 
     @Test
-    fun testWorkTimeRuleMidMonthTransitionTargetMinutes() {
-        // Month: August 2026
-        // Rule 1: until Aug 14 (default 426 min)
-        // Rule 2: starting Aug 15 (360 min)
+    fun testWorkTimeRuleMonthTransitionTargetMinutes() {
+        // Month: August 2026 (21 working days)
+        // Rule starting August 2026: 360 min / day -> 21 * 360 = 7560 min
         val rules = listOf(
             com.flex.domain.model.WorkTimeRule(
                 id = 1L,
-                validFrom = LocalDate.of(2026, 8, 15),
+                validFrom = YearMonth.of(2026, 8),
                 dailyWorkMinutes = 360,
                 monthlyWorkMinutes = 7200
             )
@@ -519,13 +518,8 @@ class CalculateFlextimeUseCaseTest {
         val yearMonth = YearMonth.of(2026, 8)
         val result = useCase(emptyList(), settings, yearMonth = yearMonth, workTimeRules = rules)
 
-        // August 2026 working days (Mon-Fri):
-        // Aug 1 (Sat), Aug 2 (Sun)
-        // Aug 3..14: 10 working days @ 426 min = 4260 min
-        // Aug 15 (Sat), Aug 16 (Sun)
-        // Aug 17..31: 11 working days @ 360 min = 3960 min
-        // Total target: 4260 + 3960 = 8220 min
-        assertThat(result.targetMinutes).isEqualTo(8220L)
+        // 21 working days in Aug 2026 @ 360 min = 7560 min
+        assertThat(result.targetMinutes).isEqualTo(7560L)
     }
 
     // Helper function

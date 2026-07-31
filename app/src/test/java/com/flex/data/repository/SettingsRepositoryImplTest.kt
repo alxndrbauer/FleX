@@ -392,13 +392,13 @@ class SettingsRepositoryImplTest : BaseUnitTest() {
         val entities = listOf(
             WorkTimeRuleEntity(
                 id = 1L,
-                validFrom = "2025-01-01",
+                validFrom = "2025-01",
                 dailyWorkMinutes = 480,
                 monthlyWorkMinutes = 10000
             ),
             WorkTimeRuleEntity(
                 id = 2L,
-                validFrom = "2026-08-15",
+                validFrom = "2026-08",
                 dailyWorkMinutes = 360,
                 monthlyWorkMinutes = 7200
             )
@@ -411,12 +411,12 @@ class SettingsRepositoryImplTest : BaseUnitTest() {
         // Then: Should return correctly mapped WorkTimeRules
         assertThat(result).hasSize(2)
         assertThat(result[0].id).isEqualTo(1L)
-        assertThat(result[0].validFrom).isEqualTo(java.time.LocalDate.of(2025, 1, 1))
+        assertThat(result[0].validFrom).isEqualTo(java.time.YearMonth.of(2025, 1))
         assertThat(result[0].dailyWorkMinutes).isEqualTo(480)
         assertThat(result[0].monthlyWorkMinutes).isEqualTo(10000)
 
         assertThat(result[1].id).isEqualTo(2L)
-        assertThat(result[1].validFrom).isEqualTo(java.time.LocalDate.of(2026, 8, 15))
+        assertThat(result[1].validFrom).isEqualTo(java.time.YearMonth.of(2026, 8))
         assertThat(result[1].dailyWorkMinutes).isEqualTo(360)
         assertThat(result[1].monthlyWorkMinutes).isEqualTo(7200)
     }
@@ -426,7 +426,7 @@ class SettingsRepositoryImplTest : BaseUnitTest() {
         // Given: A WorkTimeRule to save
         val rule = com.flex.domain.model.WorkTimeRule(
             id = 0L,
-            validFrom = java.time.LocalDate.of(2026, 8, 1),
+            validFrom = java.time.YearMonth.of(2026, 8),
             dailyWorkMinutes = 360,
             monthlyWorkMinutes = 7200
         )
@@ -434,7 +434,7 @@ class SettingsRepositoryImplTest : BaseUnitTest() {
         whenever(workTimeRuleDao.insert(
             WorkTimeRuleEntity(
                 id = 0L,
-                validFrom = "2026-08-01",
+                validFrom = "2026-08",
                 dailyWorkMinutes = 360,
                 monthlyWorkMinutes = 7200
             )
@@ -448,7 +448,7 @@ class SettingsRepositoryImplTest : BaseUnitTest() {
         verify(workTimeRuleDao).insert(
             WorkTimeRuleEntity(
                 id = 0L,
-                validFrom = "2026-08-01",
+                validFrom = "2026-08",
                 dailyWorkMinutes = 360,
                 monthlyWorkMinutes = 7200
             )
@@ -460,7 +460,7 @@ class SettingsRepositoryImplTest : BaseUnitTest() {
         // Given: A WorkTimeRule to delete
         val rule = com.flex.domain.model.WorkTimeRule(
             id = 2L,
-            validFrom = java.time.LocalDate.of(2026, 8, 1),
+            validFrom = java.time.YearMonth.of(2026, 8),
             dailyWorkMinutes = 360,
             monthlyWorkMinutes = 7200
         )
@@ -472,7 +472,7 @@ class SettingsRepositoryImplTest : BaseUnitTest() {
         verify(workTimeRuleDao).delete(
             WorkTimeRuleEntity(
                 id = 2L,
-                validFrom = "2026-08-01",
+                validFrom = "2026-08",
                 dailyWorkMinutes = 360,
                 monthlyWorkMinutes = 7200
             )
@@ -485,21 +485,21 @@ class SettingsRepositoryImplTest : BaseUnitTest() {
         val rules = listOf(
             com.flex.domain.model.WorkTimeRule(
                 id = 1L,
-                validFrom = java.time.LocalDate.of(2025, 1, 1),
+                validFrom = java.time.YearMonth.of(2025, 1),
                 dailyWorkMinutes = 480,
                 monthlyWorkMinutes = 10000
             ),
             com.flex.domain.model.WorkTimeRule(
                 id = 2L,
-                validFrom = java.time.LocalDate.of(2026, 8, 15),
+                validFrom = java.time.YearMonth.of(2026, 8),
                 dailyWorkMinutes = 360,
                 monthlyWorkMinutes = 7200
             )
         )
 
-        // When: Getting rule for 2026-08-14 (day before rule 2)
-        val ruleBefore = repository.getWorkTimeRuleForDate(java.time.LocalDate.of(2026, 8, 14), rules)
-        // When: Getting rule for 2026-08-15 (exact start date of rule 2)
+        // When: Getting rule for 2026-07-31 (month before rule 2)
+        val ruleBefore = repository.getWorkTimeRuleForDate(java.time.LocalDate.of(2026, 7, 31), rules)
+        // When: Getting rule for 2026-08-15 (within rule 2 month)
         val ruleStart = repository.getWorkTimeRuleForDate(java.time.LocalDate.of(2026, 8, 15), rules)
         // When: Getting rule for 2026-09-01 (after rule 2)
         val ruleAfter = repository.getWorkTimeRuleForDate(java.time.LocalDate.of(2026, 9, 1), rules)
@@ -512,11 +512,11 @@ class SettingsRepositoryImplTest : BaseUnitTest() {
 
     @Test
     fun `getWorkTimeRuleForDate returns null when date is before any rule`() {
-        // Given: A rule starting on 2026-08-01
+        // Given: A rule starting on 2026-08
         val rules = listOf(
             com.flex.domain.model.WorkTimeRule(
                 id = 1L,
-                validFrom = java.time.LocalDate.of(2026, 8, 1),
+                validFrom = java.time.YearMonth.of(2026, 8),
                 dailyWorkMinutes = 360,
                 monthlyWorkMinutes = 7200
             )

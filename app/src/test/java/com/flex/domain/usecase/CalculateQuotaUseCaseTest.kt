@@ -491,13 +491,13 @@ class CalculateQuotaUseCaseTest {
     fun testWorkTimeRulesTransitionExpectCorrectMonthlyTargetForJulyAndAugust() {
         val ruleJan = com.flex.domain.model.WorkTimeRule(
             id = 1,
-            validFrom = LocalDate.of(2026, 1, 1),
+            validFrom = YearMonth.of(2026, 1),
             dailyWorkMinutes = 300, // 5h
             monthlyWorkMinutes = 4920 // 82h
         )
         val ruleAug = com.flex.domain.model.WorkTimeRule(
             id = 2,
-            validFrom = LocalDate.of(2026, 8, 1),
+            validFrom = YearMonth.of(2026, 8),
             dailyWorkMinutes = 426, // 7h 6m
             monthlyWorkMinutes = 9266 // 154h 26m
         )

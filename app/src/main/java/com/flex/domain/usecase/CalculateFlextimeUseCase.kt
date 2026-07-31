@@ -6,6 +6,7 @@ import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.Settings
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkTimeRule
+import com.flex.domain.model.getRuleForDate
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -26,10 +27,7 @@ class CalculateFlextimeUseCase @Inject constructor(
         var overtimeMinutes = 0L
 
         fun getDailyTarget(date: LocalDate): Int {
-            return workTimeRules
-                .filter { !it.validFrom.isAfter(date) }
-                .maxByOrNull { it.validFrom }
-                ?.dailyWorkMinutes ?: settings.dailyWorkMinutes
+            return workTimeRules.getRuleForDate(date)?.dailyWorkMinutes ?: settings.dailyWorkMinutes
         }
 
         for (day in workDays) {

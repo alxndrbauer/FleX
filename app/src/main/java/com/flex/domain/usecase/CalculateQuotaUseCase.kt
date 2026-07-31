@@ -6,6 +6,8 @@ import com.flex.domain.model.Settings
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.WorkTimeRule
+import com.flex.domain.model.getRuleForDate
+import com.flex.domain.model.getRuleForMonth
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -60,17 +62,11 @@ class CalculateQuotaUseCase @Inject constructor(
         }
 
         fun getDailyTarget(date: LocalDate): Int {
-            return workTimeRules
-                .filter { !it.validFrom.isAfter(date) }
-                .maxByOrNull { it.validFrom }
-                ?.dailyWorkMinutes ?: settings.dailyWorkMinutes
+            return workTimeRules.getRuleForDate(date)?.dailyWorkMinutes ?: settings.dailyWorkMinutes
         }
 
         fun getMonthlyTarget(ym: YearMonth): Int {
-            val rule = workTimeRules
-                .filter { !it.validFrom.isAfter(ym.atEndOfMonth()) }
-                .maxByOrNull { it.validFrom }
-            return rule?.monthlyWorkMinutes ?: settings.monthlyWorkMinutes
+            return workTimeRules.getRuleForMonth(ym)?.monthlyWorkMinutes ?: settings.monthlyWorkMinutes
         }
 
         val neutralDays = workDays.filter { it.dayType in neutralTypes }

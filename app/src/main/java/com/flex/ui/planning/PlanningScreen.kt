@@ -1,5 +1,7 @@
 package com.flex.ui.planning
 
+import com.flex.domain.model.getRuleForDate
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -526,7 +528,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
     state.editingDate?.let { date ->
         val existingDay = state.workDays.find { it.date == date }
         val isRealEntry = existingDay != null && !existingDay.isPlanned
-        val activeRule = state.workTimeRules.filter { !it.validFrom.isAfter(date) }.maxByOrNull { it.validFrom }
+        val activeRule = state.workTimeRules.getRuleForDate(date)
         val dailyTarget = activeRule?.dailyWorkMinutes ?: state.settings.dailyWorkMinutes
         val existingMinutes = existingDay?.timeBlocks?.firstOrNull()?.let { block ->
             block.endTime?.let { end ->

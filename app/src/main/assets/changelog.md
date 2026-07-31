@@ -19,6 +19,10 @@
 - Fix bugs and add interactive map preview
 - Warn when enabled features lose permissions
 - Flexible arbeitszeit-zeiträume mit tagesgenauer gültigkeit
+
+### Verbesserungen
+
+- Monatsgenaue arbeitszeit-zeiträume (YearMonth)
 ## [1.5.8] - 2026-04-06
 
 ### Bugfixes

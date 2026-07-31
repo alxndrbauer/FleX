@@ -11,6 +11,8 @@ import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.QuotaRule
+import com.flex.domain.model.getRuleForDate
+import com.flex.domain.model.getRuleForMonth
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.events.UndoEvent
@@ -252,10 +254,7 @@ private data class PlanningConfig(
                 ?: settings.dailyWorkMinutes
         }
         fun getMonthlyTarget(ym: YearMonth): Int {
-            val rule = workTimeRules
-                .filter { !it.validFrom.isAfter(ym.atEndOfMonth()) }
-                .maxByOrNull { it.validFrom }
-            return rule?.monthlyWorkMinutes ?: settings.monthlyWorkMinutes
+            return workTimeRules.getRuleForMonth(ym)?.monthlyWorkMinutes ?: settings.monthlyWorkMinutes
         }
 
         // Fixed monthly target, reduced by neutral days

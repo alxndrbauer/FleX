@@ -1,5 +1,7 @@
 package com.flex.ui.month
 
+import com.flex.domain.model.getRuleForDate
+
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -554,7 +556,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
 
     // Edit dialog
     state.editingDay?.let { editDay ->
-        val activeRule = state.workTimeRules.filter { !it.validFrom.isAfter(editDay.date) }.maxByOrNull { it.validFrom }
+        val activeRule = state.workTimeRules.getRuleForDate(editDay.date)
         val activeDailyTarget = activeRule?.dailyWorkMinutes ?: state.settings.dailyWorkMinutes
         EditDayDialog(
             workDay = editDay,

@@ -70,8 +70,9 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     override fun getWorkTimeRuleForDate(date: LocalDate, rules: List<WorkTimeRule>): WorkTimeRule? {
+        val ym = java.time.YearMonth.from(date)
         return rules
-            .filter { !it.validFrom.isAfter(date) }
+            .filter { !it.validFrom.isAfter(ym) }
             .maxByOrNull { it.validFrom }
     }
 
@@ -151,12 +152,19 @@ class SettingsRepositoryImpl @Inject constructor(
         officeQuotaMinDays = officeQuotaMinDays
     )
 
-    private fun WorkTimeRuleEntity.toDomain() = WorkTimeRule(
-        id = id,
-        validFrom = java.time.LocalDate.parse(validFrom),
-        dailyWorkMinutes = dailyWorkMinutes,
-        monthlyWorkMinutes = monthlyWorkMinutes
-    )
+    private fun WorkTimeRuleEntity.toDomain(): WorkTimeRule {
+        val ym = try {
+            java.time.YearMonth.parse(validFrom)
+        } catch (_: Exception) {
+            java.time.YearMonth.from(java.time.LocalDate.parse(validFrom))
+        }
+        return WorkTimeRule(
+            id = id,
+            validFrom = ym,
+            dailyWorkMinutes = dailyWorkMinutes,
+            monthlyWorkMinutes = monthlyWorkMinutes
+        )
+    }
 
     private fun WorkTimeRule.toEntity() = WorkTimeRuleEntity(
         id = id,
