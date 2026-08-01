@@ -751,107 +751,103 @@ fun WorkDayListItem(workDay: WorkDay, netMinutes: Long, flextime: Long?, onClick
                     .fillMaxHeight()
                     .background(accentColor)
             )
-            Column(
+            Row(
                 modifier = Modifier
                     .padding(12.dp)
-                    .weight(1f)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                // Left Column: Date and time blocks
+                Column(modifier = Modifier.weight(1f)) {
                     val dayName = workDay.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.GERMAN)
                     val dateStr = workDay.date.format(DateTimeFormatter.ofPattern("d. MMM"))
                     Text("$dayName, $dateStr", style = MaterialTheme.typography.bodyMedium)
 
-                    Column(horizontalAlignment = Alignment.End) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (workDay.timeBlocks.any { it.isDuration }) {
-                                Icon(
-                                    imageVector = Icons.Default.Timer,
-                                    contentDescription = "Gesamtzeit (Ungerundet)",
-                                    modifier = Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            if (netMinutes > 0) {
-                                Text(
-                                    "${netMinutes / 60}h ${netMinutes % 60}min",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(50),
-                                color = accentColor.copy(alpha = 0.15f)
+                    // Show individual time blocks for work days
+                    if (isWorkType && workBlocks.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        workBlocks.forEach { block ->
+                            val startStr = block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
+                            val endStr = block.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))
+                            val locationLabel = if (block.location == WorkLocation.OFFICE) "Büro" else "HO"
+                            val locationColor =
+                                if (block.location == WorkLocation.OFFICE) OfficeColor else HomeOfficeColor
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
-                                    typeLabel,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = accentColor
+                                    "$startStr – $endStr",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                Box(
+                                    modifier = Modifier
+                                        .size(3.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                                alpha = 0.4f
+                                            )
+                                        )
+                                )
+                                Text(
+                                    locationLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = locationColor.copy(alpha = 0.8f)
+                                )
+                                if (block.isDuration) {
+                                    Icon(
+                                        imageVector = Icons.Default.Timer,
+                                        contentDescription = "Gesamtzeit (Ungerundet)",
+                                        modifier = Modifier.size(12.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
-                        }
-                        if (flextime != null) {
-                            val sign = if (flextime > 0) "+" else if (flextime < 0) "-" else ""
-                            val absFlex = Math.abs(flextime)
-                            val color = if (flextime < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                            Text(
-                                "Gleitzeit: $sign${absFlex / 60}h ${absFlex % 60}m",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = color
-                            )
                         }
                     }
                 }
 
-                // Show individual time blocks for work days
-                if (isWorkType && workBlocks.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    workBlocks.forEach { block ->
-                        val startStr = block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
-                        val endStr = block.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))
-                        val locationLabel = if (block.location == WorkLocation.OFFICE) "Büro" else "HO"
-                        val locationColor =
-                            if (block.location == WorkLocation.OFFICE) OfficeColor else HomeOfficeColor
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            if (block.isDuration) {
-                                Icon(
-                                    imageVector = Icons.Default.Timer,
-                                    contentDescription = "Gesamtzeit (Ungerundet)",
-                                    modifier = Modifier.size(12.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                // Right Column: Total time, type bubble, and flextime
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    modifier = Modifier.padding(start = 12.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (netMinutes > 0) {
                             Text(
-                                "$startStr – $endStr",
-                                style = MaterialTheme.typography.bodySmall,
+                                "${netMinutes / 60}h ${netMinutes % 60}min",
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Box(
-                                modifier = Modifier
-                                    .size(3.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                            alpha = 0.4f
-                                        )
-                                    )
-                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = accentColor.copy(alpha = 0.15f)
+                        ) {
                             Text(
-                                locationLabel,
+                                typeLabel,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = locationColor.copy(alpha = 0.8f)
+                                color = accentColor
                             )
                         }
+                    }
+                    if (flextime != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val sign = if (flextime > 0) "+" else if (flextime < 0) "-" else ""
+                        val absFlex = Math.abs(flextime)
+                        val color = if (flextime < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        Text(
+                            "Gleitzeit: $sign${absFlex / 60}h ${absFlex % 60}m",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = color
+                        )
                     }
                 }
             }
