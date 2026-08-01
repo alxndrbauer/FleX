@@ -52,7 +52,7 @@ class ComplexWorkflowIntegrationTest {
             FlexDatabase::class.java
         ).build()
 
-        settingsRepository = SettingsRepositoryImpl(database.settingsDao(), database.quotaRuleDao())
+        settingsRepository = SettingsRepositoryImpl(database.settingsDao(), database.quotaRuleDao(), database.workTimeRuleDao())
         val calendarSyncService = CalendarSyncService(context, database.calendarEventDao(), CalendarEventMapper())
         workDayRepository = WorkDayRepositoryImpl(database.workDayDao(), database.timeBlockDao(), calendarSyncService, settingsRepository)
 
