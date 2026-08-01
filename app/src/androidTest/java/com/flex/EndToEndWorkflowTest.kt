@@ -60,7 +60,7 @@ class EndToEndWorkflowTest {
         timeBlockDao = database.timeBlockDao()
         settingsDao = database.settingsDao()
 
-        settingsRepository = SettingsRepositoryImpl(settingsDao, database.quotaRuleDao())
+        settingsRepository = SettingsRepositoryImpl(settingsDao, database.quotaRuleDao(), database.workTimeRuleDao())
         val calendarSyncService = CalendarSyncService(context, database.calendarEventDao(), CalendarEventMapper())
         workDayRepository = WorkDayRepositoryImpl(workDayDao, timeBlockDao, calendarSyncService, settingsRepository)
 

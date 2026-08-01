@@ -10,6 +10,8 @@
 - Revert to ENTER-only trigger for clock-in
 - Restore ENTER+DWELL clock-in with ENTER registered
 - Dynamic resolution of monthly work time targets per period
+- WorkDays auch in Planungsfüllung und Büro-Quote berücksichtigen
+- Android-Integrationstests an aktuelle Codebase anpassen
 
 ### Features
 
