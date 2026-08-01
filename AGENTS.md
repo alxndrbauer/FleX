@@ -1,61 +1,50 @@
-# Claude Code Instructions for FleX
+# Agent Instructions for FleX
 
 ## Task Delegation Strategy
 
 Für komplexe Aufgaben wird folgende Strategie verwendet:
 
-### 1️⃣ Opus (Planung & Review)
+### 1️⃣ Pro-Modell (Planung & Review)
 **Wann:** Komplexe Probleme, Architektur-Entscheidungen, Code-Review
 - Codebase analysieren
 - Implementierungs-Plan erstellen
-- TODOs mit Model-Assignments erstellen
+- Subagents für Teilaufgaben einsetzen
 - Ergebnisse reviewen und korrigieren
 
-### 2️⃣ Sonnet (Implementierung mittlerer Komplexität)
+### 2️⃣ Standard-Modell / Subagents (Implementierung mittlerer Komplexität)
 **Wann:** Klare Anforderungen, mehrere zusammenhängende Änderungen, >10 Zeilen Code
-- Model-UI Komponenten erweitern
+- UI-Komponenten erweitern
 - Repository/DAO Änderungen
 - Use Cases implementieren
 - Tests schreiben
 
-### 3️⃣ Haiku (Einfache Tasks)
+### 3️⃣ Leichtes Modell (Einfache Tasks)
 **Wann:** Trivial, klar abgegrenzt, <10 Zeilen Code
 - Einzelne Felder hinzufügen
 - Simple Bug-Fixes
 - Textänderungen
 - Dependency-Updates
-- Triviale Refactoring
+- Triviales Refactoring
 
 ## Workflow
 
-### 1. Plan erstellen (Opus)
-```
-📋 [Plan]
-- Task 1: Beschreibung [Model: Sonnet]
-- Task 2: Beschreibung [Model: Haiku]
-- Task 3: Beschreibung [Model: Opus]
-```
+### 1. Plan erstellen
+Bei komplexen Aufgaben immer erst einen Plan (`/plan`) erstellen, bevor Code geschrieben wird.
 
-### 2. TODOs erstellen
-```bash
-TaskCreate mit status: "pending"
-TaskUpdate mit model assignments in metadata
-```
+### 2. Implementierung
+- TDD: Tests zuerst schreiben, dann implementieren
+- Code-Review nach größeren Änderungen
+- Subagents (via `invoke_subagent` oder `define_subagent`) nutzen, um Teilaufgaben parallel bearbeiten zu lassen.
 
-### 3. An Modelle delegieren
-Delegation erfolgt über den `model` Parameter des Task-Tools:
-```bash
-Task(subagent_type: "general-purpose", model: "sonnet", prompt: "...")
-Task(subagent_type: "general-purpose", model: "haiku", prompt: "...")
-```
-**Wichtig:** `subagent_type` ist immer `"general-purpose"`, das Modell wird über `model` gewählt.
-
-### 4. Git & Commit
-- `git add` + `git commit` → selbst ausführen, aber vorher **Skill `conventional-commit` aufrufen** für die Commit Message
+### 3. Git & Commit
+- `git add` + `git commit` → selbst ausführen
+- Conventional Commits verwenden (siehe unten)
 - `git push` → **niemals ausführen** – der User pusht immer selbst
 
-### 5. Review & Merge
-Opus prüft alle Ergebnisse
+### 4. Verifikation
+- Unit Tests: `./gradlew testDebugUnitTest`
+- Android Tests kompilieren: `./gradlew compileDebugAndroidTestKotlin`
+- Debug Build: `./gradlew assembleDebug`
 
 ## Projektspezifisch
 
@@ -83,6 +72,7 @@ Opus prüft alle Ergebnisse
 ### Important Files
 - `gradle/libs.versions.toml` - Version Catalog (alle Dependency-Versionen zentral)
 - `app/build.gradle.kts` - App-Dependencies, Signing Config
+- `app/src/main/java/com/flex/data/local/FlexDatabase.kt` - DB-Version & Migrations
 - `.github/workflows/build.yml` - Release Workflow
 - `.github/workflows/pr-check.yml` - PR Validation
 - `.github/dependabot.yml` - Auto-Updates (monthly)
@@ -95,49 +85,46 @@ Format:
 <type>(<scope>): <subject>
 
 <description>
-
-Co-Authored-By: Claude <Model> <noreply@anthropic.com>
 ```
 
 **Types:** `feat`, `fix`, `refactor`, `chore`, `ci`, `docs`
-**Scopes:** `domain`, `data`, `ui`, `deps`, `build`, `ci`
+**Scopes:** `domain`, `data`, `ui`, `deps`, `build`, `ci`, `test`
 
 Beispiele:
 ```
-feat(domain): Add overtime calculation to FlextimeBalance
+feat(domain): Add workDays per week to WorkTimeRule
 
-Add separate overtime tracking independent from flextime.
-
-Co-Authored-By: Claude Sonnet <noreply@anthreply.com>
+Allows configuring which weekdays count as working days.
+4-day weeks (e.g. Mon–Thu) are now supported.
 ```
 
 ```
 fix(ui): Delete button now appears in month view dialog
-
-Co-Authored-By: Claude Haiku <noreply@anthreply.com>
 ```
 
 ## Versioning
 
 Mit jeder Änderung soll die Version der App gemäß semver angepasst werden.
+
 ## Regeln
 
 ✅ **DO**
-- Komplexe Tasks in Subtasks aufteilen
-- Model-Delegation bei >3 Subtasks nutzen
+- Komplexe Tasks in Subtasks aufteilen und via Subagents delegieren
+- TDD: Tests vor der Implementierung schreiben
 - Tests für neue Features schreiben
-- Code-Review vor Merge
-- Descriptive Commit Messages
-- Du darfst gradle Tasks ohne nachfragen ausführen
+- Code-Review nach größeren Änderungen
+- Descriptive Commit Messages (Conventional Commits)
+- Gradle Tasks dürfen ohne Nachfragen ausgeführt werden
 - **Niemals `git push` ausführen** – der User pusht immer selbst
-- **Vor jedem Commit den Skill `conventional-commit` aufrufen**
+- Bei neuen Room-Feldern: immer Migration hinzufügen + DB-Version erhöhen
+- Bei Konstruktor-Änderungen: alle Aufrufe in androidTest prüfen
 
 ❌ **DON'T**
 - Force-Push zu main
 - Unsigned Releases pushen
 - `.env`, `*.jks`, `local.properties` committen
 - Deprecation-Warnungen ignorieren (fix oder dokumentieren)
-- Multiple simultanee Builds (concurrency aktiv)
+- Multiple simultane Builds (concurrency aktiv)
 
 ## Debugging
 
@@ -147,27 +134,14 @@ Mit jeder Änderung soll die Version der App gemäß semver angepasst werden.
 - Android SDK: `ANDROID_HOME=/Users/abauer/Library/Android/sdk`
 
 ### Runtime-Fehler
-
-- Room Migrations: Check `FlexDatabase.kt` version
-- Hilt: Alle Custom Classes müssen `@Inject` oder im `AppModule`
+- Room Migrations: `FlexDatabase.kt` – Version prüfen, alle Migrations registriert?
+- Hilt: Alle Custom Classes müssen `@Inject` oder im `AppModule` sein
 - Compose: `@Composable` und State-Management prüfen
+- Android Tests: Konstruktor-Änderungen in `androidTest/` nachziehen
 
 ## Skills
-
-Vor jeder passenden Aufgabe den entsprechenden Skill aufrufen – **nicht warten bis der User fragt**:
-
-| Skill | Wann aufrufen |
-|---|---|
-| `mobile-android-design` | Vor jeder Compose UI Aufgabe – Layout, Komponenten, Material 3 Design |
-| `android-kotlin` | Coroutines, Hilt, MockK, Compose State, Room – alles Kotlin/Android-spezifisch |
-| `context7-mcp` | Immer wenn eine Library/Framework-API genutzt wird (Room, Hilt, Compose, etc.) |
-| `conventional-commit` | Beim Erstellen von Commit Messages |
-| `simplify` | Nach größeren Implementierungen – Code auf Qualität und Redundanz prüfen |
-| `claude-api` | Wenn Anthropic SDK / Claude API verwendet wird |
-| `update-config` | Für Änderungen an Claude Code Settings, Hooks, Permissions |
-| `keybindings-help` | Für Keyboard-Shortcut-Anpassungen |
-| `loop` | Wenn eine Aufgabe wiederkehrend auf Intervall laufen soll |
+- Bei der Arbeit mit dem System auf mitgelieferte Skills und bereitgestellte Plugin-Fähigkeiten (wie `android-cli`) zurückgreifen, falls zutreffend.
 
 ## Kontakt & Fragen
 
-Bei Fragen zur Architektur oder unklaren Anforderungen → **Plan schreiben** vor Implementierung!
+Bei Fragen zur Architektur oder unklaren Anforderungen → **Plan schreiben** vor Implementierung (`/plan`)!
