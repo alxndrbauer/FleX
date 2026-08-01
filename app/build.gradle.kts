@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "com.flex"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.flex"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 10
         versionName = "1.7.2"
 
