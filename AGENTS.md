@@ -4,21 +4,21 @@
 
 Für komplexe Aufgaben wird folgende Strategie verwendet:
 
-### 1️⃣ Pro-Modell (Planung & Review)
+### 1️⃣ Komplexe Tasks (Planung & Review)
 **Wann:** Komplexe Probleme, Architektur-Entscheidungen, Code-Review
 - Codebase analysieren
 - Implementierungs-Plan erstellen
-- Subagents für Teilaufgaben einsetzen
+- Teilaufgaben delegieren (falls unterstützt)
 - Ergebnisse reviewen und korrigieren
 
-### 2️⃣ Standard-Modell / Subagents (Implementierung mittlerer Komplexität)
+### 2️⃣ Mittlere Tasks (Implementierung mittlerer Komplexität)
 **Wann:** Klare Anforderungen, mehrere zusammenhängende Änderungen, >10 Zeilen Code
 - UI-Komponenten erweitern
 - Repository/DAO Änderungen
 - Use Cases implementieren
 - Tests schreiben
 
-### 3️⃣ Leichtes Modell (Einfache Tasks)
+### 3️⃣ Einfache Tasks
 **Wann:** Trivial, klar abgegrenzt, <10 Zeilen Code
 - Einzelne Felder hinzufügen
 - Simple Bug-Fixes
@@ -34,7 +34,6 @@ Bei komplexen Aufgaben immer erst einen Plan (`/plan`) erstellen, bevor Code ges
 ### 2. Implementierung
 - TDD: Tests zuerst schreiben, dann implementieren
 - Code-Review nach größeren Änderungen
-- Subagents (via `invoke_subagent` oder `define_subagent`) nutzen, um Teilaufgaben parallel bearbeiten zu lassen.
 
 ### 3. Git & Commit
 - `git add` + `git commit` → selbst ausführen
@@ -109,7 +108,7 @@ Mit jeder Änderung soll die Version der App gemäß semver angepasst werden.
 ## Regeln
 
 ✅ **DO**
-- Komplexe Tasks in Subtasks aufteilen und via Subagents delegieren
+- Komplexe Tasks in Subtasks aufteilen
 - TDD: Tests vor der Implementierung schreiben
 - Tests für neue Features schreiben
 - Code-Review nach größeren Änderungen
@@ -139,8 +138,6 @@ Mit jeder Änderung soll die Version der App gemäß semver angepasst werden.
 - Compose: `@Composable` und State-Management prüfen
 - Android Tests: Konstruktor-Änderungen in `androidTest/` nachziehen
 
-## Skills
-- Bei der Arbeit mit dem System auf mitgelieferte Skills und bereitgestellte Plugin-Fähigkeiten (wie `android-cli`) zurückgreifen, falls zutreffend.
 
 ## Kontakt & Fragen
 
