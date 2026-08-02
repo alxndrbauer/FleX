@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.LocalDate
@@ -95,7 +96,7 @@ class MonthViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(emptyList()))
         whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
-        whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(FlextimeBalance())
+        whenever(calculateFlextime(any(), any(), anyOrNull(), any())).thenReturn(FlextimeBalance())
         whenever(calculateDayWorkTime(any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
         whenever(checkBreakViolation(any(), any())).thenReturn(BreakCheckResult(emptyList(), skipped = false))
         whenever(buildPrognosisDays(any(), any(), any(), any())).thenAnswer { inv -> inv.getArgument(1) }
@@ -503,7 +504,7 @@ class MonthViewModelTest : BaseUnitTest() {
             targetMinutes = 0,
             overtimeMinutes = 120
         )
-        whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(expectedFlextime)
+        whenever(calculateFlextime(any(), any(), anyOrNull(), any())).thenReturn(expectedFlextime)
 
         // When: ViewModel is created
         viewModel = MonthViewModel(

@@ -7,14 +7,14 @@ plugins {
 
 android {
     namespace = "com.flex"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.flex"
         minSdk = 26
-        targetSdk = 36
-        versionCode = 9
-        versionName = "1.7.1"
+        targetSdk = 37
+        versionCode = 12
+        versionName = "1.7.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
