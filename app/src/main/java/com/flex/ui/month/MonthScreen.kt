@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -81,6 +82,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.flex.domain.model.DayType
 import com.flex.domain.model.PublicHolidays
@@ -447,6 +449,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                                     workDay = workDayMap[date],
                                     isToday = date == LocalDate.now(),
                                     hasBreakViolation = state.breakViolationDates.contains(date),
+                                    flextime = state.flextimeByDate[date],
                                     onClick = { viewModel.selectDay(date) }
                                 )
                             }
@@ -505,6 +508,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                     WorkDayListItem(
                         workDay = workDay,
                         netMinutes = state.netMinutesByDate[workDay.date] ?: 0,
+                        flextime = state.flextimeByDate[workDay.date],
                         onClick = { viewModel.selectDay(workDay.date) }
                     )
                 }
@@ -584,6 +588,7 @@ fun DayCell(
     workDay: WorkDay?,
     isToday: Boolean,
     hasBreakViolation: Boolean = false,
+    flextime: Long? = null,
     onClick: () -> Unit
 ) {
     val holidayName = PublicHolidays.getHolidayName(date)
@@ -636,9 +641,20 @@ fun DayCell(
                 else if (holidayName != null) PublicHolidayColor
                 else MaterialTheme.colorScheme.onSurface
             )
+            if (flextime != null) {
+                val sign = if (flextime > 0) "+" else if (flextime < 0) "-" else ""
+                val absFlex = Math.abs(flextime)
+                val color = if (flextime < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                Text(
+                    text = "$sign${absFlex / 60}:${(absFlex % 60).toString().padStart(2, '0')}",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, lineHeight = 8.sp),
+                    color = color
+                )
+            }
             if (isToday) {
                 Box(
                     modifier = Modifier
+                        .padding(top = 2.dp)
                         .size(4.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primary)
@@ -677,7 +693,7 @@ fun LegendItem(color: Color, label: String) {
 }
 
 @Composable
-fun WorkDayListItem(workDay: WorkDay, netMinutes: Long, onClick: () -> Unit) {
+fun WorkDayListItem(workDay: WorkDay, netMinutes: Long, flextime: Long?, onClick: () -> Unit) {
     val isWorkType = workDay.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
     val workBlocks = workDay.timeBlocks.filter { it.endTime != null }
 
@@ -735,20 +751,70 @@ fun WorkDayListItem(workDay: WorkDay, netMinutes: Long, onClick: () -> Unit) {
                     .fillMaxHeight()
                     .background(accentColor)
             )
-            Column(
+            Row(
                 modifier = Modifier
                     .padding(12.dp)
-                    .weight(1f)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                // Left Column: Date and time blocks
+                Column(modifier = Modifier.weight(1f)) {
                     val dayName = workDay.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.GERMAN)
                     val dateStr = workDay.date.format(DateTimeFormatter.ofPattern("d. MMM"))
                     Text("$dayName, $dateStr", style = MaterialTheme.typography.bodyMedium)
 
+                    // Show individual time blocks for work days
+                    if (isWorkType && workBlocks.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        workBlocks.forEach { block ->
+                            val startStr = block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
+                            val endStr = block.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))
+                            val locationLabel = if (block.location == WorkLocation.OFFICE) "Büro" else "HO"
+                            val locationColor =
+                                if (block.location == WorkLocation.OFFICE) OfficeColor else HomeOfficeColor
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    "$startStr – $endStr",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(3.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                                alpha = 0.4f
+                                            )
+                                        )
+                                )
+                                Text(
+                                    locationLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = locationColor.copy(alpha = 0.8f)
+                                )
+                                if (block.isDuration) {
+                                    Icon(
+                                        imageVector = Icons.Default.Timer,
+                                        contentDescription = "Gesamtzeit (Ungerundet)",
+                                        modifier = Modifier.size(12.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Right Column: Total time, type bubble, and flextime
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    modifier = Modifier.padding(start = 12.dp)
+                ) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -772,42 +838,16 @@ fun WorkDayListItem(workDay: WorkDay, netMinutes: Long, onClick: () -> Unit) {
                             )
                         }
                     }
-                }
-
-                // Show individual time blocks for work days
-                if (isWorkType && workBlocks.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    workBlocks.forEach { block ->
-                        val startStr = block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
-                        val endStr = block.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))
-                        val locationLabel = if (block.location == WorkLocation.OFFICE) "Büro" else "HO"
-                        val locationColor =
-                            if (block.location == WorkLocation.OFFICE) OfficeColor else HomeOfficeColor
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                "$startStr – $endStr",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(3.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                            alpha = 0.4f
-                                        )
-                                    )
-                            )
-                            Text(
-                                locationLabel,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = locationColor.copy(alpha = 0.8f)
-                            )
-                        }
+                    if (flextime != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val sign = if (flextime > 0) "+" else if (flextime < 0) "-" else ""
+                        val absFlex = Math.abs(flextime)
+                        val color = if (flextime < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        Text(
+                            "Gleitzeit: $sign${absFlex / 60}h ${absFlex % 60}m",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = color
+                        )
                     }
                 }
             }

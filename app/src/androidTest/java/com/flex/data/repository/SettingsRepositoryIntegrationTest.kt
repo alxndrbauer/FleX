@@ -33,7 +33,8 @@ class SettingsRepositoryIntegrationTest {
 
         settingsRepository = SettingsRepositoryImpl(
             database.settingsDao(),
-            database.quotaRuleDao()
+            database.quotaRuleDao(),
+            database.workTimeRuleDao()
         )
     }
 
