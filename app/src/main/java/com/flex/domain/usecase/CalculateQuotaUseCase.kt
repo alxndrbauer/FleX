@@ -6,6 +6,7 @@ import com.flex.domain.model.Settings
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.WorkTimeRule
+import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.getRuleForDate
 import com.flex.domain.model.getRuleForMonth
 import java.time.DayOfWeek
@@ -88,7 +89,9 @@ class CalculateQuotaUseCase @Inject constructor(
             val endDay = yearMonth.lengthOfMonth()
             (startDay..endDay).count { dayNum ->
                 val date = yearMonth.atDay(dayNum)
-                date.dayOfWeek != DayOfWeek.SATURDAY && date.dayOfWeek != DayOfWeek.SUNDAY
+                val rule = workTimeRules.getRuleForDate(date)
+                val activeWorkDays = rule?.workDays ?: DEFAULT_WORK_DAYS
+                date.dayOfWeek in activeWorkDays
             }
         } else 0
 

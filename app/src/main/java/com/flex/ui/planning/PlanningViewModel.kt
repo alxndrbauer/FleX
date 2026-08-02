@@ -11,6 +11,7 @@ import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.QuotaRule
+import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.getRuleForDate
 import com.flex.domain.model.getRuleForMonth
 import com.flex.domain.repository.SettingsRepository
@@ -430,7 +431,9 @@ private data class PlanningConfig(
             val settings = state.settings
             for (day in 1..month.lengthOfMonth()) {
                 val date = month.atDay(day)
-                if (date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY) continue
+                val rule = state.workTimeRules.getRuleForDate(date)
+                val activeWorkDays = rule?.workDays ?: DEFAULT_WORK_DAYS
+                if (date.dayOfWeek !in activeWorkDays) continue
                 if (PublicHolidays.isHoliday(date)) continue
                 if (date in existingDates) continue
 
