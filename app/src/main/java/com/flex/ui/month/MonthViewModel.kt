@@ -63,6 +63,7 @@ data class MonthUiState(
     val requiredOfficeMinutes: Long = 0,
     val totalWorkMinutes: Long = 0,
     val netMinutesByDate: Map<LocalDate, Long> = emptyMap(),
+    val flextimeByDate: Map<LocalDate, Long> = emptyMap(),
     val hasPlannedDays: Boolean = false,
     val actualWorkedMinutesMonth: Long = 0,
     val workedMinutesMonth: Long = 0,
@@ -179,6 +180,14 @@ private data class MonthConfig(
                     officeMin += dayOfficeGross * dayResult.netMinutes / totalGross
                 }
 
+                val flexByDate = mutableMapOf<LocalDate, Long>()
+                var currentFlex = calculateFlextime(previousMonthsDays, settings, null, workTimeRules).totalMinutes
+                for (day in prognosisDays.sortedBy { it.date }) {
+                    val singleDayEarned = calculateFlextime(listOf(day), settings.copy(initialFlextimeMinutes = 0), null, workTimeRules).totalMinutes
+                    currentFlex += singleDayEarned
+                    flexByDate[day.date] = currentFlex
+                }
+
                 val netByDate = days.filter { !it.isPlanned || !isCurrentOrPast }.associate { day ->
                     day.date to calculateDayWorkTime(day.timeBlocks).netMinutes
                 }
@@ -204,15 +213,26 @@ private data class MonthConfig(
                 val creditMinutesMonth = creditDaysInMonth.sumOf { day ->
                     (settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
                 }
-                val totalWorkMinutesMonth = actualWorkedMinutesMonth + creditMinutesMonth
 
-                // Calculate target work days for the month (active workDays per rule, excluding holidays)
+                var holidayCreditMinutes = 0L
+                for (day in 1..month.lengthOfMonth()) {
+                    val date = month.atDay(day)
+                    val ruleForDate = workTimeRules.getRuleForDate(date)
+                    val activeWorkDays = ruleForDate?.workDays ?: DEFAULT_WORK_DAYS
+                    if (date.dayOfWeek in activeWorkDays && PublicHolidays.isHoliday(date)) {
+                        holidayCreditMinutes += ruleForDate?.dailyWorkMinutes ?: settings.dailyWorkMinutes
+                    }
+                }
+
+                val totalWorkMinutesMonth = actualWorkedMinutesMonth + creditMinutesMonth + holidayCreditMinutes
+
+                // Calculate target work days for the month (active workDays per rule, including holidays)
                 var targetMinutesMonth = 0L
                 for (day in 1..month.lengthOfMonth()) {
                     val date = month.atDay(day)
                     val ruleForDate = workTimeRules.getRuleForDate(date)
                     val activeWorkDays = ruleForDate?.workDays ?: DEFAULT_WORK_DAYS
-                    if (date.dayOfWeek in activeWorkDays && !PublicHolidays.isHoliday(date)) {
+                    if (date.dayOfWeek in activeWorkDays) {
                         val dailyTarget = ruleForDate?.dailyWorkMinutes ?: settings.dailyWorkMinutes
                         targetMinutesMonth += dailyTarget
                     }
@@ -232,6 +252,7 @@ private data class MonthConfig(
                     requiredOfficeMinutes = requiredMin,
                     totalWorkMinutes = totalMin,
                     netMinutesByDate = netByDate,
+                    flextimeByDate = flexByDate,
                     hasPlannedDays = hasPlanned,
                     actualWorkedMinutesMonth = actualWorkedMinutesMonth,
                     workedMinutesMonth = totalWorkMinutesMonth,
