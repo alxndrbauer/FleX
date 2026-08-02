@@ -5,6 +5,10 @@
 
 - WorkDays auch in Planungsfüllung und Büro-Quote berücksichtigen
 - Android-Integrationstests an aktuelle Codebase anpassen
+
+### Features
+
+- Add flextime UI indicators and fix monthly target calculation
 ## [1.7.1] - 2026-07-31
 
 ### Bugfixes
