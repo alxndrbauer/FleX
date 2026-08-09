@@ -5,6 +5,7 @@
 
 - WorkDays auch in Planungsfüllung und Büro-Quote berücksichtigen
 - Android-Integrationstests an aktuelle Codebase anpassen
+- Use WorkTimeRule/QuotaRule correctly in MonthViewModel quota calculation
 
 ### Features
 

@@ -18,6 +18,7 @@ import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.getRuleForDate
+import com.flex.domain.model.getRuleForMonth
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.BuildPrognosisDaysUseCase
@@ -159,9 +160,16 @@ private data class MonthConfig(
                 val flextime = calculateFlextime(flextimeDays, settings, month, workTimeRules)
 
                 // Fixed monthly target, reduced by neutral days (vacation, flex, etc.)
+                // Use workTimeRule-aware daily/monthly targets (same logic as HomeViewModel)
                 val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
-                val neutralDayCount = prognosisDays.count { it.dayType in neutralTypes }
-                val totalMin = (settings.monthlyWorkMinutes - (neutralDayCount.toLong() * settings.dailyWorkMinutes)).coerceAtLeast(0)
+                val neutralDays = prognosisDays.filter { it.dayType in neutralTypes }
+                val neutralDaysDeduction = neutralDays.sumOf { day ->
+                    (settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)?.dailyWorkMinutes
+                        ?: settings.dailyWorkMinutes).toLong()
+                }
+                val baseMonthlyTarget = (workTimeRules.getRuleForMonth(month)?.monthlyWorkMinutes
+                    ?: settings.monthlyWorkMinutes).toLong()
+                val totalMin = (baseMonthlyTarget - neutralDaysDeduction).coerceAtLeast(0)
                 val requiredMin = (totalMin * qPercent / 100.0).toLong()
 
                 val workingDays = prognosisDays.filter { it.dayType !in neutralTypes }
