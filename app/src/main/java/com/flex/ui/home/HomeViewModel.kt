@@ -216,7 +216,7 @@ class HomeViewModel @Inject constructor(
                         @Suppress("UNCHECKED_CAST")
                         val workTimeRules = arr[5] as List<com.flex.domain.model.WorkTimeRule>
 
-                        val rule = settingsRepository.getQuotaRuleForMonth(todayYearMonth, rules)
+                        val rule = settingsRepository.getQuotaRuleForMonth(yearMonth, rules)
                         val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
                         val qDays = rule?.officeQuotaMinDays ?: settings.officeQuotaMinDays
 

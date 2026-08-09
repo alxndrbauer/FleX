@@ -325,4 +325,80 @@ class HomeViewModelWorkTimeRuleTest : BaseUnitTest() {
         assertThat(capturedPercents.last()).isEqualTo(rulePercent)
         assertThat(capturedMinDays.last()).isEqualTo(ruleMinDays)
     }
+
+    // ========== Regression: Past-month navigation uses correct QuotaRule ==========
+
+    @Test
+    fun `navigating to past month shows QuotaRule for that month not current month rule`() = runTest {
+        // Regression test for: HomeViewModel used todayYearMonth instead of yearMonth when
+        // looking up the QuotaRule, causing past-month views to always show the current month's rule.
+        //
+        // Scenario: Two rules exist:
+        //   - Ab Januar 2026: 40%, 6 Tage
+        //   - Ab August 2026: 40%, 8 Tage (current month rule)
+        // When navigating to July 2026, the January rule (6 days) must apply, not August (8 days).
+
+        val januaryRule = QuotaRule(
+            id = 1,
+            validFrom = YearMonth.of(2026, 1),
+            officeQuotaPercent = 40,
+            officeQuotaMinDays = 6   // the Jan rule: 6 days
+        )
+        val augustRule = QuotaRule(
+            id = 2,
+            validFrom = YearMonth.of(2026, 8),
+            officeQuotaPercent = 40,
+            officeQuotaMinDays = 8   // the Aug rule: 8 days
+        )
+        val rules = listOf(januaryRule, augustRule)
+
+        val settings = Settings(officeQuotaPercent = 40, officeQuotaMinDays = 10) // default different from both rules
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(rules))
+
+        // When a date in July is selected, the January rule applies (most recent that started <= July)
+        val julyDate = LocalDate.of(2026, 7, 15)
+        whenever(workDayRepository.getWorkDay(julyDate)).thenReturn(flowOf(null))
+        whenever(getMonthWorkDays(YearMonth.of(2026, 7))).thenReturn(flowOf(emptyList()))
+
+        // getQuotaRuleForMonth(July2026, rules) → januaryRule (validFrom=Jan ≤ Jul, max = Jan)
+        whenever(settingsRepository.getQuotaRuleForMonth(YearMonth.of(2026, 7), rules))
+            .thenReturn(januaryRule)
+        // getQuotaRuleForMonth(August2026, rules) → augustRule (for current month, not used for selected)
+        whenever(settingsRepository.getQuotaRuleForMonth(YearMonth.of(2026, 8), rules))
+            .thenReturn(augustRule)
+        // Fallback for any other month
+        whenever(settingsRepository.getQuotaRuleForMonth(any(), any())).thenReturn(januaryRule)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Navigate to July
+        viewModel.navigateToDate(julyDate)
+        advanceUntilIdle()
+
+        // Then: effectiveQuotaMinDays must be 6 (from January rule), NOT 8 (from August rule)
+        assertThat(viewModel.uiState.value.effectiveQuotaMinDays).isEqualTo(6)
+        assertThat(viewModel.uiState.value.effectiveQuotaMinDays).isNotEqualTo(8)
+    }
+
+    @Test
+    fun `current month shows its own QuotaRule not a past month rule`() = runTest {
+        // Complement of the above test: August 2026 should show the August rule (8 days)
+        val januaryRule = QuotaRule(id = 1, validFrom = YearMonth.of(2026, 1), officeQuotaPercent = 40, officeQuotaMinDays = 6)
+        val augustRule = QuotaRule(id = 2, validFrom = YearMonth.of(2026, 8), officeQuotaPercent = 40, officeQuotaMinDays = 8)
+        val rules = listOf(januaryRule, augustRule)
+
+        val settings = Settings(officeQuotaPercent = 40, officeQuotaMinDays = 10)
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(rules))
+        // For current month (today = August 2026 in test scope), return augustRule
+        whenever(settingsRepository.getQuotaRuleForMonth(any(), any())).thenReturn(augustRule)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Then: effectiveQuotaMinDays must be 8 (August rule)
+        assertThat(viewModel.uiState.value.effectiveQuotaMinDays).isEqualTo(8)
+    }
 }

@@ -7,6 +7,7 @@
 - Android-Integrationstests an aktuelle Codebase anpassen
 - Use WorkTimeRule/QuotaRule correctly in MonthViewModel quota calculation
 - Apply WorkTimeRule-aware targets in QuotaViewModel
+- Use selected month's QuotaRule in HomeViewModel, not today's
 
 ### Features
 
