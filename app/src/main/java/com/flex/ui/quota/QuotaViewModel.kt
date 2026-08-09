@@ -7,6 +7,8 @@ import com.flex.domain.model.FlextimeBalance
 import com.flex.domain.model.QuotaStatus
 import com.flex.domain.model.Settings
 import com.flex.domain.model.WorkDay
+import com.flex.domain.model.WorkTimeRule
+import com.flex.domain.model.getRuleForMonth
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateFlextimeUseCase
@@ -74,21 +76,39 @@ class QuotaViewModel @Inject constructor(
                 getMonthWorkDays(yearMonth),
                 getSettings(),
                 workDayRepository.getWorkDaysForYear(year),
-                settingsRepository.getQuotaRules()
-            ) { monthDays, settings, yearDays, rules ->
+                settingsRepository.getQuotaRules(),
+                settingsRepository.getWorkTimeRules()
+            ) { arr ->
+                @Suppress("UNCHECKED_CAST")
+                val monthDays = arr[0] as List<WorkDay>
+                val settings = arr[1] as Settings
+                @Suppress("UNCHECKED_CAST")
+                val yearDays = arr[2] as List<WorkDay>
+                @Suppress("UNCHECKED_CAST")
+                val rules = arr[3] as List<com.flex.domain.model.QuotaRule>
+                @Suppress("UNCHECKED_CAST")
+                val workTimeRules = arr[4] as List<WorkTimeRule>
+
                 val rule = settingsRepository.getQuotaRuleForMonth(yearMonth, rules)
                 val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
                 val qDays = rule?.officeQuotaMinDays ?: settings.officeQuotaMinDays
 
-                val quota = calculateQuota(monthDays, settings, yearMonth, qPercent, qDays)
+                val quota = calculateQuota(monthDays, settings, yearMonth, qPercent, qDays, workTimeRules)
                 // Cumulative flextime from all year's actual data
                 val actualYearDays = yearDays.filter { !it.isPlanned }
                 val flextime = calculateFlextime(actualYearDays, settings, yearMonth)
 
                 // Fixed monthly target, reduced by neutral days
+                // Use workTimeRule-aware targets (same logic as HomeViewModel / MonthViewModel)
                 val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
-                val neutralDayCount = monthDays.count { it.dayType in neutralTypes }
-                val totalMin = (settings.monthlyWorkMinutes - neutralDayCount.toLong() * settings.dailyWorkMinutes).coerceAtLeast(0)
+                val neutralDays = monthDays.filter { it.dayType in neutralTypes }
+                val neutralDaysDeduction = neutralDays.sumOf { day ->
+                    (settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)?.dailyWorkMinutes
+                        ?: settings.dailyWorkMinutes).toLong()
+                }
+                val baseMonthlyTarget = (workTimeRules.getRuleForMonth(yearMonth)?.monthlyWorkMinutes
+                    ?: settings.monthlyWorkMinutes).toLong()
+                val totalMin = (baseMonthlyTarget - neutralDaysDeduction).coerceAtLeast(0)
                 val requiredMin = (totalMin * qPercent / 100.0).toLong()
 
                 val usedVacation = yearDays.count {
