@@ -34,7 +34,7 @@ wearCompose = "1.6.2"
 wearComposeMaterial3 = "1.6.2"
 wearTiles = "1.6.0"
 wearProtolayout = "1.4.0"
-wearProtolayoutMaterial3 = "1.4.0"
+wearProtolayoutMaterial3 = "1.4.2"
 
 [libraries]
 # Core
