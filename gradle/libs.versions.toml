@@ -32,7 +32,7 @@ playServicesWearable = "20.0.1"
 osmdroid = "6.1.20"
 wearCompose = "1.6.2"
 wearComposeMaterial3 = "1.6.2"
-wearTiles = "1.6.0"
+wearTiles = "1.6.2"
 wearProtolayout = "1.4.0"
 wearProtolayoutMaterial3 = "1.4.0"
 
