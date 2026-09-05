@@ -1,17 +1,22 @@
 # Changelog
-## [Unreleased]
+## [1.7.5] - 2026-08-09
+
+### Bugfixes
+
+- Use WorkTimeRule/QuotaRule correctly in MonthViewModel quota calculation
+- Apply WorkTimeRule-aware targets in QuotaViewModel
+- Use selected month's QuotaRule in HomeViewModel, not today's
+## [1.7.3] - 2026-08-01
+
+### Features
+
+- Add flextime UI indicators and fix monthly target calculation
+## [1.7.2] - 2026-08-01
 
 ### Bugfixes
 
 - WorkDays auch in Planungsfüllung und Büro-Quote berücksichtigen
 - Android-Integrationstests an aktuelle Codebase anpassen
-- Use WorkTimeRule/QuotaRule correctly in MonthViewModel quota calculation
-- Apply WorkTimeRule-aware targets in QuotaViewModel
-- Use selected month's QuotaRule in HomeViewModel, not today's
-
-### Features
-
-- Add flextime UI indicators and fix monthly target calculation
 ## [1.7.1] - 2026-07-31
 
 ### Bugfixes
