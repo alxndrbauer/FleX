@@ -37,8 +37,8 @@ android {
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_23
+        targetCompatibility = JavaVersion.VERSION_23
     }
 
     buildFeatures {
@@ -47,7 +47,7 @@ android {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(23)
 }
 
 tasks.register<Sync>("renameWearReleaseApk") {

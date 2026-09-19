@@ -13,8 +13,8 @@ android {
         applicationId = "com.flex"
         minSdk = 26
         targetSdk = 37
-        versionCode = 13
-        versionName = "1.7.5"
+        versionCode = 14
+        versionName = "1.7.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -51,8 +51,8 @@ android {
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_23
+        targetCompatibility = JavaVersion.VERSION_23
     }
 
     buildFeatures {
@@ -70,7 +70,7 @@ android {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(23)
 }
 
 tasks.withType<Test>().configureEach {
