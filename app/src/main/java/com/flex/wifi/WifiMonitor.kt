@@ -63,7 +63,11 @@ class WifiMonitor @Inject constructor(
     internal fun buildNetworkCallback(targetSsid: String): ConnectivityManager.NetworkCallback {
         return object : ConnectivityManager.NetworkCallback() {
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-                val ssid = getSsidFromCapabilities(capabilities) ?: getConnectedSsidLegacy()
+                val ssid = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    getSsidFromCapabilities(capabilities)
+                } else {
+                    getConnectedSsidLegacy()
+                }
                 Log.d("WifiMonitor", "onCapabilitiesChanged: ssid=$ssid target=$targetSsid connected=${wifiPreferences.wasConnectedToTarget}")
                 if (ssid == targetSsid) {
                     // Cancel any pending clock-out — WiFi is (re)connected to target
