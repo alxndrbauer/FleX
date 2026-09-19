@@ -4,8 +4,12 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -493,7 +497,8 @@ fun HomeScreen(
                                 isLast = index == state.timeBlocks.lastIndex,
                                 isWorkDayPlanned = state.workDay?.isPlanned == true,
                                 onEdit = { editingBlock = it },
-                                onDelete = { viewModel.deleteTimeBlock(it) }
+                                onDelete = { viewModel.deleteTimeBlock(it) },
+                                onToggleLocation = { viewModel.toggleTimeBlockLocation(it) }
                             )
                         }
                     }
@@ -1003,6 +1008,7 @@ private fun CompactProgressRow(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TimelineBlockItem(
     block: TimeBlock,
@@ -1010,8 +1016,10 @@ private fun TimelineBlockItem(
     isLast: Boolean,
     isWorkDayPlanned: Boolean = false,
     onEdit: (TimeBlock) -> Unit,
-    onDelete: (TimeBlock) -> Unit
+    onDelete: (TimeBlock) -> Unit,
+    onToggleLocation: (TimeBlock) -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     val locationColor = when (block.location) {
         WorkLocation.OFFICE -> OfficeColor
         WorkLocation.HOME_OFFICE -> HomeOfficeColor
@@ -1083,7 +1091,13 @@ private fun TimelineBlockItem(
                         center = Offset(cx, dotY)
                     )
                 }
-                .clickable { onEdit(block) },
+                .combinedClickable(
+                    onClick = { onEdit(block) },
+                    onLongClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onToggleLocation(block)
+                    }
+                ),
             verticalAlignment = Alignment.Top
         ) {
             Spacer(modifier = Modifier.width(20.dp))

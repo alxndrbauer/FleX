@@ -532,6 +532,31 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun toggleTimeBlockLocation(block: TimeBlock) {
+        val newLocation = if (block.location == WorkLocation.OFFICE) WorkLocation.HOME_OFFICE else WorkLocation.OFFICE
+        val wasRunning = block.endTime == null
+        viewModelScope.launch {
+            workDayRepository.saveTimeBlock(block.copy(location = newLocation))
+            val currentWorkDay = _uiState.value.workDay
+            if (currentWorkDay != null && (wasRunning || currentWorkDay.timeBlocks.size <= 1)) {
+                workDayRepository.saveWorkDay(currentWorkDay.copy(location = newLocation))
+            }
+            if (wasRunning) {
+                _uiState.update { it.copy(selectedLocation = newLocation) }
+                val intent = Intent(context, WorkTimerService::class.java).apply {
+                    action = WorkTimerService.ACTION_UPDATE
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+                updateQuickSettingsTile()
+            }
+            wearSyncHelper.push()
+        }
+    }
+
     fun unplanWorkDay() {
         viewModelScope.launch {
             val workDay = _uiState.value.workDay ?: return@launch

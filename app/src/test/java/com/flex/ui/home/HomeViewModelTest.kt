@@ -685,4 +685,69 @@ class HomeViewModelTest : BaseUnitTest() {
         // Then: Clock should not be running
         assertThat(viewModel.uiState.value.isClockRunning).isFalse()
     }
+
+    // ========== toggleTimeBlockLocation Tests ==========
+
+    @Test
+    fun `toggleTimeBlockLocation switches completed block from OFFICE to HOME_OFFICE`() = runTest {
+        val completedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(12, 0), location = WorkLocation.OFFICE)
+        viewModel = HomeViewModel(
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences
+        )
+        advanceUntilIdle()
+
+        viewModel.toggleTimeBlockLocation(completedBlock)
+        advanceUntilIdle()
+
+        verify(workDayRepository).saveTimeBlock(org.mockito.kotlin.argThat {
+            id == 1L && location == WorkLocation.HOME_OFFICE
+        })
+        verify(wearSyncHelper).push()
+    }
+
+    @Test
+    fun `toggleTimeBlockLocation switches completed block from HOME_OFFICE to OFFICE`() = runTest {
+        val completedBlock = TimeBlock(id = 2, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(12, 0), location = WorkLocation.HOME_OFFICE)
+        viewModel = HomeViewModel(
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences
+        )
+        advanceUntilIdle()
+
+        viewModel.toggleTimeBlockLocation(completedBlock)
+        advanceUntilIdle()
+
+        verify(workDayRepository).saveTimeBlock(org.mockito.kotlin.argThat {
+            id == 2L && location == WorkLocation.OFFICE
+        })
+        verify(wearSyncHelper).push()
+    }
+
+    @Test
+    fun `toggleTimeBlockLocation on running block updates block, workday, notifies service and syncs wear`() = runTest {
+        val today = LocalDate.now()
+        val runningBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = null, location = WorkLocation.OFFICE)
+        val workDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, timeBlocks = listOf(runningBlock))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = HomeViewModel(
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences
+        )
+        advanceUntilIdle()
+
+        viewModel.toggleTimeBlockLocation(runningBlock)
+        advanceUntilIdle()
+
+        verify(workDayRepository).saveTimeBlock(org.mockito.kotlin.argThat {
+            id == 1L && location == WorkLocation.HOME_OFFICE && endTime == null
+        })
+        verify(workDayRepository).saveWorkDay(org.mockito.kotlin.argThat {
+            id == 1L && location == WorkLocation.HOME_OFFICE
+        })
+        verify(context).startForegroundService(any())
+        verify(wearSyncHelper).push()
+    }
 }
+

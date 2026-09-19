@@ -16,6 +16,7 @@
 ### Features
 
 - Add Quick Settings tile, app shortcuts and adaptive layout
+- Toggle time block location via long click on home screen
 ## [1.7.5] - 2026-08-09
 
 ### Bugfixes
