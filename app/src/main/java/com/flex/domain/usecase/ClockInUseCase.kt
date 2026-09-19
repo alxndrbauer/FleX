@@ -1,5 +1,6 @@
 package com.flex.domain.usecase
 
+import com.flex.data.local.PausePreferences
 import com.flex.domain.model.DayType
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
@@ -11,14 +12,20 @@ import java.time.LocalTime
 import javax.inject.Inject
 
 class ClockInUseCase @Inject constructor(
-    private val workDayRepository: WorkDayRepository
+    private val workDayRepository: WorkDayRepository,
+    private val pausePreferences: PausePreferences
 ) {
     suspend operator fun invoke(locationOverride: WorkLocation? = null): Boolean {
         val today = LocalDate.now()
         val existingDay = workDayRepository.getWorkDay(today).first()
         if (existingDay?.timeBlocks?.any { it.endTime == null } == true) return false
 
-        val location = locationOverride ?: existingDay?.location ?: WorkLocation.OFFICE
+        pausePreferences.clearPause()
+
+        val location = locationOverride
+            ?: existingDay?.timeBlocks?.lastOrNull()?.location
+            ?: existingDay?.location
+            ?: WorkLocation.OFFICE
         val now = LocalTime.now().withSecond(0).withNano(0)
 
         val workDayId = if (existingDay == null) {

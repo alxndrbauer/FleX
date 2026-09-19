@@ -12,12 +12,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
+import com.flex.data.local.PausePreferences
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class ClockOutReceiver : BroadcastReceiver() {
 
     @Inject lateinit var workDayRepository: WorkDayRepository
+    @Inject lateinit var pausePreferences: PausePreferences
     @Inject lateinit var wearSyncHelper: WearSyncHelper
 
     companion object {
@@ -29,6 +31,7 @@ class ClockOutReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                pausePreferences.clearPause()
                 val workDay = workDayRepository.getWorkDay(LocalDate.now()).first()
                 val runningBlock = workDay?.timeBlocks?.find { it.endTime == null }
                 if (runningBlock != null) {

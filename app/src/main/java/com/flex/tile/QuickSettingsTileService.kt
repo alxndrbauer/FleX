@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
+import com.flex.data.local.PausePreferences
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -38,6 +39,7 @@ class QuickSettingsTileService : TileService() {
     @Inject lateinit var autoClockOutUseCase: AutoClockOutUseCase
     @Inject lateinit var calculateDayWorkTime: CalculateDayWorkTimeUseCase
     @Inject lateinit var wearSyncHelper: WearSyncHelper
+    @Inject lateinit var pausePreferences: PausePreferences
 
     private var serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
@@ -55,7 +57,7 @@ class QuickSettingsTileService : TileService() {
                 delay(30_000)
                 val today = LocalDate.now()
                 val workDay = workDayRepository.getWorkDay(today).first()
-                if (workDay?.timeBlocks?.any { it.endTime == null } == true) {
+                if (workDay?.timeBlocks?.any { it.endTime == null } == true || pausePreferences.isPaused) {
                     updateTileWithWorkDay(workDay)
                 }
             }
@@ -117,6 +119,12 @@ class QuickSettingsTileService : TileService() {
             val dur = String.format(Locale.getDefault(), "%d:%02d h", h, m)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 tile.subtitle = "$dur · $loc"
+            }
+        } else if (pausePreferences.isPaused) {
+            tile.state = Tile.STATE_INACTIVE
+            tile.icon = Icon.createWithResource(this, R.drawable.ic_notification)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                tile.subtitle = "In Pause"
             }
         } else {
             tile.state = Tile.STATE_INACTIVE

@@ -95,6 +95,25 @@
             android:name=".notification.SwitchLocationReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".notification.PauseReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".notification.ResumeWorkReceiver"
+            android:exported="false" />
+
+        <activity
+            android:name=".notification.NotificationActionActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:exported="false"
+            android:taskAffinity=""
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="false" />
+
         <!-- Quick Settings Tile for Phone -->
         <service
             android:name=".tile.QuickSettingsTileService"

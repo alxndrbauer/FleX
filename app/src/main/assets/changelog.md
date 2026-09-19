@@ -17,6 +17,7 @@
 
 - Add Quick Settings tile, app shortcuts and adaptive layout
 - Toggle time block location via long click on home screen
+- Add pause button, live pause mode and collapse shade on actions
 ## [1.7.5] - 2026-08-09
 
 ### Bugfixes

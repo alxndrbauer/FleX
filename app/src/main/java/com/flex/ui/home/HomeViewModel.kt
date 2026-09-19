@@ -567,11 +567,16 @@ class HomeViewModel @Inject constructor(
 
     fun deleteTimeBlock(timeBlock: TimeBlock) {
         viewModelScope.launch {
+            val isRunning = timeBlock.endTime == null
             val workDay = _uiState.value.workDay
             val isLastBlock = workDay != null && workDay.timeBlocks.all { it.id == timeBlock.id }
             workDayRepository.deleteTimeBlock(timeBlock)
             if (isLastBlock) {
                 workDayRepository.deleteWorkDay(workDay)
+            }
+            if (isRunning) {
+                breakWarningScheduler.cancelWarning()
+                stopWorkTimerService()
             }
             wearSyncHelper.push()
             _undoEvent.emit(UndoEvent("Block gelöscht") {

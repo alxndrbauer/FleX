@@ -1,5 +1,6 @@
 package com.flex.domain.usecase
 
+import com.flex.data.local.PausePreferences
 import com.flex.domain.model.DayType
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
@@ -22,13 +23,14 @@ import java.time.LocalTime
 class ClockInUseCaseTest {
 
     private val workDayRepository: WorkDayRepository = mock()
+    private val pausePreferences: PausePreferences = mock()
     private lateinit var useCase: ClockInUseCase
 
     private val today = LocalDate.now()
 
     @BeforeEach
     fun setUp() {
-        useCase = ClockInUseCase(workDayRepository)
+        useCase = ClockInUseCase(workDayRepository, pausePreferences)
     }
 
     @Test
@@ -100,5 +102,32 @@ class ClockInUseCaseTest {
         assertThat(timeBlockCaptor.firstValue.workDayId).isEqualTo(5L)
         assertThat(timeBlockCaptor.firstValue.location).isEqualTo(WorkLocation.OFFICE)
         assertThat(timeBlockCaptor.firstValue.endTime).isNull()
+    }
+
+    @Test
+    fun `clears pause and inherits last block location when no override given`() = runTest {
+        val completedBlock = TimeBlock(
+            id = 1L,
+            workDayId = 5L,
+            startTime = LocalTime.of(8, 0),
+            endTime = LocalTime.of(12, 0),
+            location = WorkLocation.HOME_OFFICE
+        )
+        val existingDay = WorkDay(
+            id = 5L,
+            date = today,
+            location = WorkLocation.OFFICE,
+            dayType = DayType.WORK,
+            timeBlocks = listOf(completedBlock)
+        )
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(existingDay))
+
+        val result = useCase()
+
+        assertThat(result).isTrue()
+        verify(pausePreferences).clearPause()
+        val timeBlockCaptor = argumentCaptor<TimeBlock>()
+        verify(workDayRepository).saveTimeBlock(timeBlockCaptor.capture())
+        assertThat(timeBlockCaptor.firstValue.location).isEqualTo(WorkLocation.HOME_OFFICE)
     }
 }
