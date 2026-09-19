@@ -32,11 +32,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up JDK 23
+      - name: Set up JDK 25
         if: matrix.language == 'java-kotlin'
         uses: actions/setup-java@v6.0.0
         with:
-          java-version: '23'
+          java-version: '25'
           distribution: 'temurin'
 
       - name: Setup Gradle
