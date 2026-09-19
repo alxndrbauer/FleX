@@ -90,7 +90,7 @@ jobs:
 
       - name: Get release notes for manifest
         id: cliff_manifest
-        uses: orhun/git-cliff-action@v4
+        uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4
         with:
           config: cliff.toml
           args: --latest --strip all
