@@ -10,7 +10,7 @@ on:
 
 jobs:
   analyze:
-    name: Analyze (kotlin)
+    name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -18,28 +18,43 @@ jobs:
       actions: read
       contents: read
 
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: java-kotlin
+            build-mode: manual
+            queries: security-and-quality
+          - language: actions
+            build-mode: none
+            queries: security-extended
+
     steps:
       - uses: actions/checkout@v7
 
       - name: Set up JDK 23
+        if: matrix.language == 'java-kotlin'
         uses: actions/setup-java@v6.0.0
         with:
           java-version: '23'
           distribution: 'temurin'
 
       - name: Setup Gradle
+        if: matrix.language == 'java-kotlin'
         uses: gradle/actions/setup-gradle@v6
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4.37.9
         with:
-          languages: kotlin
-          build-mode: manual
+          languages: ${{ matrix.language }}
+          queries: ${{ matrix.queries }}
+          build-mode: ${{ matrix.build-mode }}
 
-      - name: Build
-        run: xvfb-run ./gradlew assembleDebug --no-daemon
+      - name: Build (Kotlin & Wear)
+        if: matrix.language == 'java-kotlin'
+        run: xvfb-run ./gradlew compileDebugKotlin :wear:compileDebugKotlin --no-daemon
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4.37.9
         with:
-          category: "/language:kotlin"
+          category: "/language:${{ matrix.language }}"
