@@ -11,6 +11,7 @@
 - Use modern Geocoder API on Android 13+ in SettingsViewModel (Alert #30)
 - Use ConnectivityManager on Android 10+ in SettingsViewModel (Alert #31)
 - Gate getConnectedSsidLegacy to Android versions below Q (Alert #32)
+- Download APK directly into internal private storage (Alert #18)
 ## [1.7.5] - 2026-08-09
 
 ### Bugfixes

@@ -1,52 +1,47 @@
 package com.flex.data.update
 
-import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 object UpdateDownloader {
 
     suspend fun downloadAndInstall(context: Context, downloadUrl: String) {
-        val apkFile = File(context.getExternalFilesDir(null), "update.apk")
-        apkFile.delete()
+        val apkFile = File(context.filesDir, "update.apk")
+        if (apkFile.exists()) {
+            apkFile.delete()
+        }
 
-        val downloadManager = context.getSystemService(DownloadManager::class.java)
-        val request = DownloadManager.Request(Uri.parse(downloadUrl))
-            .setDestinationUri(Uri.fromFile(apkFile))
-            .setTitle("FleX Update")
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
-            .setMimeType("application/vnd.android.package-archive")
+        withContext(Dispatchers.IO) {
+            val url = URL(downloadUrl)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 30_000
+            connection.instanceFollowRedirects = true
+            connection.connect()
 
-        val downloadId = downloadManager.enqueue(request)
-        waitForDownload(downloadManager, downloadId)
+            if (connection.responseCode !in 200..299) {
+                error("Download fehlgeschlagen: HTTP ${connection.responseCode}")
+            }
+
+            connection.inputStream.use { input ->
+                FileOutputStream(apkFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            connection.disconnect()
+        }
+
         installApk(context, apkFile)
     }
-
-    private suspend fun waitForDownload(downloadManager: DownloadManager, downloadId: Long) =
-        withContext(Dispatchers.IO) {
-            val query = DownloadManager.Query().setFilterById(downloadId)
-            while (true) {
-                val cursor = downloadManager.query(query)
-                if (cursor.moveToFirst()) {
-                    val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                    cursor.close()
-                    when (status) {
-                        DownloadManager.STATUS_SUCCESSFUL -> return@withContext
-                        DownloadManager.STATUS_FAILED -> error("Download fehlgeschlagen")
-                    }
-                } else {
-                    cursor.close()
-                }
-                delay(500)
-            }
-        }
 
     private fun installApk(context: Context, apkFile: File) {
         val apkUri = FileProvider.getUriForFile(
