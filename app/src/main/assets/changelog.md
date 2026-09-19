@@ -1,4 +1,9 @@
 # Changelog
+## [Unreleased]
+
+### Bugfixes
+
+- Disable application backup in app manifest (Alert #16)
 ## [1.7.5] - 2026-08-09
 
 ### Bugfixes
