@@ -7,6 +7,7 @@
 - Disable application backup in wear manifest (Alert #17)
 - Refactor work time sum in YearOverviewViewModel (Alert #33)
 - Replace deprecated PreferenceManager in GeofenceMapPreview (Alert #26)
+- Use fillPaint and outlinePaint in GeofenceMapPreview (Alerts #27, #28, #29)
 ## [1.7.5] - 2026-08-09
 
 ### Bugfixes

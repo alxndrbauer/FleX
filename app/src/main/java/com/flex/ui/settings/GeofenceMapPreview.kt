@@ -38,19 +38,19 @@ fun GeofenceMapPreview(
                 val center = GeoPoint(lat, lon)
                 val circle = Polygon(this).apply {
                     points = Polygon.pointsAsCircle(center, radiusMeters.toDouble())
-                    fillColor = android.graphics.Color.argb(
+                    fillPaint.color = android.graphics.Color.argb(
                         40,
                         android.graphics.Color.red(primaryColor),
                         android.graphics.Color.green(primaryColor),
                         android.graphics.Color.blue(primaryColor)
                     )
-                    strokeColor = android.graphics.Color.argb(
+                    outlinePaint.color = android.graphics.Color.argb(
                         200,
                         android.graphics.Color.red(primaryColor),
                         android.graphics.Color.green(primaryColor),
                         android.graphics.Color.blue(primaryColor)
                     )
-                    strokeWidth = 4f
+                    outlinePaint.strokeWidth = 4f
                 }
                 overlays.add(circle)
                 controller.setZoom(17.0)
