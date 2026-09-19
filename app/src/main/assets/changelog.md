@@ -4,6 +4,7 @@
 ### Bugfixes
 
 - Disable application backup in app manifest (Alert #16)
+- Disable application backup in wear manifest (Alert #17)
 ## [1.7.5] - 2026-08-09
 
 ### Bugfixes
