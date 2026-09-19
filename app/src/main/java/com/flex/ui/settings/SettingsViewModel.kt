@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Geocoder
 import android.os.Build
+import android.net.ConnectivityManager
+import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -182,6 +184,16 @@ class SettingsViewModel @Inject constructor(
 
     @SuppressLint("MissingPermission")
     fun getCurrentWifiSsid(): String? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            val network = cm?.activeNetwork
+            val capabilities = cm?.getNetworkCapabilities(network)
+            val wifiInfo = capabilities?.transportInfo as? WifiInfo
+            val ssid = wifiInfo?.ssid?.removeSurrounding("\"")
+            if (ssid != null && ssid.isNotBlank() && ssid != "<unknown ssid>") {
+                return ssid
+            }
+        }
         val wifiManager = context.applicationContext
             .getSystemService(Context.WIFI_SERVICE) as WifiManager
         @Suppress("DEPRECATION")

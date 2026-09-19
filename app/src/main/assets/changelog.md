@@ -9,6 +9,7 @@
 - Replace deprecated PreferenceManager in GeofenceMapPreview (Alert #26)
 - Use fillPaint and outlinePaint in GeofenceMapPreview (Alerts #27, #28, #29)
 - Use modern Geocoder API on Android 13+ in SettingsViewModel (Alert #30)
+- Use ConnectivityManager on Android 10+ in SettingsViewModel (Alert #31)
 ## [1.7.5] - 2026-08-09
 
 ### Bugfixes
