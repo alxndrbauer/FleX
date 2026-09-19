@@ -6,6 +6,7 @@
 - Disable application backup in app manifest (Alert #16)
 - Disable application backup in wear manifest (Alert #17)
 - Refactor work time sum in YearOverviewViewModel (Alert #33)
+- Replace deprecated PreferenceManager in GeofenceMapPreview (Alert #26)
 ## [1.7.5] - 2026-08-09
 
 ### Bugfixes

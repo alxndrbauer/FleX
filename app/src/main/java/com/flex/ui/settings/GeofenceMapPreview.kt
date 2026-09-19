@@ -1,6 +1,6 @@
 package com.flex.ui.settings
 
-import android.preference.PreferenceManager
+import android.content.Context
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
@@ -30,8 +30,7 @@ fun GeofenceMapPreview(
 
     key(lat, lon, radiusMeters) {
         val mapView = remember {
-            @Suppress("DEPRECATION")
-            Configuration.getInstance().load(context, PreferenceManager.getDefaultSharedPreferences(context))
+            Configuration.getInstance().load(context, context.getSharedPreferences("${context.packageName}_preferences", Context.MODE_PRIVATE))
             MapView(context).apply {
                 setTileSource(TileSourceFactory.MAPNIK)
                 setMultiTouchControls(true)
