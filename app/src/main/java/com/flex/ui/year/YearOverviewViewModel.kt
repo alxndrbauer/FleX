@@ -113,11 +113,10 @@ class YearOverviewViewModel @Inject constructor(
                         if (blocks.isEmpty()) {
                             if (day.location == WorkLocation.OFFICE) officeDays++ else hoDays++
                         } else {
-                            var offMin = 0L; var hoMin = 0L
-                            blocks.forEach { b ->
-                                val min = java.time.Duration.between(b.startTime, b.endTime!!).toMinutes()
-                                if (b.location == WorkLocation.OFFICE) offMin += min else hoMin += min
-                            }
+                            val offMin = blocks.filter { it.location == WorkLocation.OFFICE }
+                                .sumOf { java.time.Duration.between(it.startTime, it.endTime!!).toMinutes() }
+                            val hoMin = blocks.filter { it.location == WorkLocation.HOME_OFFICE }
+                                .sumOf { java.time.Duration.between(it.startTime, it.endTime!!).toMinutes() }
                             if (offMin >= hoMin) officeDays++ else hoDays++
                         }
                     }
