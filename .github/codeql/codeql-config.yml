@@ -1,0 +1,10 @@
+name: "FleX CodeQL Configuration"
+
+paths-ignore:
+  - '**/build/**'
+
+query-filters:
+  - exclude:
+      id:
+        - java/field-masks-super-field
+        - java/local-variable-is-never-read

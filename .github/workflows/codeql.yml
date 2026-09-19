@@ -47,7 +47,8 @@ jobs:
         uses: github/codeql-action/init@v4.37.9
         with:
           languages: ${{ matrix.language }}
-          queries: ${{ matrix.queries }}
+          queries: +${{ matrix.queries }}
+          config-file: ./.github/codeql/codeql-config.yml
           build-mode: ${{ matrix.build-mode }}
 
       - name: Build (Kotlin & Wear)
