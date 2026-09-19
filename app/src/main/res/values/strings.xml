@@ -2,4 +2,10 @@
 <resources>
     <string name="app_name">FleX</string>
     <string name="app_name_vrema">Vrema</string>
+    <string name="shortcut_office_short">Büro</string>
+    <string name="shortcut_office_long">Büro einstempeln</string>
+    <string name="shortcut_home_office_short">Home-Office</string>
+    <string name="shortcut_home_office_long">Home-Office einstempeln</string>
+    <string name="shortcut_month_short">Monat</string>
+    <string name="shortcut_month_long">Monatsübersicht</string>
 </resources>

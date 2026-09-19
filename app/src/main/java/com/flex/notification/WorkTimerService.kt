@@ -44,7 +44,11 @@ class WorkTimerService : Service() {
         const val NOTIF_ID = 2002
         private const val CHANNEL_ID = "work_timer_channel"
         private const val BREAK_THRESHOLD_MINUTES = 360 // 6h
+        const val ACTION_UPDATE = "com.flex.ACTION_UPDATE_WORK_TIMER"
     }
+
+    private var timerJob: kotlinx.coroutines.Job? = null
+    private val updateTrigger = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     override fun onCreate() {
         super.onCreate()
@@ -52,11 +56,18 @@ class WorkTimerService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_UPDATE) {
+            updateTrigger.tryEmit(Unit)
+            return START_STICKY
+        }
+
         // Placeholder — immediately replaced by the coroutine below
         if (Build.VERSION.SDK_INT >= 36) {
             startForeground(NOTIF_ID, Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle("Arbeitszeit läuft")
+                .setColor(getColor(android.R.color.system_accent1_500))
+                .setShortCriticalText("0m")
                 .setWhen(System.currentTimeMillis())
                 .setUsesChronometer(true)
                 .setShowWhen(true)
@@ -65,9 +76,11 @@ class WorkTimerService : Service() {
                 .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
                 .build())
         } else {
-            startForeground(NOTIF_ID, buildLegacyNotification("Arbeitszeit läuft", "Starte...", null, 0, 0))
+            startForeground(NOTIF_ID, buildLegacyNotification("Arbeitszeit läuft", "Starte...", null, 0, 0, null, null))
         }
-        serviceScope.launch {
+
+        timerJob?.cancel()
+        timerJob = serviceScope.launch {
             while (isActive) {
                 val now = LocalTime.now()
                 val workDay = workDayRepository.getWorkDay(LocalDate.now()).first()
@@ -77,6 +90,7 @@ class WorkTimerService : Service() {
                 if (runningBlock == null) {
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
+                    updateQuickSettingsTile()
                     break
                 }
 
@@ -125,21 +139,40 @@ class WorkTimerService : Service() {
                     progressMax = targetMinutes.toInt()
                 }
 
+                val startEpoch = LocalDate.now()
+                    .atTime(runningBlock.startTime)
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli() + workTimeResult.breakMinutes * 60_000L
+
                 val notification = if (Build.VERSION.SDK_INT >= 36) {
-                    buildProgressStyleNotification(title, content, subText, netMinutes, targetMinutes, isOvertime, runningBlock.startTime, workTimeResult.breakMinutes)
+                    buildProgressStyleNotification(title, content, subText, netMinutes, targetMinutes, isOvertime, runningBlock.startTime, workTimeResult.breakMinutes, runningBlock.location)
                 } else {
-                    buildLegacyNotification(title, content, subText, progress, progressMax)
+                    buildLegacyNotification(title, content, subText, progress, progressMax, runningBlock.location, startEpoch)
                 }
                 getSystemService(NotificationManager::class.java).notify(NOTIF_ID, notification)
-                delay(60_000)
+                kotlinx.coroutines.withTimeoutOrNull(60_000L) {
+                    updateTrigger.first()
+                }
             }
         }
+        updateQuickSettingsTile()
         return START_STICKY
     }
 
     override fun onDestroy() {
         serviceScope.cancel()
+        updateQuickSettingsTile()
         super.onDestroy()
+    }
+
+    private fun updateQuickSettingsTile() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            android.service.quicksettings.TileService.requestListeningState(
+                this,
+                android.content.ComponentName(this, com.flex.tile.QuickSettingsTileService::class.java)
+            )
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -155,7 +188,8 @@ class WorkTimerService : Service() {
         targetMinutes: Long,
         isOvertime: Boolean,
         runningBlockStart: LocalTime,
-        breakMinutes: Long
+        breakMinutes: Long,
+        location: WorkLocation
     ): Notification {
         // Offset setWhen by the deducted break so the chronometer shows net time, not gross time.
         val startEpoch = LocalDate.now()
@@ -203,9 +237,13 @@ class WorkTimerService : Service() {
         // Etappen-Markierung bei Tagessoll
         progressStyle.addProgressPoint(Notification.ProgressStyle.Point(targetMinutes.toInt()))
 
+        val targetLocation = if (location == WorkLocation.OFFICE) WorkLocation.HOME_OFFICE else WorkLocation.OFFICE
+        val switchLabel = if (targetLocation == WorkLocation.HOME_OFFICE) "Zu Home-Office" else "Zu Büro"
+
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(primaryColor)
+            .setShortCriticalText(formatShortDuration(netMinutes))
             .setContentTitle(title)
             .setContentText(content)
             .setSubText(subText)
@@ -217,6 +255,9 @@ class WorkTimerService : Service() {
             .setOnlyAlertOnce(true)
             .addExtras(android.os.Bundle().apply { putBoolean("android.requestPromotedOngoing", true) })
             .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+            .addAction(
+                Notification.Action.Builder(null, switchLabel, switchLocationIntent(targetLocation)).build()
+            )
             .addAction(
                 Notification.Action.Builder(null, "Ausstempeln", clockOutIntent()).build()
             )
@@ -231,7 +272,9 @@ class WorkTimerService : Service() {
         content: String,
         subText: String?,
         progress: Int,
-        progressMax: Int
+        progressMax: Int,
+        location: WorkLocation?,
+        startEpoch: Long? = null
     ) = NotificationCompat.Builder(this, CHANNEL_ID)
         .setSmallIcon(R.drawable.ic_notification)
         .setContentTitle(title)
@@ -243,12 +286,35 @@ class WorkTimerService : Service() {
         .setSilent(true)
         .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
         .apply {
+            if (startEpoch != null) {
+                setWhen(startEpoch)
+                setUsesChronometer(true)
+                setShowWhen(true)
+            }
             if (progressMax > 0) setProgress(progressMax, progress.coerceAtMost(progressMax), false)
+            if (location != null) {
+                val targetLocation = if (location == WorkLocation.OFFICE) WorkLocation.HOME_OFFICE else WorkLocation.OFFICE
+                val switchLabel = if (targetLocation == WorkLocation.HOME_OFFICE) "Zu Home-Office" else "Zu Büro"
+                addAction(0, switchLabel, switchLocationIntent(targetLocation))
+            }
         }
         .addAction(0, "Ausstempeln", clockOutIntent())
         .build()
 
     // ── Intents ─────────────────────────────────────────────────────────────
+
+    private fun switchLocationIntent(targetLocation: WorkLocation): PendingIntent {
+        val intent = Intent(this, SwitchLocationReceiver::class.java).apply {
+            action = SwitchLocationReceiver.ACTION_SWITCH_LOCATION
+            putExtra(SwitchLocationReceiver.EXTRA_TARGET_LOCATION, targetLocation.name)
+        }
+        return PendingIntent.getBroadcast(
+            this,
+            targetLocation.ordinal,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
 
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
@@ -288,6 +354,12 @@ class WorkTimerService : Service() {
         val h = minutes / 60
         val m = minutes % 60
         return if (h == 0L) "${m}min" else "${h}h ${m}min"
+    }
+
+    private fun formatShortDuration(minutes: Long): String {
+        val h = minutes / 60
+        val m = minutes % 60
+        return if (h == 0L) "${m}m" else "${h}h ${m}m"
     }
 
     private fun formatFlexDelta(deltaMinutes: Long): String {

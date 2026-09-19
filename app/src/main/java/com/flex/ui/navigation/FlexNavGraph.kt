@@ -1,5 +1,13 @@
 package com.flex.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
@@ -20,9 +28,12 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -92,7 +103,8 @@ val moreItems = listOf(
 fun FlexNavGraph(
     onboardingCompleted: Boolean = true,
     onOnboardingFinished: () -> Unit = {},
-    onOnboardingReset: () -> Unit = {}
+    onOnboardingReset: () -> Unit = {},
+    initialRoute: String? = null
 ) {
     val navController = rememberNavController()
     val sheetState = rememberModalBottomSheetState()
@@ -101,6 +113,9 @@ fun FlexNavGraph(
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+
+    val configuration = LocalConfiguration.current
+    val isExpandedScreen = configuration.screenWidthDp >= 600
 
     if (showBottomSheet) {
         ModalBottomSheet(
@@ -129,41 +144,16 @@ fun FlexNavGraph(
         }
     }
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                bottomNavItems.forEach { screen ->
-                    NavigationBarItem(
-                        icon = { Icon(screen.icon, contentDescription = screen.title) },
-                        label = { Text(screen.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                        onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    )
-                }
-
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Menu, contentDescription = "Mehr") },
-                    label = { Text("Mehr", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
-                    selected = currentDestination?.hierarchy?.any { dest ->
-                        moreItems.any { it.route == dest.route }
-                    } == true,
-                    onClick = { showBottomSheet = true }
-                )
-            }
-        }
-    ) { innerPadding ->
+    @Composable
+    fun AppNavHost(modifier: Modifier = Modifier) {
         NavHost(
             navController = navController,
-            startDestination = if (onboardingCompleted) Screen.Home.route else Screen.Onboarding.route,
-            modifier = Modifier.padding(innerPadding)
+            startDestination = if (onboardingCompleted) (initialRoute ?: Screen.Home.route) else Screen.Onboarding.route,
+            modifier = modifier,
+            enterTransition = { fadeIn(tween(250)) + slideInHorizontally(tween(250)) { it / 6 } },
+            exitTransition = { fadeOut(tween(200)) },
+            popEnterTransition = { fadeIn(tween(250)) },
+            popExitTransition = { fadeOut(tween(200)) + slideOutHorizontally(tween(200)) { it / 6 } }
         ) {
             composable(Screen.Onboarding.route) {
                 OnboardingScreen(
@@ -222,6 +212,76 @@ fun FlexNavGraph(
             composable(Screen.WorkTimeRules.route) {
                 WorkTimeRulesScreen(onNavigateBack = { navController.popBackStack() })
             }
+        }
+    }
+
+    if (isExpandedScreen) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            NavigationRail {
+                bottomNavItems.forEach { screen ->
+                    NavigationRailItem(
+                        icon = { Icon(screen.icon, contentDescription = screen.title) },
+                        label = { Text(screen.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
+                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                        onClick = {
+                            navController.navigate(screen.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
+                }
+
+                NavigationRailItem(
+                    icon = { Icon(Icons.Default.Menu, contentDescription = "Mehr") },
+                    label = { Text("Mehr", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
+                    selected = currentDestination?.hierarchy?.any { dest ->
+                        moreItems.any { it.route == dest.route }
+                    } == true,
+                    onClick = { showBottomSheet = true }
+                )
+            }
+
+            Box(modifier = Modifier.weight(1f)) {
+                AppNavHost()
+            }
+        }
+    } else {
+        Scaffold(
+            bottomBar = {
+                NavigationBar {
+                    bottomNavItems.forEach { screen ->
+                        NavigationBarItem(
+                            icon = { Icon(screen.icon, contentDescription = screen.title) },
+                            label = { Text(screen.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
+                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            onClick = {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        )
+                    }
+
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Menu, contentDescription = "Mehr") },
+                        label = { Text("Mehr", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
+                        selected = currentDestination?.hierarchy?.any { dest ->
+                            moreItems.any { it.route == dest.route }
+                        } == true,
+                        onClick = { showBottomSheet = true }
+                    )
+                }
+            }
+        ) { innerPadding ->
+            AppNavHost(modifier = Modifier.padding(innerPadding))
         }
     }
 }

@@ -16,16 +16,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
+import android.content.Intent
 import com.flex.data.local.OnboardingPreferences
 import com.flex.data.local.ThemePreferences
 import com.flex.data.update.UpdateChecker
 import com.flex.data.update.UpdateDownloader
 import com.flex.data.update.UpdateInfo
 import com.flex.domain.model.ThemeMode
+import com.flex.domain.model.WorkLocation
+import com.flex.domain.repository.SettingsRepository
+import com.flex.domain.usecase.ClockInUseCase
+import com.flex.notification.WorkTimerService
 import com.flex.ui.navigation.FlexNavGraph
+import com.flex.ui.navigation.Screen
 import com.flex.ui.theme.FlexTheme
 import com.flex.ui.update.UpdateDialog
+import com.flex.wearable.WearSyncHelper
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -34,6 +42,11 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var themePreferences: ThemePreferences
     @Inject lateinit var onboardingPreferences: OnboardingPreferences
+    @Inject lateinit var clockInUseCase: ClockInUseCase
+    @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var wearSyncHelper: WearSyncHelper
+
+    private val initialRouteState = mutableStateOf<String?>(null)
 
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
@@ -43,6 +56,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleShortcutIntent(intent)
         requestNotificationPermissionIfNeeded()
         requestPromotedNotificationPermissionIfNeeded()
         enableEdgeToEdge()
@@ -62,7 +76,8 @@ class MainActivity : ComponentActivity() {
                 FlexNavGraph(
                     onboardingCompleted = onboardingCompleted,
                     onOnboardingFinished = { onboardingPreferences.setCompleted() },
-                    onOnboardingReset = { onboardingPreferences.reset() }
+                    onOnboardingReset = { onboardingPreferences.reset() },
+                    initialRoute = initialRouteState.value
                 )
                 pendingUpdate?.let { update ->
                     UpdateDialog(
@@ -92,6 +107,40 @@ class MainActivity : ComponentActivity() {
 
             lifecycleScope.launch {
                 pendingUpdate = UpdateChecker.checkForUpdate(BuildConfig.VERSION_CODE)
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleShortcutIntent(intent)
+    }
+
+    private fun handleShortcutIntent(intent: Intent?) {
+        when (intent?.getStringExtra("shortcut_action")) {
+            "CLOCK_IN_OFFICE" -> {
+                lifecycleScope.launch {
+                    clockInUseCase(WorkLocation.OFFICE)
+                    wearSyncHelper.push()
+                    val settings = settingsRepository.getSettings().first()
+                    if (settings.workTimerNotificationEnabled) {
+                        startForegroundService(Intent(this@MainActivity, WorkTimerService::class.java))
+                    }
+                }
+            }
+            "CLOCK_IN_HOME_OFFICE" -> {
+                lifecycleScope.launch {
+                    clockInUseCase(WorkLocation.HOME_OFFICE)
+                    wearSyncHelper.push()
+                    val settings = settingsRepository.getSettings().first()
+                    if (settings.workTimerNotificationEnabled) {
+                        startForegroundService(Intent(this@MainActivity, WorkTimerService::class.java))
+                    }
+                }
+            }
+            "NAVIGATE_MONTH" -> {
+                initialRouteState.value = Screen.Month.route
             }
         }
     }

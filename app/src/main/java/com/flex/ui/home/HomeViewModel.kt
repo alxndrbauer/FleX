@@ -398,6 +398,7 @@ class HomeViewModel @Inject constructor(
             }
             _localDayTypeOverride.value = null
             wearSyncHelper.push()
+            updateQuickSettingsTile()
         }
     }
 
@@ -413,6 +414,16 @@ class HomeViewModel @Inject constructor(
             breakWarningScheduler.cancelWarning()
             stopWorkTimerService()
             wearSyncHelper.push()
+            updateQuickSettingsTile()
+        }
+    }
+
+    private fun updateQuickSettingsTile() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            android.service.quicksettings.TileService.requestListeningState(
+                context,
+                android.content.ComponentName(context, com.flex.tile.QuickSettingsTileService::class.java)
+            )
         }
     }
 

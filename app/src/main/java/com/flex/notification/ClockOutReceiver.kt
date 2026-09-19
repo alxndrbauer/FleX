@@ -37,6 +37,10 @@ class ClockOutReceiver : BroadcastReceiver() {
                     wearSyncHelper.push()
                 }
                 context.stopService(Intent(context, WorkTimerService::class.java))
+                android.service.quicksettings.TileService.requestListeningState(
+                    context,
+                    android.content.ComponentName(context, com.flex.tile.QuickSettingsTileService::class.java)
+                )
             } finally {
                 pendingResult.finish()
             }

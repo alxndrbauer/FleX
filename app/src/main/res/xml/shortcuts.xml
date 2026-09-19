@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="shortcut_clock_in_office"
+        android:enabled="true"
+        android:icon="@drawable/ic_notification"
+        android:shortcutShortLabel="@string/shortcut_office_short"
+        android:shortcutLongLabel="@string/shortcut_office_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.flex"
+            android:targetClass="com.flex.MainActivity">
+            <extra
+                android:name="shortcut_action"
+                android:value="CLOCK_IN_OFFICE" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="shortcut_clock_in_home_office"
+        android:enabled="true"
+        android:icon="@drawable/ic_notification"
+        android:shortcutShortLabel="@string/shortcut_home_office_short"
+        android:shortcutLongLabel="@string/shortcut_home_office_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.flex"
+            android:targetClass="com.flex.MainActivity">
+            <extra
+                android:name="shortcut_action"
+                android:value="CLOCK_IN_HOME_OFFICE" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="shortcut_navigate_month"
+        android:enabled="true"
+        android:icon="@drawable/ic_notification"
+        android:shortcutShortLabel="@string/shortcut_month_short"
+        android:shortcutLongLabel="@string/shortcut_month_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.flex"
+            android:targetClass="com.flex.MainActivity">
+            <extra
+                android:name="shortcut_action"
+                android:value="NAVIGATE_MONTH" />
+        </intent>
+    </shortcut>
+</shortcuts>

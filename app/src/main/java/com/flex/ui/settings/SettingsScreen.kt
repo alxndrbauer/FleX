@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Update
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -331,6 +332,30 @@ fun SettingsScreen(
                     },
                     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                 )
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    SettingsGroupDivider()
+                    ListItem(
+                        headlineContent = { Text("Schnelleinstellungen") },
+                        supportingContent = { Text("Kachel zum Kontrollzentrum hinzufügen") },
+                        leadingContent = { SettingsIcon(Icons.Default.Widgets, MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer) },
+                        trailingContent = {
+                            TextButton(
+                                onClick = {
+                                    val statusBarManager = context.getSystemService(android.app.StatusBarManager::class.java)
+                                    statusBarManager?.requestAddTileService(
+                                        android.content.ComponentName(context, com.flex.tile.QuickSettingsTileService::class.java),
+                                        context.getString(com.flex.R.string.app_name),
+                                        android.graphics.drawable.Icon.createWithResource(context, com.flex.R.drawable.ic_notification),
+                                        context.mainExecutor
+                                    ) { /* callback */ }
+                                }
+                            ) {
+                                Text("Hinzufügen")
+                            }
+                        },
+                        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+                    )
+                }
             }
         }
 

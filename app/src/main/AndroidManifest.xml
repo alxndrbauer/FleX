@@ -43,6 +43,9 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity-alias>
 
         <!-- Vrema (original pre-rename icon) -->
@@ -58,6 +61,9 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity-alias>
 
         <receiver
@@ -84,6 +90,39 @@
         <receiver
             android:name=".notification.ClockOutReceiver"
             android:exported="false" />
+
+        <receiver
+            android:name=".notification.SwitchLocationReceiver"
+            android:exported="false" />
+
+        <!-- Quick Settings Tile for Phone -->
+        <service
+            android:name=".tile.QuickSettingsTileService"
+            android:icon="@drawable/ic_notification"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
+
+        <activity
+            android:name=".tile.QuickSettingsDialogActivity"
+            android:theme="@style/Theme.FleX.DialogActivity"
+            android:exported="true"
+            android:taskAffinity=""
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:noHistory="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
 
         <!-- Wearable Data Layer: receives clock commands from watch -->
         <service
