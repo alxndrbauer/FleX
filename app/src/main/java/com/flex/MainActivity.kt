@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var clockInUseCase: ClockInUseCase
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var wearSyncHelper: WearSyncHelper
+    @Inject lateinit var autoBookPlannedDays: com.flex.domain.usecase.AutoBookPlannedDaysUseCase
 
     private val initialRouteState = mutableStateOf<String?>(null)
 
@@ -108,6 +109,13 @@ class MainActivity : ComponentActivity() {
             lifecycleScope.launch {
                 pendingUpdate = UpdateChecker.checkForUpdate(BuildConfig.VERSION_CODE)
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch {
+            autoBookPlannedDays()
         }
     }
 

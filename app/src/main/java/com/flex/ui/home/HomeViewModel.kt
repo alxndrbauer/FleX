@@ -23,6 +23,7 @@ import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.model.BreakCheckResult
 import com.flex.domain.usecase.CheckBreakViolationUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.domain.usecase.AutoBookPlannedDaysUseCase
 import com.flex.BuildConfig
 import com.flex.data.local.WhatsNewPreferences
 import com.flex.notification.BreakWarningScheduler
@@ -94,7 +95,8 @@ class HomeViewModel @Inject constructor(
     private val checkBreakViolation: CheckBreakViolationUseCase,
     private val breakWarningScheduler: BreakWarningScheduler,
     private val whatsNewPreferences: WhatsNewPreferences,
-    private val backupPreferences: com.flex.data.backup.BackupPreferences
+    private val backupPreferences: com.flex.data.backup.BackupPreferences,
+    private val autoBookPlannedDaysUseCase: AutoBookPlannedDaysUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -131,6 +133,7 @@ class HomeViewModel @Inject constructor(
     private val _localDayTypeOverride = MutableStateFlow<DayType?>(null)
 
     init {
+        autoBookPlannedDays()
         loadDayData()
         launchRemainingMinutesTicker()
         launchMidnightRefresh()
@@ -156,6 +159,7 @@ class HomeViewModel @Inject constructor(
                     currentDate.plusDays(1).atStartOfDay()
                 ).toMillis()
                 delay(millisUntilMidnight + 500)
+                autoBookPlannedDays()
                 if (_selectedDate.value == currentDate) {
                     _selectedDate.value = LocalDate.now()
                 }
@@ -309,6 +313,17 @@ class HomeViewModel @Inject constructor(
                     }
                 }
         }
+    }
+
+    fun autoBookPlannedDays() {
+        viewModelScope.launch {
+            autoBookPlannedDaysUseCase()
+        }
+    }
+
+    fun onResume() {
+        checkPermissions()
+        autoBookPlannedDays()
     }
 
     fun checkPermissions(settings: Settings = _uiState.value.settings) {
@@ -525,9 +540,34 @@ class HomeViewModel @Inject constructor(
 
     fun updateTimeBlock(block: TimeBlock, startTime: LocalTime, endTime: LocalTime?, location: WorkLocation) {
         viewModelScope.launch {
+            val wasRunning = block.endTime == null
+            val isNowRunning = endTime == null
             workDayRepository.saveTimeBlock(
                 block.copy(startTime = startTime, endTime = endTime, location = location)
             )
+            if (wasRunning && !isNowRunning) {
+                breakWarningScheduler.cancelWarning()
+                stopWorkTimerService()
+                updateQuickSettingsTile()
+            } else if (!wasRunning && isNowRunning) {
+                val state = _uiState.value
+                if (state.settings.breakWarningEnabled) {
+                    breakWarningScheduler.scheduleWarning(startTime)
+                }
+                if (state.settings.workTimerNotificationEnabled) {
+                    startWorkTimerService()
+                }
+                updateQuickSettingsTile()
+            } else if (wasRunning && isNowRunning) {
+                val intent = Intent(context, WorkTimerService::class.java).apply {
+                    action = WorkTimerService.ACTION_UPDATE
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            }
             wearSyncHelper.push()
         }
     }
@@ -557,6 +597,7 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+
     fun unplanWorkDay() {
         viewModelScope.launch {
             val workDay = _uiState.value.workDay ?: return@launch
@@ -577,6 +618,7 @@ class HomeViewModel @Inject constructor(
             if (isRunning) {
                 breakWarningScheduler.cancelWarning()
                 stopWorkTimerService()
+                updateQuickSettingsTile()
             }
             wearSyncHelper.push()
             _undoEvent.emit(UndoEvent("Block gelöscht") {
@@ -585,6 +627,16 @@ class HomeViewModel @Inject constructor(
                     workDayRepository.saveTimeBlock(timeBlock.copy(id = 0L, workDayId = newId))
                 } else {
                     workDayRepository.saveTimeBlock(timeBlock.copy(id = 0L))
+                }
+                if (isRunning) {
+                    val state = _uiState.value
+                    if (state.settings.breakWarningEnabled) {
+                        breakWarningScheduler.scheduleWarning(timeBlock.startTime)
+                    }
+                    if (state.settings.workTimerNotificationEnabled) {
+                        startWorkTimerService()
+                    }
+                    updateQuickSettingsTile()
                 }
                 wearSyncHelper.push()
             })
@@ -610,8 +662,14 @@ class HomeViewModel @Inject constructor(
     fun deleteDay() {
         viewModelScope.launch {
             val workDay = _uiState.value.workDay ?: return@launch
+            val wasRunning = workDay.timeBlocks.any { it.endTime == null }
             workDay.timeBlocks.forEach { workDayRepository.deleteTimeBlock(it) }
             workDayRepository.deleteWorkDay(workDay)
+            if (wasRunning) {
+                breakWarningScheduler.cancelWarning()
+                stopWorkTimerService()
+                updateQuickSettingsTile()
+            }
             _localDayTypeOverride.value = null
             wearSyncHelper.push()
         }

@@ -282,6 +282,30 @@ class FlexDatabaseIntegrationTest {
     }
 
     @Test
+    fun workDay_confirmPlannedDaysUpTo() = runTest {
+        // Insert planned days in past, today, and future
+        workDayDao.insert(WorkDayEntity(0, "2026-02-10", "OFFICE", "WORK", true, null))
+        workDayDao.insert(WorkDayEntity(0, "2026-02-15", "HOME_OFFICE", "WORK", true, null))
+        workDayDao.insert(WorkDayEntity(0, "2026-02-20", "OFFICE", "WORK", false, null))
+        workDayDao.insert(WorkDayEntity(0, "2026-03-05", "OFFICE", "WORK", true, null))
+
+        // Confirm planned days up to Feb 15
+        val count = workDayDao.confirmPlannedDaysUpTo("2026-02-15")
+        assertThat(count).isEqualTo(2)
+
+        val allDays = workDayDao.getAllWorkDays()
+        val feb10 = allDays.find { it.date == "2026-02-10" }
+        val feb15 = allDays.find { it.date == "2026-02-15" }
+        val feb20 = allDays.find { it.date == "2026-02-20" }
+        val mar05 = allDays.find { it.date == "2026-03-05" }
+
+        assertThat(feb10?.isPlanned).isFalse()
+        assertThat(feb15?.isPlanned).isFalse()
+        assertThat(feb20?.isPlanned).isFalse()
+        assertThat(mar05?.isPlanned).isTrue() // After Feb 15, stays planned
+    }
+
+    @Test
     fun timeBlock_deleteAllForDay() = runTest {
         val workDay1 = WorkDayEntity(0, "2026-02-15", "OFFICE", "WORK", false, null)
         val workDay2 = WorkDayEntity(0, "2026-02-16", "OFFICE", "WORK", false, null)

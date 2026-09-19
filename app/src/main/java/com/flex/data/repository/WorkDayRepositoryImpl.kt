@@ -189,6 +189,10 @@ class WorkDayRepositoryImpl @Inject constructor(
         workDayDao.confirmPlannedDays(start, end)
     }
 
+    override suspend fun confirmPlannedDaysUpTo(date: LocalDate): Int {
+        return workDayDao.confirmPlannedDaysUpTo(date.toString())
+    }
+
     private fun WorkDayEntity.toDomain() = WorkDay(
         id = id,
         date = LocalDate.parse(date),

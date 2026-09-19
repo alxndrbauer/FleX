@@ -67,6 +67,7 @@ class HomeViewModelWorkTimeRuleTest : BaseUnitTest() {
     @Mock private lateinit var breakWarningScheduler: BreakWarningScheduler
     @Mock private lateinit var whatsNewPreferences: WhatsNewPreferences
     @Mock private lateinit var backupPreferences: com.flex.data.backup.BackupPreferences
+    @Mock private lateinit var autoBookPlannedDays: com.flex.domain.usecase.AutoBookPlannedDaysUseCase
 
     private lateinit var viewModel: HomeViewModel
 
@@ -94,7 +95,7 @@ class HomeViewModelWorkTimeRuleTest : BaseUnitTest() {
         context, workDayRepository, settingsRepository, getMonthWorkDays,
         getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
         dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler,
-        whatsNewPreferences, backupPreferences
+        whatsNewPreferences, backupPreferences, autoBookPlannedDays
     )
 
     // ========== QuotaRule Resolution Tests ==========

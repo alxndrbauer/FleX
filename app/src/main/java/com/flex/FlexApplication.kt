@@ -34,6 +34,9 @@ class FlexApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var holidaySyncService: HolidaySyncService
 
+    @Inject
+    lateinit var autoBookPlannedDays: com.flex.domain.usecase.AutoBookPlannedDaysUseCase
+
     override fun onCreate() {
         // Fix PackageManager alias state before Hilt init — prevents stuck launcher icon
         AppIconPreferences.fixOnStartup(this)
@@ -44,6 +47,11 @@ class FlexApplication : Application(), Configuration.Provider {
                 holidaySyncService.syncForCurrentAndNextYear()
             } catch (e: Exception) {
                 Log.e("FlexApplication", "Failed to sync holidays: ${e.message}")
+            }
+            try {
+                autoBookPlannedDays()
+            } catch (e: Exception) {
+                Log.e("FlexApplication", "Failed to auto-book planned days: ${e.message}")
             }
         }
     }

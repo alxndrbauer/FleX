@@ -541,6 +541,20 @@ class WorkDayRepositoryImplTest : BaseUnitTest() {
         verify(workDayDao).confirmPlannedDays("2025-02-01", "2025-02-28")
     }
 
+    @Test
+    fun `confirmPlannedDaysUpTo calls DAO with correct date and returns count`() = runTest {
+        // Given: Date to confirm up to
+        val date = LocalDate.of(2025, 2, 15)
+        whenever(workDayDao.confirmPlannedDaysUpTo("2025-02-15")).thenReturn(3)
+
+        // When: Confirming planned days up to date
+        val result = repository.confirmPlannedDaysUpTo(date)
+
+        // Then: DAO should be called and count returned
+        verify(workDayDao).confirmPlannedDaysUpTo("2025-02-15")
+        assertThat(result).isEqualTo(3)
+    }
+
     // ========== CalendarSync Block-Loading Tests ==========
 
     @Test
