@@ -17,7 +17,7 @@ import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesian
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
-import com.patrykandpatrick.vico.compose.cartesian.data.columnSeries
+import com.patrykandpatrick.vico.compose.cartesian.data.columnModel
 import com.flex.domain.model.TimeSeriesPoint
 import java.time.format.TextStyle
 import java.util.Locale
@@ -51,7 +51,7 @@ fun MonthlyWorkHoursChart(
 
     LaunchedEffect(data) {
         modelProducer.runTransaction {
-            columnSeries {
+            columnModel {
                 series(data.map { it.value / 60.0 }) // Convert minutes to hours
             }
         }

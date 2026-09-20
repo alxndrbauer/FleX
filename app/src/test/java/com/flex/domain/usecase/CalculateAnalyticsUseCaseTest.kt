@@ -398,10 +398,10 @@ class CalculateAnalyticsUseCaseTest {
 
         val result = useCase(workDays, settings, TimeRange.Custom(prevWeekBase.minusDays(7), today.plusDays(7)))
 
-        assertThat(result.weekComparison).isNotNull()
-        assertThat(result.weekComparison!!.currentWeekMinutes).isEqualTo(960)
-        assertThat(result.weekComparison!!.previousWeekMinutes).isEqualTo(1440)
-        assertThat(result.weekComparison!!.deltaMinutes).isEqualTo(-480)
+        val comparison = checkNotNull(result.weekComparison)
+        assertThat(comparison.currentWeekMinutes).isEqualTo(960)
+        assertThat(comparison.previousWeekMinutes).isEqualTo(1440)
+        assertThat(comparison.deltaMinutes).isEqualTo(-480)
     }
 
     @Test
@@ -422,9 +422,9 @@ class CalculateAnalyticsUseCaseTest {
 
         val result = useCase(currentWeekDays, settings, TimeRange.Custom(today.minusDays(7), today.plusDays(7)))
 
-        assertThat(result.weekComparison).isNotNull()
-        assertThat(result.weekComparison!!.currentWeekMinutes).isEqualTo(960)
-        assertThat(result.weekComparison!!.previousWeekMinutes).isEqualTo(0)
+        val comparison = checkNotNull(result.weekComparison)
+        assertThat(comparison.currentWeekMinutes).isEqualTo(960)
+        assertThat(comparison.previousWeekMinutes).isEqualTo(0)
     }
 
     @Test

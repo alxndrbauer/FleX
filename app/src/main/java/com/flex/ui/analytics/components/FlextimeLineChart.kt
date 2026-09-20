@@ -17,7 +17,7 @@ import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLa
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
-import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
+import com.patrykandpatrick.vico.compose.cartesian.data.lineModel
 import com.flex.domain.model.TimeSeriesPoint
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -57,7 +57,7 @@ fun FlextimeLineChart(
 
     LaunchedEffect(data) {
         modelProducer.runTransaction {
-            lineSeries {
+            lineModel {
                 series(data.map { it.value / 60.0 }) // Convert minutes to hours
             }
         }

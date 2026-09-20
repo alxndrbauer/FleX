@@ -12,6 +12,7 @@
 - Use ConnectivityManager on Android 10+ in SettingsViewModel (Alert #31)
 - Gate getConnectedSsidLegacy to Android versions below Q (Alert #32)
 - Download APK directly into internal private storage (Alert #18)
+- Resolve compiler deprecations and packaging warnings
 
 ### Features
 

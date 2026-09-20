@@ -13,8 +13,8 @@ android {
         applicationId = "com.flex"
         minSdk = 26
         targetSdk = 37
-        versionCode = 17
-        versionName = "1.9.0"
+        versionCode = 16
+        versionName = "1.7.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -65,6 +65,9 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/LICENSE.md"
             excludes += "/META-INF/LICENSE-notice.md"
+        }
+        jniLibs {
+            keepDebugSymbols += "**/libandroidx.graphics.path.so"
         }
     }
 }

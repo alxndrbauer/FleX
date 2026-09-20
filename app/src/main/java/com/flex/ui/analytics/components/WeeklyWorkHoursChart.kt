@@ -28,7 +28,7 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
-import com.patrykandpatrick.vico.compose.cartesian.data.columnSeries
+import com.patrykandpatrick.vico.compose.cartesian.data.columnModel
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 
@@ -62,7 +62,7 @@ fun WeeklyWorkHoursChart(
 
     LaunchedEffect(data) {
         modelProducer.runTransaction {
-            columnSeries {
+            columnModel {
                 series(data.map { it.officeHours })
                 series(data.map { it.homeOfficeHours })
             }
