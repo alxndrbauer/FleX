@@ -9,7 +9,6 @@ import androidx.work.WorkManager
 import com.flex.domain.usecase.AutoClockInUseCase
 import com.flex.domain.usecase.AutoClockOutUseCase
 import com.flex.notification.BreakWarningScheduler
-import com.flex.wearable.WearSyncHelper
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
 import dagger.hilt.android.AndroidEntryPoint
@@ -29,7 +28,6 @@ class GeofenceReceiver : BroadcastReceiver() {
     @Inject lateinit var autoClockIn: AutoClockInUseCase
     @Inject lateinit var autoClockOut: AutoClockOutUseCase
     @Inject lateinit var notificationHelper: GeofenceNotificationHelper
-    @Inject lateinit var wearSyncHelper: WearSyncHelper
     @Inject lateinit var breakWarningScheduler: BreakWarningScheduler
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -49,7 +47,6 @@ class GeofenceReceiver : BroadcastReceiver() {
                         if (blockId != null) {
                             notificationHelper.showClockInNotification()
                             breakWarningScheduler.scheduleWarning(java.time.LocalTime.now())
-                            wearSyncHelper.push()
                         }
                     }
                     Geofence.GEOFENCE_TRANSITION_EXIT -> {

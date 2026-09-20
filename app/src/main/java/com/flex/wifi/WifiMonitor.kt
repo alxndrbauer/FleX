@@ -16,7 +16,6 @@ import com.flex.domain.usecase.AutoClockInUseCase
 import com.flex.domain.usecase.AutoClockOutUseCase
 import com.flex.geofence.GeofenceNotificationHelper
 import com.flex.notification.BreakWarningScheduler
-import com.flex.wearable.WearSyncHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -35,7 +34,6 @@ class WifiMonitor @Inject constructor(
     private val notificationHelper: GeofenceNotificationHelper,
     private val wifiPreferences: WifiPreferences,
     private val geofencePreferences: GeofencePreferences,
-    private val wearSyncHelper: WearSyncHelper,
     private val breakWarningScheduler: BreakWarningScheduler,
     @IoDispatcher dispatcher: CoroutineDispatcher
 ) {
@@ -81,7 +79,6 @@ class WifiMonitor @Inject constructor(
                                 geofencePreferences.lastAutoTimeBlockId = blockId
                                 notificationHelper.showClockInNotification()
                                 breakWarningScheduler.scheduleWarning(java.time.LocalTime.now())
-                                wearSyncHelper.push()
                                 Log.d("WifiMonitor", "Clocked in via WiFi, blockId=$blockId")
                             } else {
                                 // Clock-in skipped (already clocked in) → reset flag
@@ -104,7 +101,6 @@ class WifiMonitor @Inject constructor(
                         if (clocked) {
                             notificationHelper.showClockOutNotification()
                             breakWarningScheduler.cancelWarning()
-                            wearSyncHelper.push()
                             Log.d("WifiMonitor", "Clocked out via WiFi")
                         } else {
                             Log.d("WifiMonitor", "onLost: no running block, skipping notification")

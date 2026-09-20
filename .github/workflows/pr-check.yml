@@ -6,8 +6,6 @@ on:
     paths:
       - 'app/src/**'
       - 'app/build.gradle.kts'
-      - 'wear/src/**'
-      - 'wear/build.gradle.kts'
       - 'build.gradle.kts'
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
@@ -41,4 +39,4 @@ jobs:
         run: xvfb-run ./gradlew testDebugUnitTest --no-daemon
 
       - name: Build Debug APK
-        run: xvfb-run ./gradlew assembleDebug :wear:assembleDebug --no-daemon
+        run: xvfb-run ./gradlew assembleDebug --no-daemon

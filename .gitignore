@@ -10,7 +10,6 @@
 /build
 /app/build
 /app/release
-/wear/build
 .gradle
 .m2
 

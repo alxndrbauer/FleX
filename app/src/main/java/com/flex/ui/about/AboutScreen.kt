@@ -195,7 +195,7 @@ fun AboutScreen(onNavigateBack: () -> Unit) {
                         "CSV-Export für Abrechnungen",
                         "Automatische Datensicherung",
                         "Pausenzeiten-Kontrolle (§4 ArbZG)",
-                        "Wear OS Companion App mit Tiles"
+                        "Quick Settings Tile & App-Shortcuts"
                     )
                     features.forEach { feature ->
                         Row(

@@ -14,7 +14,6 @@ import com.flex.domain.usecase.AutoClockOutUseCase
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.ClockInUseCase
 import com.flex.notification.WorkTimerService
-import com.flex.wearable.WearSyncHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,7 +37,6 @@ class QuickSettingsTileService : TileService() {
     @Inject lateinit var clockInUseCase: ClockInUseCase
     @Inject lateinit var autoClockOutUseCase: AutoClockOutUseCase
     @Inject lateinit var calculateDayWorkTime: CalculateDayWorkTimeUseCase
-    @Inject lateinit var wearSyncHelper: WearSyncHelper
     @Inject lateinit var pausePreferences: PausePreferences
 
     private var serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -87,7 +85,6 @@ class QuickSettingsTileService : TileService() {
                         startForegroundService(Intent(this@QuickSettingsTileService, WorkTimerService::class.java))
                     }
                 }
-                wearSyncHelper.push()
                 TileService.requestListeningState(
                     this@QuickSettingsTileService,
                     ComponentName(this@QuickSettingsTileService, QuickSettingsTileService::class.java)

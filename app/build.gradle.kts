@@ -13,8 +13,8 @@ android {
         applicationId = "com.flex"
         minSdk = 26
         targetSdk = 37
-        versionCode = 16
-        versionName = "1.8.0"
+        versionCode = 17
+        versionName = "1.9.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -158,10 +158,6 @@ dependencies {
     // Google Play Services Location (Geofencing)
     implementation(libs.play.services.location)
     implementation(libs.osmdroid)
-
-    // Wearable Data Layer
-    implementation(libs.play.services.wearable)
-    implementation(libs.kotlinx.coroutines.play.services)
 
     // Java 8+ API desugaring (for LocalDate/LocalTime on older APIs)
     coreLibraryDesugaring(libs.desugar.jdk.libs)

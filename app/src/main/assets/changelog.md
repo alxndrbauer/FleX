@@ -19,6 +19,10 @@
 - Toggle time block location via long click on home screen
 - Add pause button, live pause mode and collapse shade on actions
 - Automatically book planned days when their date is reached
+
+### Verbesserungen
+
+- Remove Wear OS companion app and module
 ## [1.7.5] - 2026-08-09
 
 ### Bugfixes

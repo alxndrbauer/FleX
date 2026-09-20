@@ -72,17 +72,6 @@ Eine Android-App zur Erfassung von Arbeitszeiten mit Fokus auf Büro/Home-Office
 - Automatische Sicherungen via WorkManager (max. 5 lokale Backups)
 - In-App Update-Checker mit automatischem APK-Download
 
-### ⌚ Wear OS Companion App
-- **App**: 2 wischbare Screens:
-  - Heute: Tageszeit, Stempel-Status, Ein-/Ausstempeln-Button
-  - Flexzeit & Überstunden Saldo (farbcodiert)
-- **Tiles** (Kacheln in Wear OS):
-  - *FleX*: Tageszeit + Ein-/Ausstempeln-Knopf
-  - *Flexzeit*: Gleitzeit- und Überstunden-Saldo
-  - *Büroquote*: Bürotage-Fortschritt und Quote-Status
-- Echtzeit-Synchronisation mit der Phone-App via Wearable Data Layer
-- Einstempeln von der Uhr funktioniert auch am Wochenende
-
 ### 🎨 Design
 - Material 3
 - Dark Mode / Light Mode / System-Modus umschaltbar
@@ -97,7 +86,6 @@ Eine Android-App zur Erfassung von Arbeitszeiten mit Fokus auf Büro/Home-Office
 - **Location**: Google Play Services Location 21.3.0
 - **Charts**: Vico 3.0.3
 - **Build**: Gradle 9.4.0, AGP 9.1.0
-- **Wear OS**: Wear Compose 1.6.0, Wear Tiles 1.6.0 + Protolayout 1.4.0
 
 ## Installation
 
@@ -133,7 +121,6 @@ Das `deploy.sh` Skript baut und installiert APKs direkt auf verbundene Geräte v
    KEY_ALIAS=...
    KEY_PASSWORD=...
    PHONE_DEVICE=<ADB Geräte-ID des Phones>   # z.B. R3CN...  oder IP:Port
-   WATCH_DEVICE=<IP:Port der Pixel Watch>     # z.B. 192.168.1.42:5555
    ANDROID_HOME=/Users/dein-name/Library/Android/sdk
    JAVA_TOOL_OPTIONS=-Djava.awt.headless=true
    ```
@@ -141,24 +128,15 @@ Das `deploy.sh` Skript baut und installiert APKs direkt auf verbundene Geräte v
 ### Verwendung
 
 ```bash
-./deploy.sh        # Baut und installiert App + Wear (Standard)
-./deploy.sh app    # Nur Phone App
-./deploy.sh wear   # Nur Wear App
-```
-
-### Wear OS Gerät verbinden
-
-ADB-Debugging auf der Uhr aktivieren, dann entweder via Android Studio verbinden (empfohlen) oder manuell:
-```bash
-adb connect 192.168.x.x:5555
+./deploy.sh        # Baut Release-APK und installiert sie auf dem Smartphone
 ```
 
 ## CI/CD
 
 GitHub Actions baut automatisch bei jedem Push auf `main`:
 - ✅ Unit Tests
-- 📦 Release-Build (Phone + Wear) mit Keystore-Signing
-- 🏷️ GitHub Release mit `flex-vX.Y.Z.apk` und `flex-wear-vX.Y.Z.apk`
+- 📦 Release-Build mit Keystore-Signing
+- 🏷️ GitHub Release mit `flex-vX.Y.Z.apk`
 - ⚠️ Release wird nur erstellt wenn Build erfolgreich
 
 Releases: https://github.com/alxndrbauer/FleX/releases
@@ -196,21 +174,10 @@ app/src/main/java/com/flex/
 │   ├── repository/  # Repository impl
 │   └── backup/      # Backup logic
 ├── geofence/        # Geofencing (Receiver, Manager, Notifications)
+├── notification/    # WorkTimerService, Action Receivers, BreakWarning
+├── tile/            # Quick Settings Tile Service & Dialog
 ├── ui/              # Compose screens & ViewModels
-├── wearable/        # Wear OS Sync (WearSyncHelper, WearDataService)
 └── di/              # Hilt dependency injection
-
-wear/src/main/java/com/flex/wear/
-├── WearMainActivity.kt    # Entry point, 2 wischbare Screens
-├── QuotaScreen.kt         # Screen 1: Heute + Stempeln
-├── FlextimeScreen.kt      # Screen 2: Flexzeit & Überstunden
-├── FlexTileService.kt     # Tile: Heute + Stempeln
-├── FlextimeTileService.kt # Tile: Flexzeit & Überstunden
-├── QuotaTileService.kt    # Tile: Büroquote
-├── WearListenerService.kt # Data Layer Listener → Tiles refresh
-├── TileActionActivity.kt  # Bridge für Tile-Tap-Aktionen
-├── WearContract.kt        # Message-Pfade & Data-Keys
-└── WearStatus.kt          # Data-Model + DataItem Extensions
 ```
 
 ### Key Models

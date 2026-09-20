@@ -42,7 +42,6 @@ import com.flex.domain.usecase.ClockInUseCase
 import com.flex.domain.usecase.SwitchLocationUseCase
 import com.flex.notification.WorkTimerService
 import com.flex.ui.theme.FlexTheme
-import com.flex.wearable.WearSyncHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -57,7 +56,6 @@ class QuickSettingsDialogActivity : ComponentActivity() {
     @Inject lateinit var clockInUseCase: ClockInUseCase
     @Inject lateinit var autoClockOutUseCase: AutoClockOutUseCase
     @Inject lateinit var switchLocationUseCase: SwitchLocationUseCase
-    @Inject lateinit var wearSyncHelper: WearSyncHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,7 +106,6 @@ class QuickSettingsDialogActivity : ComponentActivity() {
                                     onClick = {
                                         lifecycleScope.launch {
                                             switchLocationUseCase(targetLocation)
-                                            wearSyncHelper.push()
                                             startForegroundService(
                                                 Intent(this@QuickSettingsDialogActivity, WorkTimerService::class.java).apply {
                                                     action = WorkTimerService.ACTION_UPDATE
@@ -131,7 +128,6 @@ class QuickSettingsDialogActivity : ComponentActivity() {
                                         lifecycleScope.launch {
                                             autoClockOutUseCase()
                                             stopService(Intent(this@QuickSettingsDialogActivity, WorkTimerService::class.java))
-                                            wearSyncHelper.push()
                                             notifyTileUpdate()
                                             finish()
                                         }
@@ -181,7 +177,6 @@ class QuickSettingsDialogActivity : ComponentActivity() {
         if (settings.workTimerNotificationEnabled) {
             startForegroundService(Intent(this, WorkTimerService::class.java))
         }
-        wearSyncHelper.push()
         notifyTileUpdate()
         finish()
     }

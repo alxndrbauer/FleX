@@ -31,7 +31,6 @@ import com.flex.ui.navigation.FlexNavGraph
 import com.flex.ui.navigation.Screen
 import com.flex.ui.theme.FlexTheme
 import com.flex.ui.update.UpdateDialog
-import com.flex.wearable.WearSyncHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -44,7 +43,6 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var onboardingPreferences: OnboardingPreferences
     @Inject lateinit var clockInUseCase: ClockInUseCase
     @Inject lateinit var settingsRepository: SettingsRepository
-    @Inject lateinit var wearSyncHelper: WearSyncHelper
     @Inject lateinit var autoBookPlannedDays: com.flex.domain.usecase.AutoBookPlannedDaysUseCase
 
     private val initialRouteState = mutableStateOf<String?>(null)
@@ -130,7 +128,6 @@ class MainActivity : ComponentActivity() {
             "CLOCK_IN_OFFICE" -> {
                 lifecycleScope.launch {
                     clockInUseCase(WorkLocation.OFFICE)
-                    wearSyncHelper.push()
                     val settings = settingsRepository.getSettings().first()
                     if (settings.workTimerNotificationEnabled) {
                         startForegroundService(Intent(this@MainActivity, WorkTimerService::class.java))
@@ -140,7 +137,6 @@ class MainActivity : ComponentActivity() {
             "CLOCK_IN_HOME_OFFICE" -> {
                 lifecycleScope.launch {
                     clockInUseCase(WorkLocation.HOME_OFFICE)
-                    wearSyncHelper.push()
                     val settings = settingsRepository.getSettings().first()
                     if (settings.workTimerNotificationEnabled) {
                         startForegroundService(Intent(this@MainActivity, WorkTimerService::class.java))

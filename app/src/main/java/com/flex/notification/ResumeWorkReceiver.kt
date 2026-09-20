@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.flex.domain.usecase.ClockInUseCase
-import com.flex.wearable.WearSyncHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,7 +14,6 @@ import javax.inject.Inject
 class ResumeWorkReceiver : BroadcastReceiver() {
 
     @Inject lateinit var clockInUseCase: ClockInUseCase
-    @Inject lateinit var wearSyncHelper: WearSyncHelper
 
     companion object {
         const val ACTION_RESUME_WORK = "com.flex.ACTION_RESUME_WORK"
@@ -28,7 +26,6 @@ class ResumeWorkReceiver : BroadcastReceiver() {
             try {
                 val clockedIn = clockInUseCase()
                 if (clockedIn) {
-                    wearSyncHelper.push()
                     context.startForegroundService(
                         Intent(context, WorkTimerService::class.java).apply {
                             action = WorkTimerService.ACTION_UPDATE

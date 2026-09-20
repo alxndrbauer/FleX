@@ -3,7 +3,6 @@ package com.flex.domain.usecase
 import com.flex.domain.events.DataChangeEvent
 import com.flex.domain.events.DataChangeEventBus
 import com.flex.domain.repository.WorkDayRepository
-import com.flex.wearable.WearSyncHelper
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
@@ -18,17 +17,16 @@ import java.time.LocalDate
 class AutoBookPlannedDaysUseCaseTest {
 
     private val workDayRepository: WorkDayRepository = mock()
-    private val wearSyncHelper: WearSyncHelper = mock()
     private val dataChangeEventBus: DataChangeEventBus = mock()
     private lateinit var useCase: AutoBookPlannedDaysUseCase
 
     @BeforeEach
     fun setUp() {
-        useCase = AutoBookPlannedDaysUseCase(workDayRepository, wearSyncHelper, dataChangeEventBus)
+        useCase = AutoBookPlannedDaysUseCase(workDayRepository, dataChangeEventBus)
     }
 
     @Test
-    fun `when planned days are confirmed, emits event, pushes to wear, and returns count`() = runTest {
+    fun `when planned days are confirmed, emits event and returns count`() = runTest {
         val today = LocalDate.now()
         whenever(workDayRepository.confirmPlannedDaysUpTo(today)).thenReturn(2)
 
@@ -37,11 +35,10 @@ class AutoBookPlannedDaysUseCaseTest {
         assertThat(result).isEqualTo(2)
         verify(workDayRepository).confirmPlannedDaysUpTo(today)
         verify(dataChangeEventBus).emit(DataChangeEvent.WorkDayChanged)
-        verify(wearSyncHelper).push()
     }
 
     @Test
-    fun `when no planned days are confirmed, does not emit or push, returns 0`() = runTest {
+    fun `when no planned days are confirmed, does not emit, returns 0`() = runTest {
         val today = LocalDate.now()
         whenever(workDayRepository.confirmPlannedDaysUpTo(today)).thenReturn(0)
 
@@ -50,7 +47,6 @@ class AutoBookPlannedDaysUseCaseTest {
         assertThat(result).isEqualTo(0)
         verify(workDayRepository).confirmPlannedDaysUpTo(today)
         verify(dataChangeEventBus, never()).emit(any())
-        verify(wearSyncHelper, never()).push()
     }
 
     @Test
@@ -63,6 +59,5 @@ class AutoBookPlannedDaysUseCaseTest {
         assertThat(result).isEqualTo(1)
         verify(workDayRepository).confirmPlannedDaysUpTo(customDate)
         verify(dataChangeEventBus).emit(DataChangeEvent.WorkDayChanged)
-        verify(wearSyncHelper).push()
     }
 }

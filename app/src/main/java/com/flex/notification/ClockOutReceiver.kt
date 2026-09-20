@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.flex.domain.repository.WorkDayRepository
-import com.flex.wearable.WearSyncHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +19,6 @@ class ClockOutReceiver : BroadcastReceiver() {
 
     @Inject lateinit var workDayRepository: WorkDayRepository
     @Inject lateinit var pausePreferences: PausePreferences
-    @Inject lateinit var wearSyncHelper: WearSyncHelper
 
     companion object {
         const val ACTION_CLOCK_OUT = "com.flex.ACTION_CLOCK_OUT"
@@ -37,7 +35,6 @@ class ClockOutReceiver : BroadcastReceiver() {
                 if (runningBlock != null) {
                     val now = LocalTime.now().withSecond(0).withNano(0)
                     workDayRepository.saveTimeBlock(runningBlock.copy(endTime = now))
-                    wearSyncHelper.push()
                 }
                 context.stopService(Intent(context, WorkTimerService::class.java))
                 android.service.quicksettings.TileService.requestListeningState(

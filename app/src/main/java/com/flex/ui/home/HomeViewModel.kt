@@ -27,7 +27,6 @@ import com.flex.domain.usecase.AutoBookPlannedDaysUseCase
 import com.flex.BuildConfig
 import com.flex.data.local.WhatsNewPreferences
 import com.flex.notification.BreakWarningScheduler
-import com.flex.wearable.WearSyncHelper
 import android.content.Context
 import android.content.Intent
 import android.Manifest
@@ -91,7 +90,6 @@ class HomeViewModel @Inject constructor(
     private val calculateFlextime: CalculateFlextimeUseCase,
     private val calculateQuota: CalculateQuotaUseCase,
     private val dataChangeEventBus: DataChangeEventBus,
-    private val wearSyncHelper: WearSyncHelper,
     private val checkBreakViolation: CheckBreakViolationUseCase,
     private val breakWarningScheduler: BreakWarningScheduler,
     private val whatsNewPreferences: WhatsNewPreferences,
@@ -412,7 +410,6 @@ class HomeViewModel @Inject constructor(
                 startWorkTimerService()
             }
             _localDayTypeOverride.value = null
-            wearSyncHelper.push()
             updateQuickSettingsTile()
         }
     }
@@ -428,7 +425,6 @@ class HomeViewModel @Inject constructor(
             )
             breakWarningScheduler.cancelWarning()
             stopWorkTimerService()
-            wearSyncHelper.push()
             updateQuickSettingsTile()
         }
     }
@@ -496,7 +492,6 @@ class HomeViewModel @Inject constructor(
                 TimeBlock(workDayId = workDayId, startTime = startTime, endTime = endTime, location = location)
             )
             _localDayTypeOverride.value = null
-            wearSyncHelper.push()
         }
     }
 
@@ -534,7 +529,6 @@ class HomeViewModel @Inject constructor(
                 TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = location)
             )
             _localDayTypeOverride.value = null
-            wearSyncHelper.push()
         }
     }
 
@@ -568,7 +562,6 @@ class HomeViewModel @Inject constructor(
                     context.startService(intent)
                 }
             }
-            wearSyncHelper.push()
         }
     }
 
@@ -593,7 +586,6 @@ class HomeViewModel @Inject constructor(
                 }
                 updateQuickSettingsTile()
             }
-            wearSyncHelper.push()
         }
     }
 
@@ -602,7 +594,6 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val workDay = _uiState.value.workDay ?: return@launch
             workDayRepository.saveWorkDay(workDay.copy(isPlanned = false))
-            wearSyncHelper.push()
         }
     }
 
@@ -620,7 +611,6 @@ class HomeViewModel @Inject constructor(
                 stopWorkTimerService()
                 updateQuickSettingsTile()
             }
-            wearSyncHelper.push()
             _undoEvent.emit(UndoEvent("Block gelöscht") {
                 if (isLastBlock) {
                     val newId = workDayRepository.saveWorkDay(workDay.copy(id = 0L))
@@ -638,7 +628,6 @@ class HomeViewModel @Inject constructor(
                     }
                     updateQuickSettingsTile()
                 }
-                wearSyncHelper.push()
             })
         }
     }
@@ -655,7 +644,6 @@ class HomeViewModel @Inject constructor(
                 )
             )
             _localDayTypeOverride.value = null
-            wearSyncHelper.push()
         }
     }
 
@@ -671,7 +659,6 @@ class HomeViewModel @Inject constructor(
                 updateQuickSettingsTile()
             }
             _localDayTypeOverride.value = null
-            wearSyncHelper.push()
         }
     }
 

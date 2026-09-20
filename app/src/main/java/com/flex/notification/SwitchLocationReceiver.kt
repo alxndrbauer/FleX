@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.usecase.SwitchLocationUseCase
-import com.flex.wearable.WearSyncHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +15,6 @@ import javax.inject.Inject
 class SwitchLocationReceiver : BroadcastReceiver() {
 
     @Inject lateinit var switchLocationUseCase: SwitchLocationUseCase
-    @Inject lateinit var wearSyncHelper: WearSyncHelper
 
     companion object {
         const val ACTION_SWITCH_LOCATION = "com.flex.ACTION_SWITCH_LOCATION"
@@ -33,7 +31,6 @@ class SwitchLocationReceiver : BroadcastReceiver() {
             try {
                 val switched = switchLocationUseCase(targetLocation)
                 if (switched) {
-                    wearSyncHelper.push()
                     context.startForegroundService(
                         Intent(context, WorkTimerService::class.java).apply {
                             action = WorkTimerService.ACTION_UPDATE

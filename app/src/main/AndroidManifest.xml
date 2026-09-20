@@ -143,18 +143,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Wearable Data Layer: receives clock commands from watch -->
-        <service
-            android:name=".wearable.WearDataService"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
-                <data
-                    android:scheme="wear"
-                    android:host="*"
-                    android:pathPrefix="/flex/" />
-            </intent-filter>
-        </service>
 
         <provider
             android:name="androidx.core.content.FileProvider"

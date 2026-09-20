@@ -6,8 +6,6 @@ on:
     paths:
       - 'app/src/**'
       - 'app/build.gradle.kts'
-      - 'wear/src/**'
-      - 'wear/build.gradle.kts'
       - 'build.gradle.kts'
       - 'gradle.properties'
       - 'gradle/wrapper/**'
@@ -53,7 +51,7 @@ jobs:
         run: xvfb-run ./gradlew testDebugUnitTest
 
       - name: Build Release APK
-        run: xvfb-run ./gradlew assembleRelease renameReleaseApk :wear:assembleRelease :wear:renameWearReleaseApk --no-daemon
+        run: xvfb-run ./gradlew assembleRelease renameReleaseApk --no-daemon
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -63,7 +61,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: flex-debug-build
-          path: |
-            app/build/outputs/apk/release/renamed/*.apk
-            wear/build/outputs/apk/release/renamed/*.apk
+          path: app/build/outputs/apk/release/renamed/*.apk
           retention-days: 7

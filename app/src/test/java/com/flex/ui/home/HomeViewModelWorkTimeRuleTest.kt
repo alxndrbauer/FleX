@@ -24,7 +24,6 @@ import com.flex.domain.model.BreakCheckResult
 import com.flex.domain.usecase.CheckBreakViolationUseCase
 import com.flex.data.local.WhatsNewPreferences
 import com.flex.notification.BreakWarningScheduler
-import com.flex.wearable.WearSyncHelper
 import android.content.Context
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -62,7 +61,6 @@ class HomeViewModelWorkTimeRuleTest : BaseUnitTest() {
     @Mock private lateinit var calculateFlextime: CalculateFlextimeUseCase
     @Mock private lateinit var calculateQuota: CalculateQuotaUseCase
     @Mock private lateinit var dataChangeEventBus: DataChangeEventBus
-    @Mock private lateinit var wearSyncHelper: WearSyncHelper
     @Mock private lateinit var checkBreakViolation: CheckBreakViolationUseCase
     @Mock private lateinit var breakWarningScheduler: BreakWarningScheduler
     @Mock private lateinit var whatsNewPreferences: WhatsNewPreferences
@@ -94,7 +92,7 @@ class HomeViewModelWorkTimeRuleTest : BaseUnitTest() {
     private fun createViewModel() = HomeViewModel(
         context, workDayRepository, settingsRepository, getMonthWorkDays,
         getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
-        dataChangeEventBus, wearSyncHelper, checkBreakViolation, breakWarningScheduler,
+        dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
         whatsNewPreferences, backupPreferences, autoBookPlannedDays
     )
 

@@ -51,9 +51,9 @@ jobs:
           config-file: ./.github/codeql/codeql-config.yml
           build-mode: ${{ matrix.build-mode }}
 
-      - name: Build (Kotlin & Wear)
+      - name: Build (Kotlin)
         if: matrix.language == 'java-kotlin'
-        run: xvfb-run ./gradlew compileDebugKotlin :wear:compileDebugKotlin --no-daemon
+        run: xvfb-run ./gradlew compileDebugKotlin --no-daemon
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4.37.9

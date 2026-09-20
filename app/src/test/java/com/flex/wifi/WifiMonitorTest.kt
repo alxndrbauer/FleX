@@ -8,7 +8,6 @@ import com.flex.domain.usecase.AutoClockInUseCase
 import com.flex.domain.usecase.AutoClockOutUseCase
 import com.flex.geofence.GeofenceNotificationHelper
 import com.flex.notification.BreakWarningScheduler
-import com.flex.wearable.WearSyncHelper
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -32,7 +31,6 @@ class WifiMonitorTest {
     @Mock private lateinit var notificationHelper: GeofenceNotificationHelper
     @Mock private lateinit var wifiPreferences: WifiPreferences
     @Mock private lateinit var geofencePreferences: GeofencePreferences
-    @Mock private lateinit var wearSyncHelper: WearSyncHelper
     @Mock private lateinit var breakWarningScheduler: BreakWarningScheduler
     @Mock private lateinit var mockNetwork: Network
 
@@ -44,7 +42,7 @@ class WifiMonitorTest {
         whenever(context.getSystemService(Context.CONNECTIVITY_SERVICE)).thenReturn(connectivityManager)
         wifiMonitor = WifiMonitor(
             context, autoClockIn, autoClockOut, notificationHelper,
-            wifiPreferences, geofencePreferences, wearSyncHelper, breakWarningScheduler,
+            wifiPreferences, geofencePreferences, breakWarningScheduler,
             testDispatcher
         )
     }
