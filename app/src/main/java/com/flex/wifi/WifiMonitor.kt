@@ -7,8 +7,6 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.wifi.WifiInfo
-import android.net.wifi.WifiManager
-import android.os.Build
 import android.util.Log
 import com.flex.data.local.GeofencePreferences
 import com.flex.di.IoDispatcher
@@ -61,11 +59,7 @@ class WifiMonitor @Inject constructor(
     internal fun buildNetworkCallback(targetSsid: String): ConnectivityManager.NetworkCallback {
         return object : ConnectivityManager.NetworkCallback() {
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-                val ssid = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    getSsidFromCapabilities(capabilities)
-                } else {
-                    getConnectedSsidLegacy()
-                }
+                val ssid = getSsidFromCapabilities(capabilities)
                 Log.d("WifiMonitor", "onCapabilitiesChanged: ssid=$ssid target=$targetSsid connected=${wifiPreferences.wasConnectedToTarget}")
                 if (ssid == targetSsid) {
                     // Cancel any pending clock-out — WiFi is (re)connected to target
@@ -124,20 +118,8 @@ class WifiMonitor @Inject constructor(
 
     @SuppressLint("MissingPermission")
     private fun getSsidFromCapabilities(capabilities: NetworkCapabilities): String? {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val wifiInfo = capabilities.transportInfo as? WifiInfo ?: return null
-            return wifiInfo.ssid?.removeSurrounding("\"")
-                ?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
-        }
-        return null
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun getConnectedSsidLegacy(): String? {
-        val wifiManager = context.applicationContext
-            .getSystemService(Context.WIFI_SERVICE) as WifiManager
-        @Suppress("DEPRECATION")
-        return wifiManager.connectionInfo?.ssid?.removeSurrounding("\"")
+        val wifiInfo = capabilities.transportInfo as? WifiInfo ?: return null
+        return wifiInfo.ssid?.removeSurrounding("\"")
             ?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
     }
 }

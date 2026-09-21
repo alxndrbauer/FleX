@@ -23,6 +23,7 @@ import com.flex.domain.model.BreakCheckResult
 import com.flex.domain.usecase.CheckBreakViolationUseCase
 import com.flex.data.local.WhatsNewPreferences
 import com.flex.notification.BreakWarningScheduler
+import com.flex.notification.WorkTimerService
 import android.content.Context
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -812,6 +813,7 @@ class HomeViewModelTest : BaseUnitTest() {
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
         )
         advanceUntilIdle()
+        org.mockito.kotlin.clearInvocations(context)
 
         viewModel.toggleTimeBlockLocation(runningBlock)
         advanceUntilIdle()

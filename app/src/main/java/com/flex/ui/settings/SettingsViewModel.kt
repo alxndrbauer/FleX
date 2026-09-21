@@ -3,10 +3,8 @@ package com.flex.ui.settings
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Geocoder
-import android.os.Build
 import android.net.ConnectivityManager
 import android.net.wifi.WifiInfo
-import android.net.wifi.WifiManager
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -141,15 +139,8 @@ class SettingsViewModel @Inject constructor(
     fun geocodeAddress(address: String, onResult: (Double, Double) -> Unit, onError: () -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    Geocoder(context, Locale.getDefault()).getFromLocationName(address, 1) { results ->
-                        val loc = results.firstOrNull()
-                        if (loc != null) onResult(loc.latitude, loc.longitude) else onError()
-                    }
-                } else {
-                    @Suppress("DEPRECATION")
-                    val results = Geocoder(context, Locale.getDefault()).getFromLocationName(address, 1)
-                    val loc = results?.firstOrNull()
+                Geocoder(context, Locale.getDefault()).getFromLocationName(address, 1) { results ->
+                    val loc = results.firstOrNull()
                     if (loc != null) onResult(loc.latitude, loc.longitude) else onError()
                 }
             } catch (_: Exception) {
@@ -184,21 +175,11 @@ class SettingsViewModel @Inject constructor(
 
     @SuppressLint("MissingPermission")
     fun getCurrentWifiSsid(): String? {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            val network = cm?.activeNetwork
-            val capabilities = cm?.getNetworkCapabilities(network)
-            val wifiInfo = capabilities?.transportInfo as? WifiInfo
-            val ssid = wifiInfo?.ssid?.removeSurrounding("\"")
-            if (ssid != null && ssid.isNotBlank() && ssid != "<unknown ssid>") {
-                return ssid
-            }
-        }
-        val wifiManager = context.applicationContext
-            .getSystemService(Context.WIFI_SERVICE) as WifiManager
-        @Suppress("DEPRECATION")
-        return wifiManager.connectionInfo?.ssid
-            ?.removeSurrounding("\"")
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val network = cm?.activeNetwork
+        val capabilities = cm?.getNetworkCapabilities(network)
+        val wifiInfo = capabilities?.transportInfo as? WifiInfo
+        return wifiInfo?.ssid?.removeSurrounding("\"")
             ?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
     }
 

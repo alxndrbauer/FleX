@@ -21,6 +21,7 @@
 - Toggle time block location via long click on home screen
 - Add pause button, live pause mode and collapse shade on actions
 - Automatically book planned days when their date is reached
+- Bump minSdk to 33 (Android 13) and clean up legacy fallbacks
 
 ### Verbesserungen
 

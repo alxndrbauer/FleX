@@ -31,7 +31,6 @@ import android.content.Context
 import android.content.Intent
 import android.Manifest
 import android.content.pm.PackageManager
-import android.os.Build
 import androidx.core.content.ContextCompat
 import com.flex.notification.WorkTimerService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -361,8 +360,7 @@ class HomeViewModel @Inject constructor(
 
         val issues = buildList {
             if (settings.geofenceEnabled) {
-                val bgOk = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-                    granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION) else true
+                val bgOk = granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 if (!granted(Manifest.permission.ACCESS_FINE_LOCATION) || !bgOk)
                     add("Geofencing")
             }
@@ -461,12 +459,10 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun updateQuickSettingsTile() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            android.service.quicksettings.TileService.requestListeningState(
-                context,
-                android.content.ComponentName(context, com.flex.tile.QuickSettingsTileService::class.java)
-            )
-        }
+        android.service.quicksettings.TileService.requestListeningState(
+            context,
+            android.content.ComponentName(context, com.flex.tile.QuickSettingsTileService::class.java)
+        )
     }
 
     private fun startWorkTimerService() {
@@ -587,11 +583,7 @@ class HomeViewModel @Inject constructor(
                 val intent = Intent(context, WorkTimerService::class.java).apply {
                     action = WorkTimerService.ACTION_UPDATE
                 }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent)
-                } else {
-                    context.startService(intent)
-                }
+                context.startForegroundService(intent)
             }
         }
     }
@@ -610,11 +602,7 @@ class HomeViewModel @Inject constructor(
                 val intent = Intent(context, WorkTimerService::class.java).apply {
                     action = WorkTimerService.ACTION_UPDATE
                 }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent)
-                } else {
-                    context.startService(intent)
-                }
+                context.startForegroundService(intent)
                 updateQuickSettingsTile()
             }
         }

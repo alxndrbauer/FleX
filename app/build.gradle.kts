@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.flex"
-        minSdk = 26
+        minSdk = 33
         targetSdk = 37
         versionCode = 16
         versionName = "1.7.7"

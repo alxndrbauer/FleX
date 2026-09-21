@@ -213,12 +213,10 @@ class WorkTimerService : Service() {
     }
 
     private fun updateQuickSettingsTile() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            android.service.quicksettings.TileService.requestListeningState(
-                this,
-                android.content.ComponentName(this, com.flex.tile.QuickSettingsTileService::class.java)
-            )
-        }
+        android.service.quicksettings.TileService.requestListeningState(
+            this,
+            android.content.ComponentName(this, com.flex.tile.QuickSettingsTileService::class.java)
+        )
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

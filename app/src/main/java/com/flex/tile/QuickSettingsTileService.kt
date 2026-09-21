@@ -3,7 +3,6 @@ package com.flex.tile
 import android.content.ComponentName
 import android.content.Intent
 import android.graphics.drawable.Icon
-import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import com.flex.R
@@ -114,21 +113,15 @@ class QuickSettingsTileService : TileService() {
             val h = netMinutes / 60
             val m = netMinutes % 60
             val dur = String.format(Locale.getDefault(), "%d:%02d h", h, m)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                tile.subtitle = "$dur · $loc"
-            }
+            tile.subtitle = "$dur · $loc"
         } else if (pausePreferences.isPaused) {
             tile.state = Tile.STATE_INACTIVE
             tile.icon = Icon.createWithResource(this, R.drawable.ic_notification)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                tile.subtitle = "In Pause"
-            }
+            tile.subtitle = "In Pause"
         } else {
             tile.state = Tile.STATE_INACTIVE
             tile.icon = Icon.createWithResource(this, R.drawable.ic_notification)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                tile.subtitle = "Ausgestempelt"
-            }
+            tile.subtitle = "Ausgestempelt"
         }
         tile.updateTile()
     }
