@@ -198,6 +198,77 @@ class HomeViewModelTest : BaseUnitTest() {
     }
 
     @Test
+    fun `initial state computes live dayWorkTime and liveFlextimeDelta when clock is running`() = runTest {
+        val today = LocalDate.now()
+        val runningBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(9, 0),
+            endTime = null
+        )
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        whenever(calculateDayWorkTime(listOf(runningBlock))).thenReturn(DayWorkTimeResult(0, 0, 0, false))
+        val liveResult = DayWorkTimeResult(grossMinutes = 120, netMinutes = 120, breakMinutes = 0, exceedsMaxHours = false)
+        whenever(calculateDayWorkTime(org.mockito.kotlin.argThat { blocks ->
+            blocks.size == 1 && blocks[0].endTime != null
+        })).thenReturn(liveResult)
+
+        viewModel = HomeViewModel(
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
+        )
+        advanceUntilIdle()
+
+        // Then: State should immediately reflect the live calculation, NOT 0
+        assertThat(viewModel.uiState.value.isClockRunning).isTrue()
+        assertThat(viewModel.uiState.value.dayWorkTime.netMinutes).isEqualTo(120)
+        assertThat(viewModel.uiState.value.baseDayNetMinutes).isEqualTo(0)
+        assertThat(viewModel.uiState.value.liveFlextimeDelta).isEqualTo(120)
+    }
+
+    @Test
+    fun `onResume immediately updates live dayWorkTime and liveFlextimeDelta when clock is running`() = runTest {
+        val today = LocalDate.now()
+        val runningBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(9, 0),
+            endTime = null
+        )
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        val initialLive = DayWorkTimeResult(grossMinutes = 60, netMinutes = 60, breakMinutes = 0, exceedsMaxHours = false)
+        val updatedLive = DayWorkTimeResult(grossMinutes = 90, netMinutes = 90, breakMinutes = 0, exceedsMaxHours = false)
+
+        var callCount = 0
+        whenever(calculateDayWorkTime(org.mockito.kotlin.argThat { blocks ->
+            blocks.size == 1 && blocks[0].endTime != null
+        })).thenAnswer {
+            callCount++
+            if (callCount <= 2) initialLive else updatedLive
+        }
+
+        viewModel = HomeViewModel(
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.dayWorkTime.netMinutes).isEqualTo(60)
+
+        // When: User resumes the app
+        viewModel.onResume()
+        advanceUntilIdle()
+
+        // Then: Live work time is updated immediately
+        assertThat(viewModel.uiState.value.dayWorkTime.netMinutes).isEqualTo(90)
+        assertThat(viewModel.uiState.value.liveFlextimeDelta).isEqualTo(90)
+    }
+
+    @Test
     fun `initial state calculates dayWorkTime from timeBlocks`() = runTest {
         // Given: Work day with time blocks
         val today = LocalDate.now()

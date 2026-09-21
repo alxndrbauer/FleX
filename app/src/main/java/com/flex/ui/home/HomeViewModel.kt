@@ -165,24 +165,35 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun updateLiveWorkTime() {
+        val state = _uiState.value
+        val today = LocalDate.now()
+        if (state.isClockRunning && state.selectedDate == today) {
+            val now = LocalTime.now()
+            val blocksForCalc = state.timeBlocks.map { block ->
+                if (block.endTime == null) block.copy(endTime = now) else block
+            }
+            val liveWorkTime = calculateDayWorkTime(blocksForCalc)
+            val liveFlexDelta = liveWorkTime.netMinutes - state.baseDayNetMinutes
+            val liveBreakCheck = if (state.settings.breakWarningEnabled)
+                checkBreakViolation(blocksForCalc)
+            else BreakCheckResult(emptyList(), skipped = false)
+            _uiState.update {
+                it.copy(
+                    dayWorkTime = liveWorkTime,
+                    liveFlextimeDelta = liveFlexDelta,
+                    breakCheckResult = liveBreakCheck
+                )
+            }
+        }
+        _remainingMinutes.value = computeRemainingMinutes(_uiState.value)
+    }
+
     private fun launchRemainingMinutesTicker() {
         viewModelScope.launch(Dispatchers.Default) {
             while (true) {
-                delay(30_000L)
-                val state = _uiState.value
-                if (state.isClockRunning) {
-                    val now = LocalTime.now()
-                    val blocksForCalc = state.timeBlocks.map { block ->
-                        if (block.endTime == null) block.copy(endTime = now) else block
-                    }
-                    val liveWorkTime = calculateDayWorkTime(blocksForCalc)
-                    val liveFlexDelta = liveWorkTime.netMinutes - state.baseDayNetMinutes
-                    val liveBreakCheck = if (state.settings.breakWarningEnabled)
-                        checkBreakViolation(blocksForCalc)
-                    else BreakCheckResult(emptyList(), skipped = false)
-                    _uiState.update { it.copy(dayWorkTime = liveWorkTime, liveFlextimeDelta = liveFlexDelta, breakCheckResult = liveBreakCheck) }
-                }
-                _remainingMinutes.value = computeRemainingMinutes(_uiState.value)
+                delay(15_000L)
+                updateLiveWorkTime()
             }
         }
     }
@@ -224,9 +235,28 @@ class HomeViewModel @Inject constructor(
 
                         val timeBlocks = workDay?.timeBlocks ?: emptyList()
                         val isRunning = timeBlocks.any { it.endTime == null }
-                        val dayResult = calculateDayWorkTime(timeBlocks)
+                        val baseDayResult = calculateDayWorkTime(timeBlocks)
+                        val isToday = date == today
+                        val now = LocalTime.now()
+                        val blocksForCalc = if (isRunning && isToday) {
+                            timeBlocks.map { block ->
+                                if (block.endTime == null) block.copy(endTime = now) else block
+                            }
+                        } else {
+                            timeBlocks
+                        }
+                        val initialDayResult = if (isRunning && isToday) {
+                            calculateDayWorkTime(blocksForCalc)
+                        } else {
+                            baseDayResult
+                        }
+                        val initialLiveDelta = if (isRunning && isToday) {
+                            initialDayResult.netMinutes - baseDayResult.netMinutes
+                        } else {
+                            0L
+                        }
                         val breakCheckResult = if (settings.breakWarningEnabled)
-                            checkBreakViolation(timeBlocks)
+                            checkBreakViolation(blocksForCalc)
                         else
                             BreakCheckResult(emptyList(), skipped = false)
                         // Exclude planned days from calculations in current month.
@@ -283,9 +313,9 @@ class HomeViewModel @Inject constructor(
                                 isClockRunning = isRunning,
                                 selectedLocation = workDay?.location ?: WorkLocation.OFFICE,
                                 selectedDayType = override ?: workDay?.dayType ?: DayType.WORK,
-                                dayWorkTime = dayResult,
-                                baseDayNetMinutes = dayResult.netMinutes,
-                                liveFlextimeDelta = 0,
+                                dayWorkTime = initialDayResult,
+                                baseDayNetMinutes = baseDayResult.netMinutes,
+                                liveFlextimeDelta = initialLiveDelta,
                                 flextimeBalance = flextime,
                                 monthlyFlextimeBalance = monthlyFlextime,
                                 quotaStatus = quota,
@@ -322,6 +352,7 @@ class HomeViewModel @Inject constructor(
     fun onResume() {
         checkPermissions()
         autoBookPlannedDays()
+        updateLiveWorkTime()
     }
 
     fun checkPermissions(settings: Settings = _uiState.value.settings) {

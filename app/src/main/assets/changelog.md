@@ -13,6 +13,7 @@
 - Gate getConnectedSsidLegacy to Android versions below Q (Alert #32)
 - Download APK directly into internal private storage (Alert #18)
 - Resolve compiler deprecations and packaging warnings
+- Prevent timer reset to 0 on app reopen and update immediately on resume
 
 ### Features
 
