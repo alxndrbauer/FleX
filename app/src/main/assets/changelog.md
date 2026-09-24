@@ -22,6 +22,7 @@
 - Add pause button, live pause mode and collapse shade on actions
 - Automatically book planned days when their date is reached
 - Bump minSdk to 33 (Android 13) and clean up legacy fallbacks
+- Live flextime balances and adjusted time booking in home view
 
 ### Verbesserungen
 

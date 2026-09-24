@@ -548,8 +548,8 @@ fun HomeScreen(
                 viewModel.deleteTimeBlock(block)
                 editingBlock = null
             },
-            onUnplan = if (state.workDay?.isPlanned == true) ({
-                viewModel.unplanWorkDay()
+            onBook = if (state.workDay?.isPlanned == true) ({ startTime, endTime, location ->
+                viewModel.bookTimeBlock(block, startTime, endTime, location)
                 editingBlock = null
             }) else null
         )
@@ -812,16 +812,18 @@ private fun HeroCard(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        if (state.liveFlextimeDelta > 0L) {
-                            val liveTotal = state.flextimeBalance.totalMinutes + state.liveFlextimeDelta
-                            val sign = if (liveTotal >= 0) "+" else "-"
-                            val h = kotlin.math.abs(liveTotal) / 60
-                            val m = kotlin.math.abs(liveTotal) % 60
+                        val liveBalance = state.liveFlextimeBalance
+                        if (liveBalance != null) {
                             Text(
-                                text = "→ ${sign}${h}h ${m}min",
+                                text = state.flextimeBalance.formatDisplay(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "→ ${liveBalance.formatDisplay()}",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = if (liveTotal >= 0) MaterialTheme.colorScheme.primary
+                                color = if (liveBalance.isPositive) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.error
                             )
                         } else {
@@ -843,24 +845,32 @@ private fun HeroCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         val monthlyEarned = state.monthlyFlextimeBalance.earnedMinutes
-                        if (state.liveFlextimeDelta > 0L) {
-                            val liveMonthly = monthlyEarned + state.liveFlextimeDelta
-                            val liveSign = if (liveMonthly >= 0) "+" else "-"
-                            val liveH = kotlin.math.abs(liveMonthly) / 60
-                            val liveM = kotlin.math.abs(liveMonthly) % 60
+                        val monthlySign = if (monthlyEarned >= 0) "+" else "-"
+                        val monthlyH = kotlin.math.abs(monthlyEarned) / 60
+                        val monthlyM = kotlin.math.abs(monthlyEarned) % 60
+                        val baseMonthlyText = "$monthlySign${monthlyH}h ${monthlyM}min"
+
+                        val liveMonthly = state.liveMonthlyFlextimeBalance
+                        if (liveMonthly != null) {
+                            val liveEarned = liveMonthly.earnedMinutes
+                            val liveSign = if (liveEarned >= 0) "+" else "-"
+                            val liveH = kotlin.math.abs(liveEarned) / 60
+                            val liveM = kotlin.math.abs(liveEarned) % 60
+                            Text(
+                                text = baseMonthlyText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             Text(
                                 text = "→ ${liveSign}${liveH}h ${liveM}min",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = if (liveMonthly >= 0) MaterialTheme.colorScheme.primary
+                                color = if (liveEarned >= 0) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.error
                             )
                         } else {
-                            val monthlySign = if (monthlyEarned >= 0) "+" else "-"
-                            val monthlyH = kotlin.math.abs(monthlyEarned) / 60
-                            val monthlyM = kotlin.math.abs(monthlyEarned) % 60
                             Text(
-                                text = "$monthlySign${monthlyH}h ${monthlyM}min",
+                                text = baseMonthlyText,
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = if (monthlyEarned >= 0)
@@ -1338,7 +1348,7 @@ fun EditTimeBlockDialog(
     onDismiss: () -> Unit,
     onSave: (startTime: LocalTime, endTime: LocalTime?, location: WorkLocation) -> Unit,
     onDelete: () -> Unit,
-    onUnplan: (() -> Unit)? = null
+    onBook: ((startTime: LocalTime, endTime: LocalTime?, location: WorkLocation) -> Unit)? = null
 ) {
     val fmt = DateTimeFormatter.ofPattern("HH:mm")
     var startText by remember { mutableStateOf(TextFieldValue(block.startTime.format(fmt))) }
@@ -1387,10 +1397,17 @@ fun EditTimeBlockDialog(
         },
         confirmButton = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                if (onUnplan != null) {
+                if (onBook != null) {
                     HorizontalDivider()
                     TextButton(
-                        onClick = onUnplan,
+                        onClick = {
+                            try {
+                                val start = LocalTime.parse(startText.text, DateTimeFormatter.ofPattern("HH:mm"))
+                                val end = if (endText.text.isBlank()) null
+                                else LocalTime.parse(endText.text, DateTimeFormatter.ofPattern("HH:mm"))
+                                onBook(start, end, dialogLocation)
+                            } catch (_: Exception) { }
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Buchen")

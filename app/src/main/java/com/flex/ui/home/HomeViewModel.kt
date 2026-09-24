@@ -67,6 +67,8 @@ data class HomeUiState(
     val liveFlextimeDelta: Long = 0,
     val flextimeBalance: FlextimeBalance = FlextimeBalance(),
     val monthlyFlextimeBalance: FlextimeBalance = FlextimeBalance(),
+    val liveFlextimeBalance: FlextimeBalance? = null,
+    val liveMonthlyFlextimeBalance: FlextimeBalance? = null,
     val quotaStatus: QuotaStatus = QuotaStatus(),
     val settings: Settings = Settings(),
     val effectiveQuotaPercent: Int = 40,
@@ -109,6 +111,8 @@ class HomeViewModel @Inject constructor(
     val remainingMinutes: StateFlow<Int?> = _remainingMinutes.asStateFlow()
 
     private var cachedWorkTimeRules: List<WorkTimeRule> = emptyList()
+    private var cachedMonthDays: List<WorkDay> = emptyList()
+    private var cachedYearDays: List<WorkDay> = emptyList()
 
     private fun computeRemainingMinutes(state: HomeUiState, workTimeRules: List<WorkTimeRule> = cachedWorkTimeRules): Int? {
         val today = LocalDate.now()
@@ -177,11 +181,22 @@ class HomeViewModel @Inject constructor(
             val liveBreakCheck = if (state.settings.breakWarningEnabled)
                 checkBreakViolation(blocksForCalc)
             else BreakCheckResult(emptyList(), skipped = false)
+
+            val todayWithNow = (state.workDay ?: WorkDay(date = today, location = state.selectedLocation, dayType = state.selectedDayType)).copy(timeBlocks = blocksForCalc)
+            val todayYearMonth = YearMonth.from(today)
+            val selectedYearMonth = YearMonth.from(state.selectedDate)
+            val liveMonthDays = cachedMonthDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
+            val liveYearDays = cachedYearDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
+            val liveFlextime = calculateFlextime(liveYearDays, state.settings, todayYearMonth, cachedWorkTimeRules)
+            val liveMonthlyFlextime = calculateFlextime(liveMonthDays, state.settings, selectedYearMonth, cachedWorkTimeRules)
+
             _uiState.update {
                 it.copy(
                     dayWorkTime = liveWorkTime,
                     liveFlextimeDelta = liveFlexDelta,
-                    breakCheckResult = liveBreakCheck
+                    breakCheckResult = liveBreakCheck,
+                    liveFlextimeBalance = liveFlextime,
+                    liveMonthlyFlextimeBalance = liveMonthlyFlextime
                 )
             }
         }
@@ -276,8 +291,30 @@ class HomeViewModel @Inject constructor(
                             else resolved
                         }
                         cachedWorkTimeRules = workTimeRules
-                        val flextime = calculateFlextime(actualYearDays, settings, todayYearMonth, workTimeRules)
-                        val monthlyFlextime = calculateFlextime(actualMonthDays, settings, yearMonth, workTimeRules)
+                        cachedMonthDays = monthDays
+                        cachedYearDays = yearDays
+
+                        val (flextime, monthlyFlextime, liveFlextime, liveMonthlyFlextime) = if (isRunning && isToday) {
+                            val todayWithNow = (workDay ?: WorkDay(date = today, location = workDay?.location ?: WorkLocation.OFFICE, dayType = override ?: workDay?.dayType ?: DayType.WORK)).copy(timeBlocks = blocksForCalc)
+                            val liveMDays = monthDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
+                            val liveYDays = yearDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
+                            val baseMDays = monthDays.filter { !it.isPlanned && it.date.isBefore(today) }
+                            val baseYDays = yearDays.filter { !it.isPlanned && it.date.isBefore(today) }
+                            listOf(
+                                calculateFlextime(baseYDays, settings, todayYearMonth, workTimeRules),
+                                calculateFlextime(baseMDays, settings, yearMonth, workTimeRules),
+                                calculateFlextime(liveYDays, settings, todayYearMonth, workTimeRules),
+                                calculateFlextime(liveMDays, settings, yearMonth, workTimeRules)
+                            )
+                        } else {
+                            listOf(
+                                calculateFlextime(actualYearDays, settings, todayYearMonth, workTimeRules),
+                                calculateFlextime(actualMonthDays, settings, yearMonth, workTimeRules),
+                                null,
+                                null
+                            )
+                        }
+
                         val quota = calculateQuota(actualMonthDays, settings, yearMonth, qPercent, qDays, workTimeRules)
 
                         val baseMonthlyTarget = (settingsRepository.getWorkTimeRuleForDate(yearMonth.atEndOfMonth(), workTimeRules)?.monthlyWorkMinutes ?: settings.monthlyWorkMinutes).toLong()
@@ -315,8 +352,10 @@ class HomeViewModel @Inject constructor(
                                 dayWorkTime = initialDayResult,
                                 baseDayNetMinutes = baseDayResult.netMinutes,
                                 liveFlextimeDelta = initialLiveDelta,
-                                flextimeBalance = flextime,
-                                monthlyFlextimeBalance = monthlyFlextime,
+                                flextimeBalance = flextime ?: FlextimeBalance(),
+                                monthlyFlextimeBalance = monthlyFlextime ?: FlextimeBalance(),
+                                liveFlextimeBalance = liveFlextime,
+                                liveMonthlyFlextimeBalance = liveMonthlyFlextime,
                                 quotaStatus = quota,
                                 settings = settings,
                                 effectiveQuotaPercent = qPercent,
@@ -608,6 +647,36 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+
+    fun bookTimeBlock(block: TimeBlock, startTime: LocalTime, endTime: LocalTime?, location: WorkLocation) {
+        viewModelScope.launch {
+            val wasRunning = block.endTime == null
+            val isNowRunning = endTime == null
+            val workDay = _uiState.value.workDay
+            if (workDay != null && workDay.isPlanned) {
+                workDayRepository.saveWorkDay(workDay.copy(isPlanned = false, location = location))
+            }
+            workDayRepository.saveTimeBlock(
+                block.copy(startTime = startTime, endTime = endTime, location = location)
+            )
+            if (wasRunning && !isNowRunning) {
+                breakWarningScheduler.cancelWarning()
+                stopWorkTimerService()
+                updateQuickSettingsTile()
+            } else if (!wasRunning && isNowRunning) {
+                val state = _uiState.value
+                if (state.settings.breakWarningEnabled) {
+                    breakWarningScheduler.scheduleWarning(startTime)
+                }
+                if (state.settings.workTimerNotificationEnabled) {
+                    startWorkTimerService()
+                }
+                updateQuickSettingsTile()
+            } else if (isNowRunning) {
+                updateQuickSettingsTile()
+            }
+        }
+    }
 
     fun unplanWorkDay() {
         viewModelScope.launch {

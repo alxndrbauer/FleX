@@ -252,6 +252,19 @@ class HomeViewModelTest : BaseUnitTest() {
             if (callCount <= 2) initialLive else updatedLive
         }
 
+        val initialLiveFlex = FlextimeBalance(totalMinutes = 100, earnedMinutes = 100)
+        val updatedLiveFlex = FlextimeBalance(totalMinutes = 130, earnedMinutes = 130)
+        var flexCallCount = 0
+        whenever(calculateFlextime(any(), any(), any(), any())).thenAnswer { invocation ->
+            @Suppress("UNCHECKED_CAST")
+            val days = invocation.arguments[0] as List<WorkDay>
+            val containsTodayWithEndTime = days.any { d -> d.date == today && d.timeBlocks.any { it.endTime != null } }
+            if (containsTodayWithEndTime) {
+                flexCallCount++
+                if (flexCallCount <= 2) initialLiveFlex else updatedLiveFlex
+            } else FlextimeBalance()
+        }
+
         viewModel = HomeViewModel(
             context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
@@ -259,14 +272,76 @@ class HomeViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.dayWorkTime.netMinutes).isEqualTo(60)
+        assertThat(viewModel.uiState.value.liveFlextimeBalance?.totalMinutes).isEqualTo(100)
 
         // When: User resumes the app
         viewModel.onResume()
         advanceUntilIdle()
 
-        // Then: Live work time is updated immediately
+        // Then: Live work time and live flextime are updated immediately
         assertThat(viewModel.uiState.value.dayWorkTime.netMinutes).isEqualTo(90)
         assertThat(viewModel.uiState.value.liveFlextimeDelta).isEqualTo(90)
+        assertThat(viewModel.uiState.value.liveFlextimeBalance?.totalMinutes).isEqualTo(130)
+    }
+
+    @Test
+    fun `initial state computes liveFlextimeBalance and liveMonthlyFlextimeBalance when clock is running`() = runTest {
+        val today = LocalDate.now()
+        val runningBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(9, 0),
+            endTime = null
+        )
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        val baseFlextime = FlextimeBalance(totalMinutes = 600, earnedMinutes = 120)
+        val liveFlextime = FlextimeBalance(totalMinutes = 240, earnedMinutes = -240)
+
+        whenever(calculateFlextime(any(), any(), any(), any())).thenAnswer { invocation ->
+            @Suppress("UNCHECKED_CAST")
+            val days = invocation.arguments[0] as List<WorkDay>
+            val containsTodayWithEndTime = days.any { d -> d.date == today && d.timeBlocks.any { it.endTime != null } }
+            if (containsTodayWithEndTime) liveFlextime else baseFlextime
+        }
+
+        viewModel = HomeViewModel(
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isClockRunning).isTrue()
+        assertThat(viewModel.uiState.value.flextimeBalance.totalMinutes).isEqualTo(600)
+        assertThat(viewModel.uiState.value.monthlyFlextimeBalance.earnedMinutes).isEqualTo(120)
+        assertThat(viewModel.uiState.value.liveFlextimeBalance).isNotNull()
+        assertThat(viewModel.uiState.value.liveFlextimeBalance?.totalMinutes).isEqualTo(240)
+        assertThat(viewModel.uiState.value.liveMonthlyFlextimeBalance).isNotNull()
+        assertThat(viewModel.uiState.value.liveMonthlyFlextimeBalance?.earnedMinutes).isEqualTo(-240)
+    }
+
+    @Test
+    fun `liveFlextimeBalance and liveMonthlyFlextimeBalance are null when clock is not running`() = runTest {
+        val today = LocalDate.now()
+        val completedBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(9, 0),
+            endTime = LocalTime.of(17, 0)
+        )
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(completedBlock))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = HomeViewModel(
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isClockRunning).isFalse()
+        assertThat(viewModel.uiState.value.liveFlextimeBalance).isNull()
+        assertThat(viewModel.uiState.value.liveMonthlyFlextimeBalance).isNull()
     }
 
     @Test
@@ -763,6 +838,51 @@ class HomeViewModelTest : BaseUnitTest() {
         // Then: Should schedule warning and start service
         verify(breakWarningScheduler).scheduleWarning(completedBlock.startTime)
         verify(context).startForegroundService(any())
+    }
+
+    // ========== bookTimeBlock Tests ==========
+
+    @Test
+    fun `bookTimeBlock saves adjusted times and location, and unplans planned workday`() = runTest {
+        val today = LocalDate.now()
+        val plannedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(16, 30), location = WorkLocation.OFFICE)
+        val plannedDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, isPlanned = true, timeBlocks = listOf(plannedBlock))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedDay))
+
+        viewModel = HomeViewModel(
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
+        )
+        advanceUntilIdle()
+
+        viewModel.bookTimeBlock(plannedBlock, LocalTime.of(8, 30), LocalTime.of(17, 0), WorkLocation.HOME_OFFICE)
+        advanceUntilIdle()
+
+        verify(workDayRepository).saveWorkDay(plannedDay.copy(isPlanned = false, location = WorkLocation.HOME_OFFICE))
+        verify(workDayRepository).saveTimeBlock(plannedBlock.copy(startTime = LocalTime.of(8, 30), endTime = LocalTime.of(17, 0), location = WorkLocation.HOME_OFFICE))
+    }
+
+    @Test
+    fun `bookTimeBlock without end time starts timer service when enabled`() = runTest {
+        val today = LocalDate.now()
+        val plannedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(16, 30), location = WorkLocation.OFFICE)
+        val plannedDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, isPlanned = true, timeBlocks = listOf(plannedBlock))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedDay))
+        whenever(getSettings()).thenReturn(flowOf(Settings(workTimerNotificationEnabled = true, breakWarningEnabled = true)))
+
+        viewModel = HomeViewModel(
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
+        )
+        advanceUntilIdle()
+
+        viewModel.bookTimeBlock(plannedBlock, LocalTime.of(8, 30), null, WorkLocation.HOME_OFFICE)
+        advanceUntilIdle()
+
+        verify(workDayRepository).saveWorkDay(plannedDay.copy(isPlanned = false, location = WorkLocation.HOME_OFFICE))
+        verify(workDayRepository).saveTimeBlock(plannedBlock.copy(startTime = LocalTime.of(8, 30), endTime = null, location = WorkLocation.HOME_OFFICE))
+        verify(context).startForegroundService(any())
+        verify(breakWarningScheduler).scheduleWarning(LocalTime.of(8, 30))
     }
 
     // ========== toggleTimeBlockLocation Tests ==========
