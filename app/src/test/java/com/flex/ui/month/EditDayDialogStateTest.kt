@@ -271,4 +271,45 @@ class EditDayDialogStateTest {
         assertThat(state.blocks[0].durationHours).isEqualTo("8")
         assertThat(state.blocks[0].durationMinutes).isEqualTo("0")
     }
+
+    @Test
+    fun customDefaultStartTime_affectsDefaultStartAndEnd() {
+        val workDay = WorkDay(
+            id = 11,
+            date = LocalDate.of(2026, 2, 15),
+            location = WorkLocation.OFFICE,
+            dayType = DayType.WORK,
+            isPlanned = false,
+            timeBlocks = emptyList()
+        )
+
+        val state = calculateEditDayDialogState(
+            workDay = workDay,
+            dailyWorkMinutes = 480,
+            defaultStartTime = "09:00"
+        )
+
+        assertThat(state.blocks[0].startText).isEqualTo("09:00")
+        assertThat(state.blocks[0].endText).isEqualTo("17:00")
+    }
+
+    @Test
+    fun customDefaultStartTime_usedForNonWorkDayType() {
+        val workDay = WorkDay(
+            id = 12,
+            date = LocalDate.of(2026, 2, 15),
+            location = WorkLocation.OFFICE,
+            dayType = DayType.VACATION,
+            isPlanned = false,
+            timeBlocks = emptyList()
+        )
+
+        val state = calculateEditDayDialogState(
+            workDay = workDay,
+            dailyWorkMinutes = 426,
+            defaultStartTime = "07:30"
+        )
+
+        assertThat(state.blocks[0].startText).isEqualTo("07:30")
+    }
 }

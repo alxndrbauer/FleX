@@ -565,6 +565,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
         EditDayDialog(
             workDay = editDay,
             dailyWorkMinutes = activeDailyTarget,
+            defaultStartTime = state.settings.defaultStartTime,
             onDismiss = { viewModel.clearEditing() },
             onSave = { dayType, note, timeBlocks ->
                 viewModel.saveDay(editDay.date, dayType, note, timeBlocks)
@@ -860,6 +861,7 @@ fun WorkDayListItem(workDay: WorkDay, netMinutes: Long, flextime: Long?, onClick
 fun EditDayDialog(
     workDay: WorkDay,
     dailyWorkMinutes: Int = 426,
+    defaultStartTime: java.time.LocalTime = java.time.LocalTime.of(8, 0),
     onDismiss: () -> Unit,
     onSave: (DayType, String?, List<TimeBlockInput>) -> Unit,
     onDelete: (() -> Unit)? = null
@@ -867,7 +869,11 @@ fun EditDayDialog(
     var dayType by remember { mutableStateOf(workDay.dayType) }
     var note by remember { mutableStateOf(workDay.note ?: "") }
 
-    val dialogState = calculateEditDayDialogState(workDay, dailyWorkMinutes)
+    val dialogState = calculateEditDayDialogState(
+        workDay = workDay,
+        dailyWorkMinutes = dailyWorkMinutes,
+        defaultStartTime = defaultStartTime.format(DateTimeFormatter.ofPattern("HH:mm"))
+    )
 
     var selectedTab by remember { mutableIntStateOf(dialogState.selectedTab) }
 
@@ -1095,7 +1101,7 @@ fun EditDayDialog(
                             val m = block.durationMinutes.toIntOrNull() ?: 0
                             val total = h * 60 + m
                             if (total > 0) {
-                                val start = LocalTime.of(8, 0)
+                                val start = defaultStartTime
                                 TimeBlockInput(
                                     start,
                                     start.plusMinutes(total.toLong()),

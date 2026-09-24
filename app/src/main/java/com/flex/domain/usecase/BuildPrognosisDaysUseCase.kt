@@ -39,7 +39,7 @@ class BuildPrognosisDaysUseCase @Inject constructor() {
                 if (existing.timeBlocks.isEmpty() &&
                     existing.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
                 ) {
-                    val start = LocalTime.of(8, 0)
+                    val start = settings.defaultStartTime
                     val end = start.plusMinutes(dailyTarget.toLong())
                     allDays.add(existing.copy(
                         timeBlocks = listOf(TimeBlock(workDayId = existing.id, startTime = start, endTime = end, isDuration = true, location = existing.location))
@@ -51,7 +51,7 @@ class BuildPrognosisDaysUseCase @Inject constructor() {
                 val activeRule = workTimeRules.getRuleForDate(date)
                 val activeWorkDays = activeRule?.workDays ?: DEFAULT_WORK_DAYS
                 if (date.dayOfWeek in activeWorkDays && !PublicHolidays.isHoliday(date)) {
-                    val start = LocalTime.of(8, 0)
+                    val start = settings.defaultStartTime
                     val end = start.plusMinutes(dailyTarget.toLong())
                     allDays.add(WorkDay(
                         date = date,

@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import java.time.LocalTime
 import java.time.YearMonth
 
 /**
@@ -79,6 +80,7 @@ class SettingsRepositoryImplTest : BaseUnitTest() {
         assertThat(result.carryOverVacationDays).isEqualTo(5)
         assertThat(result.specialVacationDays).isEqualTo(3)
         assertThat(result.settingsYear).isEqualTo(2025)
+        assertThat(result.defaultStartTime).isEqualTo(LocalTime.of(8, 0))
     }
 
     @Test
@@ -203,6 +205,52 @@ class SettingsRepositoryImplTest : BaseUnitTest() {
             settingsYear = 2026
         )
         verify(settingsDao).insert(expectedEntity)
+    }
+
+    @Test
+    fun `getSettings correctly maps defaultStartTime from entity`() = runTest {
+        // Given: DAO returns an entity with custom defaultStartTime
+        val entity = SettingsEntity(
+            defaultStartTime = "09:15"
+        )
+        whenever(settingsDao.getSettings()).thenReturn(flowOf(entity))
+
+        // When: Getting settings
+        val result = repository.getSettings().first()
+
+        // Then: LocalTime should match parsed entity time
+        assertThat(result.defaultStartTime).isEqualTo(LocalTime.of(9, 15))
+    }
+
+    @Test
+    fun `getSettings falls back to 08 00 when defaultStartTime is invalid`() = runTest {
+        // Given: DAO returns an entity with invalid defaultStartTime
+        val entity = SettingsEntity(
+            defaultStartTime = "invalid-time"
+        )
+        whenever(settingsDao.getSettings()).thenReturn(flowOf(entity))
+
+        // When: Getting settings
+        val result = repository.getSettings().first()
+
+        // Then: LocalTime should fallback to 08:00
+        assertThat(result.defaultStartTime).isEqualTo(LocalTime.of(8, 0))
+    }
+
+    @Test
+    fun `saveSettings correctly maps defaultStartTime to entity`() = runTest {
+        // Given: Settings with custom defaultStartTime
+        val settings = Settings(
+            defaultStartTime = LocalTime.of(7, 30)
+        )
+
+        // When: Saving settings
+        repository.saveSettings(settings)
+
+        // Then: Entity should receive string representation "07:30"
+        val captor = org.mockito.kotlin.argumentCaptor<SettingsEntity>()
+        verify(settingsDao).insert(captor.capture())
+        assertThat(captor.firstValue.defaultStartTime).isEqualTo("07:30")
     }
 
     // ========== QuotaRule Tests ==========

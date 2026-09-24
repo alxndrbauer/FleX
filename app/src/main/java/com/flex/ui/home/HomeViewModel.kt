@@ -564,7 +564,7 @@ class HomeViewModel @Inject constructor(
     fun saveDurationEntry(totalMinutes: Int, location: WorkLocation) {
         viewModelScope.launch {
             val state = _uiState.value
-            val start = LocalTime.of(8, 0)
+            val start = state.settings.defaultStartTime
             val end = start.plusMinutes(totalMinutes.toLong())
 
             val workDayId = if (state.workDay == null) {

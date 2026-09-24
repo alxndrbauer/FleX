@@ -15,6 +15,7 @@ import com.flex.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.YearMonth
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -105,7 +106,8 @@ class SettingsRepositoryImpl @Inject constructor(
         calendarSyncHomeOffice = calendarSyncHomeOffice,
         calendarEventPrefix = calendarEventPrefix,
         calendarEventNoAlarm = calendarEventNoAlarm,
-        federalState = FederalState.entries.find { it.code == federalState } ?: FederalState.HAMBURG
+        federalState = FederalState.entries.find { it.code == federalState } ?: FederalState.HAMBURG,
+        defaultStartTime = runCatching { LocalTime.parse(defaultStartTime) }.getOrDefault(LocalTime.of(8, 0))
     )
 
     private fun Settings.toEntity() = SettingsEntity(
@@ -136,7 +138,8 @@ class SettingsRepositoryImpl @Inject constructor(
         calendarSyncHomeOffice = calendarSyncHomeOffice,
         calendarEventPrefix = calendarEventPrefix,
         calendarEventNoAlarm = calendarEventNoAlarm,
-        federalState = federalState.code
+        federalState = federalState.code,
+        defaultStartTime = defaultStartTime.toString()
     )
 
     private fun QuotaRuleEntity.toDomain() = QuotaRule(

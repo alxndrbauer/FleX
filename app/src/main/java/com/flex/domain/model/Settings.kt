@@ -28,5 +28,6 @@ data class Settings(
     val calendarSyncHomeOffice: Boolean = true,
     val calendarEventPrefix: String = "FleX",
     val calendarEventNoAlarm: Boolean = false,
-    val federalState: FederalState = FederalState.HAMBURG
+    val federalState: FederalState = FederalState.HAMBURG,
+    val defaultStartTime: java.time.LocalTime = java.time.LocalTime.of(8, 0)
 )

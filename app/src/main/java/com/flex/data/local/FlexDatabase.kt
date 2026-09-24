@@ -29,7 +29,7 @@ import com.flex.data.local.entity.WorkTimeRuleEntity
         HolidayCacheEntity::class,
         WorkTimeRuleEntity::class
     ],
-    version = 18,
+    version = 19,
     exportSchema = false
 )
 abstract class FlexDatabase : RoomDatabase() {
@@ -74,6 +74,12 @@ abstract class FlexDatabase : RoomDatabase() {
                 db.execSQL(
                     "ALTER TABLE work_time_rules ADD COLUMN workDays TEXT NOT NULL DEFAULT 'MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY'"
                 )
+            }
+        }
+
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE settings ADD COLUMN defaultStartTime TEXT NOT NULL DEFAULT '08:00'")
             }
         }
     }

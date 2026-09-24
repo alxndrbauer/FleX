@@ -336,7 +336,7 @@ private data class PlanningConfig(
                 existing?.timeBlocks?.forEach { workDayRepository.deleteTimeBlock(it) }
                 val dailyTarget = settingsRepository.getWorkTimeRuleForDate(date, state.workTimeRules)?.dailyWorkMinutes
                     ?: state.settings.dailyWorkMinutes
-                val start = LocalTime.of(8, 0)
+                val start = state.settings.defaultStartTime
                 val end = start.plusMinutes(dailyTarget.toLong())
                 workDayRepository.saveTimeBlock(
                     TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = location)
@@ -398,7 +398,7 @@ private data class PlanningConfig(
 
             existing?.timeBlocks?.forEach { workDayRepository.deleteTimeBlock(it) }
 
-            val start = LocalTime.of(8, 0)
+            val start = _uiState.value.settings.defaultStartTime
             val end = start.plusMinutes(totalMinutes.toLong())
             workDayRepository.saveTimeBlock(
                 TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = existing?.location ?: WorkLocation.HOME_OFFICE)
@@ -448,7 +448,7 @@ private data class PlanningConfig(
 
                 val dailyTarget = settingsRepository.getWorkTimeRuleForDate(date, state.workTimeRules)?.dailyWorkMinutes
                     ?: settings.dailyWorkMinutes
-                val start = LocalTime.of(8, 0)
+                val start = settings.defaultStartTime
                 val end = start.plusMinutes(dailyTarget.toLong())
                 workDayRepository.saveTimeBlock(
                     TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = location)

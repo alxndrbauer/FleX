@@ -523,6 +523,7 @@ fun HomeScreen(
         ManualTimeEntryDialog(
             dailyWorkMinutes = state.settings.dailyWorkMinutes,
             selectedLocation = state.selectedLocation,
+            defaultStartTime = state.settings.defaultStartTime,
             onDismiss = { showManualEntry = false },
             onConfirmStartEnd = { start, end, location ->
                 viewModel.saveManualEntry(start, end, location)
@@ -1230,13 +1231,14 @@ private fun TimelineBlockItem(
 fun ManualTimeEntryDialog(
     dailyWorkMinutes: Int = 426,
     selectedLocation: WorkLocation = WorkLocation.OFFICE,
+    defaultStartTime: LocalTime = LocalTime.of(8, 0),
     onDismiss: () -> Unit,
     onConfirmStartEnd: (LocalTime, LocalTime, WorkLocation) -> Unit,
     onConfirmDuration: (Int, WorkLocation) -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val defaultEnd = LocalTime.of(8, 0).plusMinutes(dailyWorkMinutes.toLong())
-    var startText by remember { mutableStateOf(TextFieldValue("08:00")) }
+    val defaultEnd = defaultStartTime.plusMinutes(dailyWorkMinutes.toLong())
+    var startText by remember { mutableStateOf(TextFieldValue(defaultStartTime.format(DateTimeFormatter.ofPattern("HH:mm")))) }
     var endText by remember { mutableStateOf(TextFieldValue(defaultEnd.format(DateTimeFormatter.ofPattern("HH:mm")))) }
     var durationHours by remember { mutableStateOf((dailyWorkMinutes / 60).toString()) }
     var durationMinutes by remember { mutableStateOf((dailyWorkMinutes % 60).toString()) }

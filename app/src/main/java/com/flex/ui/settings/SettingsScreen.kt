@@ -60,6 +60,8 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -128,6 +130,7 @@ fun SettingsScreen(
     var showAppIconDialog by remember { mutableStateOf(false) }
     var showDailyWorkTimeDialog by remember { mutableStateOf(false) }
     var showMonthlyWorkTimeDialog by remember { mutableStateOf(false) }
+    var showDefaultStartTimeDialog by remember { mutableStateOf(false) }
     var showQuotaDialog by remember { mutableStateOf(false) }
     var showFlextimeDialog by remember { mutableStateOf(false) }
     var showOvertimeDialog by remember { mutableStateOf(false) }
@@ -197,6 +200,15 @@ fun SettingsScreen(
                     trailingContent = { ChevronTrailing() },
                     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                     modifier = Modifier.clickable { showMonthlyWorkTimeDialog = true }
+                )
+                SettingsGroupDivider()
+                ListItem(
+                    headlineContent = { Text("Standard-Startzeit") },
+                    supportingContent = { Text(settings.defaultStartTime.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) + " Uhr") },
+                    leadingContent = { SettingsIcon(Icons.Default.Schedule, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer) },
+                    trailingContent = { ChevronTrailing() },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    modifier = Modifier.clickable { showDefaultStartTimeDialog = true }
                 )
                 SettingsGroupDivider()
                 ListItem(
@@ -587,6 +599,33 @@ fun SettingsScreen(
             initialMinutes = settings.monthlyWorkMinutes % 60,
             onDismiss = { showMonthlyWorkTimeDialog = false },
             onSave = { h, m -> viewModel.updateSettings(settings.copy(monthlyWorkMinutes = h * 60 + m)); showMonthlyWorkTimeDialog = false }
+        )
+    }
+
+    if (showDefaultStartTimeDialog) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = settings.defaultStartTime.hour,
+            initialMinute = settings.defaultStartTime.minute,
+            is24Hour = true
+        )
+        AlertDialog(
+            onDismissRequest = { showDefaultStartTimeDialog = false },
+            title = { Text("Standard-Startzeit") },
+            text = { TimePicker(state = timePickerState) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val newTime = java.time.LocalTime.of(timePickerState.hour, timePickerState.minute)
+                    viewModel.updateSettings(settings.copy(defaultStartTime = newTime))
+                    showDefaultStartTimeDialog = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDefaultStartTimeDialog = false }) {
+                    Text("Abbrechen")
+                }
+            }
         )
     }
 

@@ -99,6 +99,7 @@ class SettingsRepositoryImplMappingTest {
         assertThat(settings.carryOverVacationDays).isEqualTo(0)
         assertThat(settings.specialVacationDays).isEqualTo(5)
         assertThat(settings.settingsYear).isEqualTo(0)
+        assertThat(settings.defaultStartTime).isEqualTo(java.time.LocalTime.of(8, 0))
     }
 
     @Test
@@ -172,6 +173,23 @@ class SettingsRepositoryImplMappingTest {
         assertThat(mappedSettings.initialFlextimeMinutes).isEqualTo(-120)
     }
 
+    @Test
+    fun `defaultStartTime mapping works in both directions`() {
+        // Given: Settings with specific defaultStartTime
+        val originalSettings = Settings(
+            id = 1L,
+            defaultStartTime = java.time.LocalTime.of(9, 15)
+        )
+
+        // When: Converting to entity and back
+        val entity = originalSettings.toEntityForTest()
+        val mappedSettings = entity.toDomainForTest()
+
+        // Then: defaultStartTime should be preserved
+        assertThat(entity.defaultStartTime).isEqualTo("09:15")
+        assertThat(mappedSettings.defaultStartTime).isEqualTo(java.time.LocalTime.of(9, 15))
+    }
+
     // Helper functions to access private mapping methods via reflection
     // (Simulating the private mapping functions in SettingsRepositoryImpl)
     private fun SettingsEntity.toDomainForTest() = Settings(
@@ -185,7 +203,8 @@ class SettingsRepositoryImplMappingTest {
         annualVacationDays = annualVacationDays,
         carryOverVacationDays = carryOverVacationDays,
         specialVacationDays = specialVacationDays,
-        settingsYear = settingsYear
+        settingsYear = settingsYear,
+        defaultStartTime = runCatching { java.time.LocalTime.parse(defaultStartTime) }.getOrDefault(java.time.LocalTime.of(8, 0))
     )
 
     private fun Settings.toEntityForTest() = SettingsEntity(
@@ -199,6 +218,7 @@ class SettingsRepositoryImplMappingTest {
         annualVacationDays = annualVacationDays,
         carryOverVacationDays = carryOverVacationDays,
         specialVacationDays = specialVacationDays,
-        settingsYear = settingsYear
+        settingsYear = settingsYear,
+        defaultStartTime = defaultStartTime.toString()
     )
 }

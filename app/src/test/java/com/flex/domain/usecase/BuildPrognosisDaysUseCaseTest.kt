@@ -3,9 +3,13 @@ package com.flex.domain.usecase
 import com.google.common.truth.Truth.assertThat
 import com.flex.domain.model.DayType
 import com.flex.domain.model.Settings
+import com.flex.domain.model.WorkDay
+import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.WorkTimeRule
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalTime
 import java.time.YearMonth
 
 class BuildPrognosisDaysUseCaseTest {
@@ -67,5 +71,43 @@ class BuildPrognosisDaysUseCaseTest {
             it.date.dayOfWeek in setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY)
         }).isTrue()
         assertThat(workDays).hasSize(13)
+    }
+
+    @Test
+    fun `prognosis days use defaultStartTime from settings for planned days`() {
+        val customStartTime = LocalTime.of(9, 15)
+        val customSettings = settings.copy(defaultStartTime = customStartTime)
+        val month = YearMonth.of(2026, 8)
+
+        val result = useCase(month, emptyList(), customSettings)
+        val workDays = result.filter { it.dayType == DayType.WORK && it.isPlanned }
+
+        assertThat(workDays).isNotEmpty()
+        assertThat(workDays.all { day ->
+            val block = day.timeBlocks.firstOrNull()
+            block != null && block.startTime == customStartTime &&
+                block.endTime == customStartTime.plusMinutes(customSettings.dailyWorkMinutes.toLong())
+        }).isTrue()
+    }
+
+    @Test
+    fun `prognosis fills empty timeBlocks in existing work day using defaultStartTime`() {
+        val customStartTime = LocalTime.of(7, 30)
+        val customSettings = settings.copy(defaultStartTime = customStartTime)
+        val month = YearMonth.of(2026, 8)
+        val existing = WorkDay(
+            id = 42L,
+            date = month.atDay(3), // Monday
+            location = WorkLocation.OFFICE,
+            dayType = DayType.WORK,
+            timeBlocks = emptyList()
+        )
+
+        val result = useCase(month, listOf(existing), customSettings)
+        val day = result.first { it.date == existing.date }
+
+        assertThat(day.timeBlocks).hasSize(1)
+        assertThat(day.timeBlocks[0].startTime).isEqualTo(customStartTime)
+        assertThat(day.timeBlocks[0].endTime).isEqualTo(customStartTime.plusMinutes(customSettings.dailyWorkMinutes.toLong()))
     }
 }

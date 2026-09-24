@@ -679,6 +679,29 @@ class HomeViewModelTest : BaseUnitTest() {
         verify(workDayRepository).saveTimeBlock(any())
     }
 
+    @Test
+    fun `saveDurationEntry uses settings defaultStartTime`() = runTest {
+        val customStartTime = LocalTime.of(9, 15)
+        whenever(getSettings()).thenReturn(flowOf(Settings(defaultStartTime = customStartTime)))
+        whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
+        whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
+
+        viewModel = HomeViewModel(
+            context, workDayRepository, settingsRepository, getMonthWorkDays,
+            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
+        )
+        advanceUntilIdle()
+
+        // When: Saving duration entry
+        viewModel.saveDurationEntry(480, WorkLocation.OFFICE)
+        advanceUntilIdle()
+
+        // Then: TimeBlock with custom defaultStartTime should be saved
+        verify(workDayRepository).saveTimeBlock(org.mockito.kotlin.argThat {
+            isDuration && startTime == customStartTime && endTime == customStartTime.plusMinutes(480)
+        })
+    }
+
     // ========== deleteTimeBlock Tests ==========
 
     @Test

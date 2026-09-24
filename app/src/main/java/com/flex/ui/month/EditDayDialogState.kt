@@ -29,9 +29,9 @@ data class EditDayDialogState(
  */
 fun calculateEditDayDialogState(
     workDay: WorkDay,
-    dailyWorkMinutes: Int = 426
+    dailyWorkMinutes: Int = 426,
+    defaultStartTime: String = "08:00"
 ): EditDayDialogState {
-    val defaultStartTime = "08:00"
     val defaultDurationHours = (dailyWorkMinutes / 60).toString()
     val defaultDurationMinutes = (dailyWorkMinutes % 60).toString()
     val defaultEndTime = calculateDefaultEndTime(defaultStartTime, dailyWorkMinutes)

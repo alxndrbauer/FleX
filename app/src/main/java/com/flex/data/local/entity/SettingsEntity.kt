@@ -33,5 +33,6 @@ data class SettingsEntity(
     val calendarSyncHomeOffice: Boolean = true,
     val calendarEventPrefix: String = "FleX",
     val calendarEventNoAlarm: Boolean = false,
-    val federalState: String = "HH"
+    val federalState: String = "HH",
+    val defaultStartTime: String = "08:00"
 )
