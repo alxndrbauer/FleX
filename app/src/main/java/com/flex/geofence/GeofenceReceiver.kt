@@ -1,14 +1,17 @@
 package com.flex.geofence
 
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.service.quicksettings.TileService
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.flex.domain.usecase.AutoClockInUseCase
 import com.flex.domain.usecase.AutoClockOutUseCase
 import com.flex.notification.BreakWarningScheduler
+import com.flex.tile.QuickSettingsTileService
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
 import dagger.hilt.android.AndroidEntryPoint
@@ -47,6 +50,12 @@ class GeofenceReceiver : BroadcastReceiver() {
                         if (blockId != null) {
                             notificationHelper.showClockInNotification()
                             breakWarningScheduler.scheduleWarning(java.time.LocalTime.now())
+                            try {
+                                TileService.requestListeningState(
+                                    context,
+                                    ComponentName(context, QuickSettingsTileService::class.java)
+                                )
+                            } catch (_: Exception) {}
                         }
                     }
                     Geofence.GEOFENCE_TRANSITION_EXIT -> {

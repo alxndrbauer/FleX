@@ -22,6 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
@@ -39,23 +40,45 @@ class QuickSettingsTileService : TileService() {
     @Inject lateinit var pausePreferences: PausePreferences
 
     private var serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val actionScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    override fun onDestroy() {
+        actionScope.cancel()
+        serviceScope.cancel()
+        super.onDestroy()
+    }
 
     override fun onStartListening() {
         super.onStartListening()
         serviceScope.cancel()
         serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+        val today = LocalDate.now()
+        // Eagerly update tile synchronously so that short-lived listening windows
+        // (e.g. from TileService.requestListeningState) update qsTile before onStopListening().
+        val initialWorkDay = runCatching {
+            runBlocking(Dispatchers.IO) {
+                workDayRepository.getWorkDay(today).first()
+            }
+        }.getOrNull()
+        updateTileWithWorkDay(initialWorkDay)
+
+        // Continuous Flow collection for dynamic updates while listening
         serviceScope.launch {
-            workDayRepository.getWorkDay(LocalDate.now()).collect { workDay ->
+            workDayRepository.getWorkDay(today).collect { workDay ->
                 updateTileWithWorkDay(workDay)
             }
         }
+
+        // Periodic ticker for active work block or pause
         serviceScope.launch {
             while (isActive) {
                 delay(30_000)
-                val today = LocalDate.now()
-                val workDay = workDayRepository.getWorkDay(today).first()
-                if (workDay?.timeBlocks?.any { it.endTime == null } == true || pausePreferences.isPaused) {
-                    updateTileWithWorkDay(workDay)
+                val currentWorkDay = runCatching {
+                    workDayRepository.getWorkDay(LocalDate.now()).first()
+                }.getOrNull()
+                if (currentWorkDay?.timeBlocks?.any { it.endTime == null } == true || pausePreferences.isPaused) {
+                    updateTileWithWorkDay(currentWorkDay)
                 }
             }
         }
@@ -69,9 +92,11 @@ class QuickSettingsTileService : TileService() {
     override fun onClick() {
         super.onClick()
         val action = {
-            serviceScope.launch {
+            actionScope.launch {
                 val today = LocalDate.now()
-                val workDay = workDayRepository.getWorkDay(today).first()
+                val workDay = runCatching {
+                    workDayRepository.getWorkDay(today).first()
+                }.getOrNull()
                 val isClockRunning = workDay?.timeBlocks?.any { it.endTime == null } == true
 
                 if (isClockRunning) {
@@ -84,6 +109,13 @@ class QuickSettingsTileService : TileService() {
                         startForegroundService(Intent(this@QuickSettingsTileService, WorkTimerService::class.java))
                     }
                 }
+
+                // Immediately update tile with the new state directly
+                val updatedWorkDay = runCatching {
+                    workDayRepository.getWorkDay(today).first()
+                }.getOrNull()
+                updateTileWithWorkDay(updatedWorkDay)
+
                 TileService.requestListeningState(
                     this@QuickSettingsTileService,
                     ComponentName(this@QuickSettingsTileService, QuickSettingsTileService::class.java)

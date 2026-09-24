@@ -1,12 +1,15 @@
 package com.flex.wifi
 
 import android.annotation.SuppressLint
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.wifi.WifiInfo
+import android.service.quicksettings.TileService
 import android.util.Log
 import com.flex.data.local.GeofencePreferences
 import com.flex.di.IoDispatcher
@@ -14,6 +17,8 @@ import com.flex.domain.usecase.AutoClockInUseCase
 import com.flex.domain.usecase.AutoClockOutUseCase
 import com.flex.geofence.GeofenceNotificationHelper
 import com.flex.notification.BreakWarningScheduler
+import com.flex.notification.WorkTimerService
+import com.flex.tile.QuickSettingsTileService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -73,6 +78,12 @@ class WifiMonitor @Inject constructor(
                                 geofencePreferences.lastAutoTimeBlockId = blockId
                                 notificationHelper.showClockInNotification()
                                 breakWarningScheduler.scheduleWarning(java.time.LocalTime.now())
+                                try {
+                                    TileService.requestListeningState(
+                                        context,
+                                        ComponentName(context, QuickSettingsTileService::class.java)
+                                    )
+                                } catch (_: Exception) {}
                                 Log.d("WifiMonitor", "Clocked in via WiFi, blockId=$blockId")
                             } else {
                                 // Clock-in skipped (already clocked in) → reset flag
@@ -95,6 +106,15 @@ class WifiMonitor @Inject constructor(
                         if (clocked) {
                             notificationHelper.showClockOutNotification()
                             breakWarningScheduler.cancelWarning()
+                            try {
+                                context.stopService(Intent(context, WorkTimerService::class.java))
+                            } catch (_: Exception) {}
+                            try {
+                                TileService.requestListeningState(
+                                    context,
+                                    ComponentName(context, QuickSettingsTileService::class.java)
+                                )
+                            } catch (_: Exception) {}
                             Log.d("WifiMonitor", "Clocked out via WiFi")
                         } else {
                             Log.d("WifiMonitor", "onLost: no running block, skipping notification")
