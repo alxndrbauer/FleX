@@ -22,6 +22,7 @@ import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.events.DataChangeEventBus
 import com.flex.domain.model.BreakCheckResult
 import com.flex.domain.usecase.CheckBreakViolationUseCase
+import com.flex.domain.usecase.CheckTimeBlockOverlapUseCase
 import com.flex.data.local.WhatsNewPreferences
 import com.flex.notification.BreakWarningScheduler
 import android.content.Context
@@ -93,7 +94,8 @@ class HomeViewModelWorkTimeRuleTest : BaseUnitTest() {
         context, workDayRepository, settingsRepository, getMonthWorkDays,
         getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
         dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
-        whatsNewPreferences, backupPreferences, autoBookPlannedDays
+        whatsNewPreferences, backupPreferences, autoBookPlannedDays,
+        CheckTimeBlockOverlapUseCase()
     )
 
     // ========== QuotaRule Resolution Tests ==========

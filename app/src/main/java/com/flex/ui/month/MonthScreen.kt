@@ -39,10 +39,12 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -86,8 +88,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.flex.domain.model.DayType
 import com.flex.domain.model.PublicHolidays
+import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.usecase.CheckTimeBlockOverlapUseCase
 import com.flex.ui.components.InfoTooltip
 import com.flex.ui.components.TOOLTIP_PROGNOSIS
 import com.flex.ui.components.TOOLTIP_PROGNOSIS_TITLE
@@ -449,6 +453,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                                     workDay = workDayMap[date],
                                     isToday = date == LocalDate.now(),
                                     hasBreakViolation = state.breakViolationDates.contains(date),
+                                    hasOverlap = state.overlappingDates.contains(date),
                                     flextime = state.flextimeByDate[date],
                                     onClick = { viewModel.selectDay(date) }
                                 )
@@ -509,6 +514,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                         workDay = workDay,
                         netMinutes = state.netMinutesByDate[workDay.date] ?: 0,
                         flextime = state.flextimeByDate[workDay.date],
+                        hasOverlap = state.overlappingDates.contains(workDay.date),
                         onClick = { viewModel.selectDay(workDay.date) }
                     )
                 }
@@ -527,6 +533,34 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             title = { Text("Monat exportieren") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (state.overlappingDates.isNotEmpty()) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                val datesText = state.overlappingDates.sorted().joinToString(", ") {
+                                    it.format(DateTimeFormatter.ofPattern("d. MMMM", Locale.GERMAN))
+                                }
+                                Text(
+                                    text = "Achtung: Überlappende Zeitblöcke am $datesText. Im Export können Arbeitszeiten fehlerhaft summiert sein.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
+                    }
                     Text("Format wählen:")
                     Spacer(modifier = Modifier.height(4.dp))
                     OutlinedButton(
@@ -589,6 +623,7 @@ fun DayCell(
     workDay: WorkDay?,
     isToday: Boolean,
     hasBreakViolation: Boolean = false,
+    hasOverlap: Boolean = false,
     flextime: Long? = null,
     onClick: () -> Unit
 ) {
@@ -662,7 +697,7 @@ fun DayCell(
                 )
             }
         }
-        if (hasBreakViolation) {
+        if (hasBreakViolation || hasOverlap) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -694,7 +729,13 @@ fun LegendItem(color: Color, label: String) {
 }
 
 @Composable
-fun WorkDayListItem(workDay: WorkDay, netMinutes: Long, flextime: Long?, onClick: () -> Unit) {
+fun WorkDayListItem(
+    workDay: WorkDay,
+    netMinutes: Long,
+    flextime: Long?,
+    hasOverlap: Boolean = false,
+    onClick: () -> Unit
+) {
     val isWorkType = workDay.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
     val workBlocks = workDay.timeBlocks.filter { it.endTime != null }
 
@@ -838,6 +879,30 @@ fun WorkDayListItem(workDay: WorkDay, netMinutes: Long, flextime: Long?, onClick
                                 color = accentColor
                             )
                         }
+                        if (hasOverlap) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.errorContainer
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Text(
+                                        "Überlappung",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            }
+                        }
                     }
                     if (flextime != null) {
                         Spacer(modifier = Modifier.height(4.dp))
@@ -962,6 +1027,48 @@ fun EditDayDialog(
                         Tab(
                             selected = selectedTab == 1, onClick = { selectedTab = 1 },
                             text = { Text("Gesamtzeit") })
+                    }
+
+                    if (selectedTab == 0) {
+                        val overlaps = remember(blocks.map { it.startText.text to it.endText.text }) {
+                            val fmt = DateTimeFormatter.ofPattern("HH:mm")
+                            val parsedBlocks = blocks.mapIndexedNotNull { index, b ->
+                                try {
+                                    val start = LocalTime.parse(b.startText.text, fmt)
+                                    val end = LocalTime.parse(b.endText.text, fmt)
+                                    TimeBlock(id = index.toLong(), startTime = start, endTime = end, location = b.location, isDuration = false)
+                                } catch (_: Exception) { null }
+                            }
+                            CheckTimeBlockOverlapUseCase().findOverlaps(parsedBlocks)
+                        }
+
+                        if (overlaps.isNotEmpty()) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    val fmt = DateTimeFormatter.ofPattern("HH:mm")
+                                    val firstOverlap = overlaps.first()
+                                    Text(
+                                        text = "Achtung: Zeitblöcke überlappen sich (${firstOverlap.first.startTime.format(fmt)}–${firstOverlap.first.endTime?.format(fmt)} und ${firstOverlap.second.startTime.format(fmt)}–${firstOverlap.second.endTime?.format(fmt)})!",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     // Per-block editors

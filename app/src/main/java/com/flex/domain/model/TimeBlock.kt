@@ -4,7 +4,7 @@ import java.time.LocalTime
 
 data class TimeBlock(
     val id: Long = 0,
-    val workDayId: Long,
+    val workDayId: Long = 0,
     val startTime: LocalTime,
     val endTime: LocalTime? = null,
     val isDuration: Boolean = false,

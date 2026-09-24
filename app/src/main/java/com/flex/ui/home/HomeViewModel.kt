@@ -22,6 +22,7 @@ import com.flex.domain.usecase.DayWorkTimeResult
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.model.BreakCheckResult
 import com.flex.domain.usecase.CheckBreakViolationUseCase
+import com.flex.domain.usecase.CheckTimeBlockOverlapUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.usecase.AutoBookPlannedDaysUseCase
 import com.flex.BuildConfig
@@ -76,7 +77,8 @@ data class HomeUiState(
     val officeMinutes: Long = 0,
     val requiredOfficeMinutes: Long = 0,
     val breakCheckResult: BreakCheckResult = BreakCheckResult(emptyList(), skipped = false),
-    val permissionIssues: List<String> = emptyList()
+    val permissionIssues: List<String> = emptyList(),
+    val hasTimeBlockOverlap: Boolean = false
 )
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -95,7 +97,8 @@ class HomeViewModel @Inject constructor(
     private val breakWarningScheduler: BreakWarningScheduler,
     private val whatsNewPreferences: WhatsNewPreferences,
     private val backupPreferences: com.flex.data.backup.BackupPreferences,
-    private val autoBookPlannedDaysUseCase: AutoBookPlannedDaysUseCase
+    private val autoBookPlannedDaysUseCase: AutoBookPlannedDaysUseCase,
+    private val checkTimeBlockOverlap: CheckTimeBlockOverlapUseCase = CheckTimeBlockOverlapUseCase()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -189,6 +192,7 @@ class HomeViewModel @Inject constructor(
             val liveYearDays = cachedYearDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
             val liveFlextime = calculateFlextime(liveYearDays, state.settings, todayYearMonth, cachedWorkTimeRules)
             val liveMonthlyFlextime = calculateFlextime(liveMonthDays, state.settings, selectedYearMonth, cachedWorkTimeRules)
+            val liveOverlap = checkTimeBlockOverlap(state.timeBlocks, now)
 
             _uiState.update {
                 it.copy(
@@ -196,7 +200,8 @@ class HomeViewModel @Inject constructor(
                     liveFlextimeDelta = liveFlexDelta,
                     breakCheckResult = liveBreakCheck,
                     liveFlextimeBalance = liveFlextime,
-                    liveMonthlyFlextimeBalance = liveMonthlyFlextime
+                    liveMonthlyFlextimeBalance = liveMonthlyFlextime,
+                    hasTimeBlockOverlap = liveOverlap
                 )
             }
         }
@@ -250,6 +255,7 @@ class HomeViewModel @Inject constructor(
                         val timeBlocks = workDay?.timeBlocks ?: emptyList()
                         val isRunning = timeBlocks.any { it.endTime == null }
                         val baseDayResult = calculateDayWorkTime(timeBlocks)
+                        val hasOverlap = checkTimeBlockOverlap(timeBlocks)
                         val isToday = date == today
                         val now = LocalTime.now()
                         val blocksForCalc = if (isRunning && isToday) {
@@ -362,7 +368,8 @@ class HomeViewModel @Inject constructor(
                                 effectiveQuotaMinDays = qDays,
                                 officeMinutes = officeMin,
                                 requiredOfficeMinutes = requiredMin,
-                                breakCheckResult = breakCheckResult
+                                breakCheckResult = breakCheckResult,
+                                hasTimeBlockOverlap = hasOverlap
                             ),
                             workTimeRules
                         )

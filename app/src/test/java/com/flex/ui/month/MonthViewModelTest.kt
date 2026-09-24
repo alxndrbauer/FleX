@@ -574,4 +574,77 @@ class MonthViewModelTest : BaseUnitTest() {
         // Then: Only work day should be deleted
         verify(workDayRepository).deleteWorkDay(workDay)
     }
+
+    @Test
+    fun `overlappingDates is empty when no time blocks overlap`() = runTest {
+        val testDate = YearMonth.now().atDay(10)
+        val workDay = WorkDay(
+            id = 1,
+            date = testDate,
+            dayType = DayType.WORK,
+            timeBlocks = listOf(
+                TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(12, 0)),
+                TimeBlock(id = 2, workDayId = 1, startTime = LocalTime.of(12, 30), endTime = LocalTime.of(16, 30))
+            )
+        )
+        whenever(getMonthWorkDays(any())).thenReturn(flowOf(listOf(workDay)))
+
+        viewModel = MonthViewModel(
+            getMonthWorkDays, getSettings, workDayRepository,
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.overlappingDates).isEmpty()
+    }
+
+    @Test
+    fun `overlappingDates contains dates with overlapping time blocks`() = runTest {
+        val testDate = YearMonth.now().atDay(15)
+        val workDay = WorkDay(
+            id = 2,
+            date = testDate,
+            dayType = DayType.WORK,
+            timeBlocks = listOf(
+                TimeBlock(id = 1, workDayId = 2, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(12, 0)),
+                TimeBlock(id = 2, workDayId = 2, startTime = LocalTime.of(11, 0), endTime = LocalTime.of(15, 0))
+            )
+        )
+        whenever(getMonthWorkDays(any())).thenReturn(flowOf(listOf(workDay)))
+
+        viewModel = MonthViewModel(
+            getMonthWorkDays, getSettings, workDayRepository,
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.overlappingDates).containsExactly(testDate)
+    }
+
+    @Test
+    fun `overlappingDates ignores planned days`() = runTest {
+        val testDate = YearMonth.now().atDay(20)
+        val plannedWorkDay = WorkDay(
+            id = 3,
+            date = testDate,
+            dayType = DayType.WORK,
+            isPlanned = true,
+            timeBlocks = listOf(
+                TimeBlock(id = 1, workDayId = 3, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(12, 0)),
+                TimeBlock(id = 2, workDayId = 3, startTime = LocalTime.of(11, 0), endTime = LocalTime.of(15, 0))
+            )
+        )
+        whenever(getMonthWorkDays(any())).thenReturn(flowOf(listOf(plannedWorkDay)))
+
+        viewModel = MonthViewModel(
+            getMonthWorkDays, getSettings, workDayRepository,
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.overlappingDates).isEmpty()
+    }
 }

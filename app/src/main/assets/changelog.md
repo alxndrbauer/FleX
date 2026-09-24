@@ -24,6 +24,7 @@
 - Bump minSdk to 33 (Android 13) and clean up legacy fallbacks
 - Live flextime balances and adjusted time booking in home view
 - Configurable default start time for planned and manual days
+- Add warning for overlapping time blocks in home, month and export views
 
 ### Verbesserungen
 

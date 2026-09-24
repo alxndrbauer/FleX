@@ -28,6 +28,7 @@ import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.usecase.CheckBreakViolationUseCase
+import com.flex.domain.usecase.CheckTimeBlockOverlapUseCase
 import com.flex.domain.usecase.PrepareExportDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -72,7 +73,8 @@ data class MonthUiState(
     val differenceMinutesMonth: Long = 0,
     val showExportDialog: Boolean = false,
     val exportMessage: String? = null,
-    val breakViolationDates: Set<LocalDate> = emptySet()
+    val breakViolationDates: Set<LocalDate> = emptySet(),
+    val overlappingDates: Set<LocalDate> = emptySet()
 )
 
 @HiltViewModel
@@ -88,7 +90,8 @@ class MonthViewModel @Inject constructor(
     private val prepareExportData: PrepareExportDataUseCase,
     private val exportService: ExportService,
     private val checkBreakViolation: CheckBreakViolationUseCase,
-    private val buildPrognosisDays: BuildPrognosisDaysUseCase
+    private val buildPrognosisDays: BuildPrognosisDaysUseCase,
+    private val checkTimeBlockOverlap: CheckTimeBlockOverlapUseCase = CheckTimeBlockOverlapUseCase()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MonthUiState())
@@ -207,6 +210,10 @@ private data class MonthConfig(
                     }.toSet()
                 } else emptySet()
 
+                val overlappingDates = days.filter { !it.isPlanned }.mapNotNull { workDay ->
+                    if (checkTimeBlockOverlap(workDay.timeBlocks)) workDay.date else null
+                }.toSet()
+
                 // Calculate monthly worked hours: WORK + SATURDAY_BONUS actual minutes,
                 // plus dailyWorkMinutes credit for vacation/sick (they count as worked),
                 // but NOT for flex days (those are deducted flextime, shown as deficit)
@@ -266,7 +273,8 @@ private data class MonthConfig(
                     workedMinutesMonth = totalWorkMinutesMonth,
                     targetMinutesMonth = targetMinutesMonth,
                     differenceMinutesMonth = differenceMinutesMonth,
-                    breakViolationDates = violationDates
+                    breakViolationDates = violationDates,
+                    overlappingDates = overlappingDates
                 )
             }
         }

@@ -111,6 +111,7 @@ import com.flex.domain.model.DayType
 import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.usecase.CheckTimeBlockOverlapUseCase
 import com.flex.ui.yearchange.YearChangeDialog
 import com.flex.ui.yearchange.YearChangeViewModel
 import com.flex.ui.components.InfoTooltip
@@ -524,6 +525,7 @@ fun HomeScreen(
             dailyWorkMinutes = state.settings.dailyWorkMinutes,
             selectedLocation = state.selectedLocation,
             defaultStartTime = state.settings.defaultStartTime,
+            existingBlocks = state.timeBlocks,
             onDismiss = { showManualEntry = false },
             onConfirmStartEnd = { start, end, location ->
                 viewModel.saveManualEntry(start, end, location)
@@ -540,6 +542,7 @@ fun HomeScreen(
     editingBlock?.let { block ->
         EditTimeBlockDialog(
             block = block,
+            existingBlocks = state.timeBlocks,
             onDismiss = { editingBlock = null },
             onSave = { startTime, endTime, location ->
                 viewModel.updateTimeBlock(block, startTime, endTime, location)
@@ -796,6 +799,16 @@ private fun HeroCard(
                         fontWeight = FontWeight.Bold
                     )
                 }
+            }
+
+            if (state.hasTimeBlockOverlap) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "⚠ Achtung: Zeitblöcke überlappen sich!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -1232,6 +1245,7 @@ fun ManualTimeEntryDialog(
     dailyWorkMinutes: Int = 426,
     selectedLocation: WorkLocation = WorkLocation.OFFICE,
     defaultStartTime: LocalTime = LocalTime.of(8, 0),
+    existingBlocks: List<TimeBlock> = emptyList(),
     onDismiss: () -> Unit,
     onConfirmStartEnd: (LocalTime, LocalTime, WorkLocation) -> Unit,
     onConfirmDuration: (Int, WorkLocation) -> Unit
@@ -1243,6 +1257,14 @@ fun ManualTimeEntryDialog(
     var durationHours by remember { mutableStateOf((dailyWorkMinutes / 60).toString()) }
     var durationMinutes by remember { mutableStateOf((dailyWorkMinutes % 60).toString()) }
     var dialogLocation by remember { mutableStateOf(selectedLocation) }
+
+    val overlappingBlock = remember(startText.text, endText.text, existingBlocks) {
+        try {
+            val start = LocalTime.parse(startText.text, DateTimeFormatter.ofPattern("HH:mm"))
+            val end = LocalTime.parse(endText.text, DateTimeFormatter.ofPattern("HH:mm"))
+            CheckTimeBlockOverlapUseCase().findOverlap(start, end, existingBlocks)
+        } catch (_: Exception) { null }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1296,6 +1318,32 @@ fun ManualTimeEntryDialog(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
+                    if (overlappingBlock != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Text(
+                                    text = "⚠ Überlappt mit bestehendem Zeitblock (${overlappingBlock.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} – ${overlappingBlock.endTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "laufend"})",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
+                    }
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
@@ -1347,6 +1395,7 @@ fun ManualTimeEntryDialog(
 @Composable
 fun EditTimeBlockDialog(
     block: TimeBlock,
+    existingBlocks: List<TimeBlock> = emptyList(),
     onDismiss: () -> Unit,
     onSave: (startTime: LocalTime, endTime: LocalTime?, location: WorkLocation) -> Unit,
     onDelete: () -> Unit,
@@ -1356,6 +1405,14 @@ fun EditTimeBlockDialog(
     var startText by remember { mutableStateOf(TextFieldValue(block.startTime.format(fmt))) }
     var endText by remember { mutableStateOf(TextFieldValue(block.endTime?.format(fmt) ?: "")) }
     var dialogLocation by remember { mutableStateOf(block.location) }
+
+    val overlappingBlock = remember(startText.text, endText.text, existingBlocks, block.id) {
+        try {
+            val start = LocalTime.parse(startText.text, DateTimeFormatter.ofPattern("HH:mm"))
+            val end = if (endText.text.isBlank()) null else LocalTime.parse(endText.text, DateTimeFormatter.ofPattern("HH:mm"))
+            CheckTimeBlockOverlapUseCase().findOverlap(start, end, existingBlocks, excludeBlockId = block.id)
+        } catch (_: Exception) { null }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1394,6 +1451,32 @@ fun EditTimeBlockDialog(
                         placeholder = { Text("laufend") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
+                }
+
+                if (overlappingBlock != null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = "⚠ Überlappt mit bestehendem Zeitblock (${overlappingBlock.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} – ${overlappingBlock.endTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "laufend"})",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
                 }
             }
         },

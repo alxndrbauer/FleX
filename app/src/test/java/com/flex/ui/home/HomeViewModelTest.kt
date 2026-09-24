@@ -21,6 +21,7 @@ import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.events.DataChangeEventBus
 import com.flex.domain.model.BreakCheckResult
 import com.flex.domain.usecase.CheckBreakViolationUseCase
+import com.flex.domain.usecase.CheckTimeBlockOverlapUseCase
 import com.flex.data.local.WhatsNewPreferences
 import com.flex.notification.BreakWarningScheduler
 import com.flex.notification.WorkTimerService
@@ -91,11 +92,22 @@ class HomeViewModelTest : BaseUnitTest() {
     @Mock
     private lateinit var autoBookPlannedDays: com.flex.domain.usecase.AutoBookPlannedDaysUseCase
 
+    private lateinit var checkTimeBlockOverlap: CheckTimeBlockOverlapUseCase
+
     private lateinit var viewModel: HomeViewModel
+
+    private fun createViewModel() = HomeViewModel(
+        context, workDayRepository, settingsRepository, getMonthWorkDays,
+        getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
+        dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
+        whatsNewPreferences, backupPreferences, autoBookPlannedDays,
+        checkTimeBlockOverlap
+    )
 
     @BeforeEach
     override fun setUp() {
         super.setUp()
+        checkTimeBlockOverlap = CheckTimeBlockOverlapUseCase()
         // Default mock behavior
         whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
         whenever(getMonthWorkDays(any())).thenReturn(flowOf(emptyList()))
@@ -117,10 +129,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `initial state has today's date`() = runTest {
         // When: ViewModel is created
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: State should have today's date
@@ -140,10 +149,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         // When: ViewModel is created
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: State should contain work day
@@ -159,10 +165,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
 
         // When: ViewModel is created
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: State should have no work day
@@ -188,10 +191,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         // When: ViewModel is created
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: Clock should be running
@@ -216,10 +216,7 @@ class HomeViewModelTest : BaseUnitTest() {
             blocks.size == 1 && blocks[0].endTime != null
         })).thenReturn(liveResult)
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: State should immediately reflect the live calculation, NOT 0
@@ -265,10 +262,7 @@ class HomeViewModelTest : BaseUnitTest() {
             } else FlextimeBalance()
         }
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.dayWorkTime.netMinutes).isEqualTo(60)
@@ -306,10 +300,7 @@ class HomeViewModelTest : BaseUnitTest() {
             if (containsTodayWithEndTime) liveFlextime else baseFlextime
         }
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.isClockRunning).isTrue()
@@ -333,10 +324,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(completedBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.isClockRunning).isFalse()
@@ -366,10 +354,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(calculateDayWorkTime(listOf(timeBlock))).thenReturn(expectedResult)
 
         // When: ViewModel is created
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: Day work time should be calculated
@@ -391,10 +376,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(expectedFlextime)
 
         // When: ViewModel is created
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: State should contain flextime balance
@@ -416,10 +398,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(expectedQuota)
 
         // When: ViewModel is created
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: State should contain quota status
@@ -435,10 +414,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(null))
         whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Clocking in
@@ -457,10 +433,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today)
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Clocking in
@@ -478,10 +451,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val plannedWorkDay = WorkDay(id = 1, date = today, isPlanned = true)
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedWorkDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Clocking in
@@ -507,10 +477,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Clocking out
@@ -534,10 +501,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(completedBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Clocking out
@@ -557,10 +521,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE)
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Setting location
@@ -577,10 +538,7 @@ class HomeViewModelTest : BaseUnitTest() {
         // Given: No work day
         whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Setting location
@@ -599,10 +557,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today, dayType = DayType.WORK)
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Setting day type
@@ -621,10 +576,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
         whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Saving manual entry
@@ -643,10 +595,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today)
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Saving manual entry
@@ -665,10 +614,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
         whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Saving duration entry
@@ -686,10 +632,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
         whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Saving duration entry
@@ -707,10 +650,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `deleteTimeBlock removes TimeBlock from repository`() = runTest {
         // Given: ViewModel initialized
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         val timeBlock = TimeBlock(
@@ -736,10 +676,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(timeBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Deleting the only TimeBlock
@@ -759,10 +696,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(timeBlock1, timeBlock2))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Deleting one of two TimeBlocks
@@ -781,10 +715,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Deleting the running TimeBlock
@@ -805,10 +736,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Deleting the day
@@ -827,10 +755,7 @@ class HomeViewModelTest : BaseUnitTest() {
         // Given: Running TimeBlock
         val runningBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = null)
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Updating the block to have an end time
@@ -848,10 +773,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val completedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 0))
         whenever(getSettings()).thenReturn(flowOf(Settings(workTimerNotificationEnabled = true, breakWarningEnabled = true)))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Updating the block to have no end time
@@ -872,10 +794,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val plannedDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, isPlanned = true, timeBlocks = listOf(plannedBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         viewModel.bookTimeBlock(plannedBlock, LocalTime.of(8, 30), LocalTime.of(17, 0), WorkLocation.HOME_OFFICE)
@@ -893,10 +812,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedDay))
         whenever(getSettings()).thenReturn(flowOf(Settings(workTimerNotificationEnabled = true, breakWarningEnabled = true)))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         viewModel.bookTimeBlock(plannedBlock, LocalTime.of(8, 30), null, WorkLocation.HOME_OFFICE)
@@ -913,10 +829,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `toggleTimeBlockLocation switches completed block from OFFICE to HOME_OFFICE`() = runTest {
         val completedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(12, 0), location = WorkLocation.OFFICE)
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         viewModel.toggleTimeBlockLocation(completedBlock)
@@ -930,10 +843,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `toggleTimeBlockLocation switches completed block from HOME_OFFICE to OFFICE`() = runTest {
         val completedBlock = TimeBlock(id = 2, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(12, 0), location = WorkLocation.HOME_OFFICE)
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         viewModel.toggleTimeBlockLocation(completedBlock)
@@ -951,10 +861,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, timeBlocks = listOf(runningBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
         org.mockito.kotlin.clearInvocations(context)
 
@@ -978,10 +885,7 @@ class HomeViewModelTest : BaseUnitTest() {
         // Given: No work day
         whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Marking as vacation
@@ -999,10 +903,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today, dayType = DayType.WORK)
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Marking as flex day
@@ -1024,10 +925,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(calculateDayWorkTime(emptyList())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
 
         // When: ViewModel is created
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: Day work time should be zero
@@ -1043,10 +941,7 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         // When: ViewModel is created
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: Clock should not be running
@@ -1057,10 +952,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `autoBookPlannedDays is called on ViewModel init`() = runTest {
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         verify(autoBookPlannedDays).invoke()
@@ -1068,16 +960,75 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `onResume calls autoBookPlannedDays and checkPermissions`() = runTest {
-        viewModel = HomeViewModel(
-            context, workDayRepository, settingsRepository, getMonthWorkDays,
-            getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota, dataChangeEventBus, checkBreakViolation, breakWarningScheduler, whatsNewPreferences, backupPreferences, autoBookPlannedDays
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         viewModel.onResume()
         advanceUntilIdle()
 
         verify(autoBookPlannedDays, org.mockito.kotlin.times(2)).invoke()
+    }
+
+    // ========== Overlap Warning Tests ==========
+
+    @Test
+    fun `hasTimeBlockOverlap is false when no time blocks exist`() = runTest {
+        val today = LocalDate.now()
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = emptyList())
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.hasTimeBlockOverlap).isFalse()
+    }
+
+    @Test
+    fun `hasTimeBlockOverlap is false when time blocks do not overlap`() = runTest {
+        val today = LocalDate.now()
+        val blocks = listOf(
+            TimeBlock(id = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(12, 0)),
+            TimeBlock(id = 2, startTime = LocalTime.of(13, 0), endTime = LocalTime.of(17, 0))
+        )
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = blocks)
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.hasTimeBlockOverlap).isFalse()
+    }
+
+    @Test
+    fun `hasTimeBlockOverlap is true when time blocks overlap`() = runTest {
+        val today = LocalDate.now()
+        val blocks = listOf(
+            TimeBlock(id = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(13, 0)),
+            TimeBlock(id = 2, startTime = LocalTime.of(12, 0), endTime = LocalTime.of(17, 0))
+        )
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = blocks)
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.hasTimeBlockOverlap).isTrue()
+    }
+
+    @Test
+    fun `hasTimeBlockOverlap is false when overlapping block is duration based`() = runTest {
+        val today = LocalDate.now()
+        val blocks = listOf(
+            TimeBlock(id = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(12, 0)),
+            TimeBlock(id = 2, isDuration = true, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(11, 0))
+        )
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = blocks)
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.hasTimeBlockOverlap).isFalse()
     }
 }
 
