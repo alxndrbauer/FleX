@@ -30,6 +30,7 @@ import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.usecase.CheckBreakViolationUseCase
 import com.flex.domain.usecase.CheckTimeBlockOverlapUseCase
 import com.flex.domain.usecase.PrepareExportDataUseCase
+import com.flex.notification.ExportNotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -91,7 +92,8 @@ class MonthViewModel @Inject constructor(
     private val exportService: ExportService,
     private val checkBreakViolation: CheckBreakViolationUseCase,
     private val buildPrognosisDays: BuildPrognosisDaysUseCase,
-    private val checkTimeBlockOverlap: CheckTimeBlockOverlapUseCase = CheckTimeBlockOverlapUseCase()
+    private val checkTimeBlockOverlap: CheckTimeBlockOverlapUseCase = CheckTimeBlockOverlapUseCase(),
+    private val exportNotificationHelper: ExportNotificationHelper? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MonthUiState())
@@ -337,6 +339,7 @@ private data class MonthConfig(
                     ExportFormat.CSV -> exportService.exportToCsv(exportData, uri, contentResolver)
                     ExportFormat.PDF -> exportService.exportToPdf(exportData, uri, contentResolver)
                 }
+                exportNotificationHelper?.showExportNotification(uri, format)
                 _uiState.update { it.copy(exportMessage = "Export erfolgreich gespeichert") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(exportMessage = "Export fehlgeschlagen: ${e.message}") }

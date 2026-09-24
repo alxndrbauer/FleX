@@ -31,9 +31,14 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import android.content.ContentResolver
+import android.net.Uri
+import com.flex.domain.model.ExportData
+import com.flex.notification.ExportNotificationHelper
 import org.mockito.Mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.LocalDate
@@ -83,6 +88,15 @@ class MonthViewModelTest : BaseUnitTest() {
 
     @Mock
     private lateinit var buildPrognosisDays: BuildPrognosisDaysUseCase
+
+    @Mock
+    private lateinit var exportNotificationHelper: ExportNotificationHelper
+
+    @Mock
+    private lateinit var contentResolver: ContentResolver
+
+    @Mock
+    private lateinit var uri: Uri
 
     private lateinit var viewModel: MonthViewModel
 
@@ -646,5 +660,70 @@ class MonthViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.overlappingDates).isEmpty()
+    }
+
+    // ========== Export Notification Tests ==========
+
+    @Test
+    fun `exportToUri calls exportNotificationHelper showExportNotification on successful CSV export`() = runTest {
+        val exportData = ExportData(YearMonth.now(), emptyList(), 0, 0, Settings())
+        whenever(prepareExportData(any())).thenReturn(exportData)
+
+        viewModel = MonthViewModel(
+            getMonthWorkDays, getSettings, workDayRepository,
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            exportNotificationHelper = exportNotificationHelper
+        )
+        advanceUntilIdle()
+
+        viewModel.exportToUri(uri, ExportFormat.CSV, contentResolver)
+        advanceUntilIdle()
+
+        verify(exportService).exportToCsv(exportData, uri, contentResolver)
+        verify(exportNotificationHelper).showExportNotification(uri, ExportFormat.CSV)
+        assertThat(viewModel.uiState.value.exportMessage).isEqualTo("Export erfolgreich gespeichert")
+    }
+
+    @Test
+    fun `exportToUri calls exportNotificationHelper showExportNotification on successful PDF export`() = runTest {
+        val exportData = ExportData(YearMonth.now(), emptyList(), 0, 0, Settings())
+        whenever(prepareExportData(any())).thenReturn(exportData)
+
+        viewModel = MonthViewModel(
+            getMonthWorkDays, getSettings, workDayRepository,
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            exportNotificationHelper = exportNotificationHelper
+        )
+        advanceUntilIdle()
+
+        viewModel.exportToUri(uri, ExportFormat.PDF, contentResolver)
+        advanceUntilIdle()
+
+        verify(exportService).exportToPdf(exportData, uri, contentResolver)
+        verify(exportNotificationHelper).showExportNotification(uri, ExportFormat.PDF)
+        assertThat(viewModel.uiState.value.exportMessage).isEqualTo("Export erfolgreich gespeichert")
+    }
+
+    @Test
+    fun `exportToUri does NOT call exportNotificationHelper showExportNotification when exportService throws an exception`() = runTest {
+        val exportData = ExportData(YearMonth.now(), emptyList(), 0, 0, Settings())
+        whenever(prepareExportData(any())).thenReturn(exportData)
+        whenever(exportService.exportToCsv(any(), any(), any())).thenThrow(RuntimeException("Disk error"))
+
+        viewModel = MonthViewModel(
+            getMonthWorkDays, getSettings, workDayRepository,
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            exportNotificationHelper = exportNotificationHelper
+        )
+        advanceUntilIdle()
+
+        viewModel.exportToUri(uri, ExportFormat.CSV, contentResolver)
+        advanceUntilIdle()
+
+        verify(exportNotificationHelper, never()).showExportNotification(any(), any())
+        assertThat(viewModel.uiState.value.exportMessage).contains("Export fehlgeschlagen: Disk error")
     }
 }

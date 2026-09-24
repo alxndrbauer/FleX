@@ -25,6 +25,7 @@
 - Live flextime balances and adjusted time booking in home view
 - Configurable default start time for planned and manual days
 - Add warning for overlapping time blocks in home, month and export views
+- Add download notification with open and share actions for exports
 
 ### Verbesserungen
 
