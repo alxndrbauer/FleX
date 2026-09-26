@@ -445,10 +445,11 @@ class HomeViewModelTest : BaseUnitTest() {
     }
 
     @Test
-    fun `clockIn resets isPlanned flag when WorkDay is planned`() = runTest {
-        // Given: Planned work day
+    fun `clockIn resets isPlanned flag and deletes placeholder blocks when WorkDay is planned`() = runTest {
+        // Given: Planned work day with a planned placeholder block
         val today = LocalDate.now()
-        val plannedWorkDay = WorkDay(id = 1, date = today, isPlanned = true)
+        val plannedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), isDuration = true)
+        val plannedWorkDay = WorkDay(id = 1, date = today, isPlanned = true, timeBlocks = listOf(plannedBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedWorkDay))
 
         viewModel = createViewModel()
@@ -458,8 +459,9 @@ class HomeViewModelTest : BaseUnitTest() {
         viewModel.clockIn()
         advanceUntilIdle()
 
-        // Then: WorkDay should be updated with isPlanned = false
+        // Then: WorkDay should be updated with isPlanned = false and planned block deleted
         verify(workDayRepository).saveWorkDay(plannedWorkDay.copy(isPlanned = false))
+        verify(workDayRepository).deleteTimeBlock(plannedBlock)
     }
 
     // ========== clockOut Tests ==========
@@ -606,6 +608,23 @@ class HomeViewModelTest : BaseUnitTest() {
         verify(workDayRepository).saveTimeBlock(any())
     }
 
+    @Test
+    fun `saveManualEntry deletes placeholder blocks when WorkDay is planned`() = runTest {
+        val today = LocalDate.now()
+        val plannedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), isDuration = true)
+        val plannedWorkDay = WorkDay(id = 1, date = today, isPlanned = true, timeBlocks = listOf(plannedBlock))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedWorkDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.saveManualEntry(LocalTime.of(8, 0), LocalTime.of(16, 0), WorkLocation.OFFICE)
+        advanceUntilIdle()
+
+        verify(workDayRepository).saveWorkDay(plannedWorkDay.copy(isPlanned = false))
+        verify(workDayRepository).deleteTimeBlock(plannedBlock)
+    }
+
     // ========== saveDurationEntry Tests ==========
 
     @Test
@@ -623,6 +642,23 @@ class HomeViewModelTest : BaseUnitTest() {
 
         // Then: TimeBlock with isDuration=true should be saved
         verify(workDayRepository).saveTimeBlock(any())
+    }
+
+    @Test
+    fun `saveDurationEntry deletes placeholder blocks when WorkDay is planned`() = runTest {
+        val today = LocalDate.now()
+        val plannedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), isDuration = true)
+        val plannedWorkDay = WorkDay(id = 1, date = today, isPlanned = true, timeBlocks = listOf(plannedBlock))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedWorkDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.saveDurationEntry(480, WorkLocation.OFFICE)
+        advanceUntilIdle()
+
+        verify(workDayRepository).saveWorkDay(plannedWorkDay.copy(isPlanned = false))
+        verify(workDayRepository).deleteTimeBlock(plannedBlock)
     }
 
     @Test
@@ -785,12 +821,44 @@ class HomeViewModelTest : BaseUnitTest() {
         verify(context).startForegroundService(any())
     }
 
+    @Test
+    fun `updateTimeBlock retains isDuration true by default`() = runTest {
+        val today = LocalDate.now()
+        val durationBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), location = WorkLocation.OFFICE, isDuration = true)
+        val workDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, timeBlocks = listOf(durationBlock))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.updateTimeBlock(durationBlock, LocalTime.of(8, 0), LocalTime.of(16, 0), WorkLocation.OFFICE)
+        advanceUntilIdle()
+
+        verify(workDayRepository).saveTimeBlock(durationBlock.copy(startTime = LocalTime.of(8, 0), endTime = LocalTime.of(16, 0), location = WorkLocation.OFFICE, isDuration = true))
+    }
+
+    @Test
+    fun `updateTimeBlock updates isDuration to false when requested`() = runTest {
+        val today = LocalDate.now()
+        val durationBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), location = WorkLocation.OFFICE, isDuration = true)
+        val workDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, timeBlocks = listOf(durationBlock))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.updateTimeBlock(durationBlock, LocalTime.of(8, 0), LocalTime.of(16, 0), WorkLocation.OFFICE, isDuration = false)
+        advanceUntilIdle()
+
+        verify(workDayRepository).saveTimeBlock(durationBlock.copy(startTime = LocalTime.of(8, 0), endTime = LocalTime.of(16, 0), location = WorkLocation.OFFICE, isDuration = false))
+    }
+
     // ========== bookTimeBlock Tests ==========
 
     @Test
-    fun `bookTimeBlock saves adjusted times and location, and unplans planned workday`() = runTest {
+    fun `bookTimeBlock saves adjusted times and location, unplans planned workday, and retains isDuration`() = runTest {
         val today = LocalDate.now()
-        val plannedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(16, 30), location = WorkLocation.OFFICE)
+        val plannedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), location = WorkLocation.OFFICE, isDuration = true)
         val plannedDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, isPlanned = true, timeBlocks = listOf(plannedBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedDay))
 
@@ -801,13 +869,13 @@ class HomeViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         verify(workDayRepository).saveWorkDay(plannedDay.copy(isPlanned = false, location = WorkLocation.HOME_OFFICE))
-        verify(workDayRepository).saveTimeBlock(plannedBlock.copy(startTime = LocalTime.of(8, 30), endTime = LocalTime.of(17, 0), location = WorkLocation.HOME_OFFICE))
+        verify(workDayRepository).saveTimeBlock(plannedBlock.copy(startTime = LocalTime.of(8, 30), endTime = LocalTime.of(17, 0), location = WorkLocation.HOME_OFFICE, isDuration = true))
     }
 
     @Test
-    fun `bookTimeBlock without end time starts timer service when enabled`() = runTest {
+    fun `bookTimeBlock without end time starts timer service when enabled and preserves isDuration`() = runTest {
         val today = LocalDate.now()
-        val plannedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(16, 30), location = WorkLocation.OFFICE)
+        val plannedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), location = WorkLocation.OFFICE, isDuration = true)
         val plannedDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, isPlanned = true, timeBlocks = listOf(plannedBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedDay))
         whenever(getSettings()).thenReturn(flowOf(Settings(workTimerNotificationEnabled = true, breakWarningEnabled = true)))
@@ -819,9 +887,28 @@ class HomeViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         verify(workDayRepository).saveWorkDay(plannedDay.copy(isPlanned = false, location = WorkLocation.HOME_OFFICE))
-        verify(workDayRepository).saveTimeBlock(plannedBlock.copy(startTime = LocalTime.of(8, 30), endTime = null, location = WorkLocation.HOME_OFFICE))
+        verify(workDayRepository).saveTimeBlock(plannedBlock.copy(startTime = LocalTime.of(8, 30), endTime = null, location = WorkLocation.HOME_OFFICE, isDuration = true))
         verify(context).startForegroundService(any())
         verify(breakWarningScheduler).scheduleWarning(LocalTime.of(8, 30))
+    }
+
+    @Test
+    fun `bookTimeBlock deletes other placeholder blocks and allows changing isDuration to false`() = runTest {
+        val today = LocalDate.now()
+        val plannedBlock1 = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), location = WorkLocation.OFFICE, isDuration = true)
+        val plannedBlock2 = TimeBlock(id = 2, workDayId = 1, startTime = LocalTime.of(15, 6), endTime = LocalTime.of(16, 0), location = WorkLocation.OFFICE, isDuration = true)
+        val plannedDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, isPlanned = true, timeBlocks = listOf(plannedBlock1, plannedBlock2))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.bookTimeBlock(plannedBlock1, LocalTime.of(8, 0), LocalTime.of(15, 6), WorkLocation.OFFICE, isDuration = false)
+        advanceUntilIdle()
+
+        verify(workDayRepository).saveWorkDay(plannedDay.copy(isPlanned = false, location = WorkLocation.OFFICE))
+        verify(workDayRepository).deleteTimeBlock(plannedBlock2)
+        verify(workDayRepository).saveTimeBlock(plannedBlock1.copy(isDuration = false))
     }
 
     // ========== toggleTimeBlockLocation Tests ==========

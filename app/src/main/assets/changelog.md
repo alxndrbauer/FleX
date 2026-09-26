@@ -26,6 +26,7 @@
 - Configurable default start time for planned and manual days
 - Add warning for overlapping time blocks in home, month and export views
 - Add download notification with open and share actions for exports
+- Display duration indicator and allow toggling duration mode in time block edit dialog
 
 ### Verbesserungen
 

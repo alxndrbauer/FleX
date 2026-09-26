@@ -472,6 +472,9 @@ class HomeViewModel @Inject constructor(
                         )
                     )
                 }
+                if (state.workDay.isPlanned) {
+                    state.workDay.timeBlocks.forEach { workDayRepository.deleteTimeBlock(it) }
+                }
                 state.workDay.id
             }
 
@@ -558,6 +561,9 @@ class HomeViewModel @Inject constructor(
                         )
                     )
                 }
+                if (state.workDay.isPlanned) {
+                    state.workDay.timeBlocks.forEach { workDayRepository.deleteTimeBlock(it) }
+                }
                 state.workDay.id
             }
 
@@ -595,6 +601,9 @@ class HomeViewModel @Inject constructor(
                         )
                     )
                 }
+                if (state.workDay.isPlanned) {
+                    state.workDay.timeBlocks.forEach { workDayRepository.deleteTimeBlock(it) }
+                }
                 state.workDay.id
             }
 
@@ -605,12 +614,25 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun updateTimeBlock(block: TimeBlock, startTime: LocalTime, endTime: LocalTime?, location: WorkLocation) {
+    fun updateTimeBlock(
+        block: TimeBlock,
+        startTime: LocalTime,
+        endTime: LocalTime?,
+        location: WorkLocation,
+        isDuration: Boolean = block.isDuration
+    ) {
         viewModelScope.launch {
             val wasRunning = block.endTime == null
             val isNowRunning = endTime == null
+            val workDay = _uiState.value.workDay
+            if (workDay != null && workDay.isPlanned) {
+                workDayRepository.saveWorkDay(workDay.copy(isPlanned = false, location = location))
+                workDay.timeBlocks.filter { it.id != block.id && it.isDuration }.forEach {
+                    workDayRepository.deleteTimeBlock(it)
+                }
+            }
             workDayRepository.saveTimeBlock(
-                block.copy(startTime = startTime, endTime = endTime, location = location)
+                block.copy(startTime = startTime, endTime = endTime, location = location, isDuration = isDuration)
             )
             if (wasRunning && !isNowRunning) {
                 breakWarningScheduler.cancelWarning()
@@ -655,16 +677,25 @@ class HomeViewModel @Inject constructor(
     }
 
 
-    fun bookTimeBlock(block: TimeBlock, startTime: LocalTime, endTime: LocalTime?, location: WorkLocation) {
+    fun bookTimeBlock(
+        block: TimeBlock,
+        startTime: LocalTime,
+        endTime: LocalTime?,
+        location: WorkLocation,
+        isDuration: Boolean = block.isDuration
+    ) {
         viewModelScope.launch {
             val wasRunning = block.endTime == null
             val isNowRunning = endTime == null
             val workDay = _uiState.value.workDay
             if (workDay != null && workDay.isPlanned) {
                 workDayRepository.saveWorkDay(workDay.copy(isPlanned = false, location = location))
+                workDay.timeBlocks.filter { it.id != block.id && it.isDuration }.forEach {
+                    workDayRepository.deleteTimeBlock(it)
+                }
             }
             workDayRepository.saveTimeBlock(
-                block.copy(startTime = startTime, endTime = endTime, location = location)
+                block.copy(startTime = startTime, endTime = endTime, location = location, isDuration = isDuration)
             )
             if (wasRunning && !isNowRunning) {
                 breakWarningScheduler.cancelWarning()

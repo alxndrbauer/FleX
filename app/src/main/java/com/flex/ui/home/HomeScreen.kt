@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
@@ -544,16 +545,16 @@ fun HomeScreen(
             block = block,
             existingBlocks = state.timeBlocks,
             onDismiss = { editingBlock = null },
-            onSave = { startTime, endTime, location ->
-                viewModel.updateTimeBlock(block, startTime, endTime, location)
+            onSave = { startTime, endTime, location, isDuration ->
+                viewModel.updateTimeBlock(block, startTime, endTime, location, isDuration)
                 editingBlock = null
             },
             onDelete = {
                 viewModel.deleteTimeBlock(block)
                 editingBlock = null
             },
-            onBook = if (state.workDay?.isPlanned == true) ({ startTime, endTime, location ->
-                viewModel.bookTimeBlock(block, startTime, endTime, location)
+            onBook = if (state.workDay?.isPlanned == true) ({ startTime, endTime, location, isDuration ->
+                viewModel.bookTimeBlock(block, startTime, endTime, location, isDuration)
                 editingBlock = null
             }) else null
         )
@@ -1164,6 +1165,31 @@ private fun TimelineBlockItem(
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
+                            if (block.isDuration) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    modifier = Modifier.wrapContentSize()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Timer,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier.size(10.dp)
+                                        )
+                                        Text(
+                                            text = "Gesamtzeit",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                    }
+                                }
+                            }
                             if (isWorkDayPlanned) {
                                 Surface(
                                     shape = RoundedCornerShape(4.dp),
@@ -1397,14 +1423,16 @@ fun EditTimeBlockDialog(
     block: TimeBlock,
     existingBlocks: List<TimeBlock> = emptyList(),
     onDismiss: () -> Unit,
-    onSave: (startTime: LocalTime, endTime: LocalTime?, location: WorkLocation) -> Unit,
+    onSave: (startTime: LocalTime, endTime: LocalTime?, location: WorkLocation, isDuration: Boolean) -> Unit,
     onDelete: () -> Unit,
-    onBook: ((startTime: LocalTime, endTime: LocalTime?, location: WorkLocation) -> Unit)? = null
+    onBook: ((startTime: LocalTime, endTime: LocalTime?, location: WorkLocation, isDuration: Boolean) -> Unit)? = null
 ) {
     val fmt = DateTimeFormatter.ofPattern("HH:mm")
     var startText by remember { mutableStateOf(TextFieldValue(block.startTime.format(fmt))) }
     var endText by remember { mutableStateOf(TextFieldValue(block.endTime?.format(fmt) ?: "")) }
     var dialogLocation by remember { mutableStateOf(block.location) }
+    var isDuration by remember { mutableStateOf(block.isDuration) }
+    var hasSwitchedFromDuration by remember { mutableStateOf(false) }
 
     val overlappingBlock = remember(startText.text, endText.text, existingBlocks, block.id) {
         try {
@@ -1416,7 +1444,36 @@ fun EditTimeBlockDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Zeitblock bearbeiten") },
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Zeitblock bearbeiten")
+                if (isDuration) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.wrapContentSize()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Timer,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = "Gesamtzeit",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+            }
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Arbeitsort", style = MaterialTheme.typography.labelMedium)
@@ -1431,6 +1488,58 @@ fun EditTimeBlockDialog(
                         onClick = { dialogLocation = WorkLocation.HOME_OFFICE },
                         label = { Text("Home-Office") }
                     )
+                }
+
+                Text("Erfassungstyp", style = MaterialTheme.typography.labelMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = !isDuration,
+                        onClick = {
+                            if (isDuration) hasSwitchedFromDuration = true
+                            isDuration = false
+                        },
+                        label = { Text("Start / Ende") }
+                    )
+                    FilterChip(
+                        selected = isDuration,
+                        onClick = { isDuration = true },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Timer,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        label = { Text("Gesamtzeit") }
+                    )
+                }
+
+                if (!isDuration && (block.isDuration || hasSwitchedFromDuration)) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Hinweis: Beim Wechsel zu Start/Ende wird die gesetzliche Pause abgezogen.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1490,7 +1599,7 @@ fun EditTimeBlockDialog(
                                 val start = LocalTime.parse(startText.text, DateTimeFormatter.ofPattern("HH:mm"))
                                 val end = if (endText.text.isBlank()) null
                                 else LocalTime.parse(endText.text, DateTimeFormatter.ofPattern("HH:mm"))
-                                onBook(start, end, dialogLocation)
+                                onBook(start, end, dialogLocation, isDuration)
                             } catch (_: Exception) { }
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -1516,7 +1625,7 @@ fun EditTimeBlockDialog(
                                 val start = LocalTime.parse(startText.text, DateTimeFormatter.ofPattern("HH:mm"))
                                 val end = if (endText.text.isBlank()) null
                                 else LocalTime.parse(endText.text, DateTimeFormatter.ofPattern("HH:mm"))
-                                onSave(start, end, dialogLocation)
+                                onSave(start, end, dialogLocation, isDuration)
                             } catch (_: Exception) { }
                         }) {
                             Text("Speichern")
