@@ -48,9 +48,10 @@ class ExportNotificationHelper @Inject constructor(
 
         val notifId = BASE_NOTIF_ID + (System.currentTimeMillis() % 1000).toInt()
 
-        val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+        val viewIntent = Intent(context, NotificationActionActivity::class.java).apply {
+            action = NotificationActionActivity.ACTION_VIEW_EXPORT
             setDataAndType(uri, mimeType)
-            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
         }
         val viewPendingIntent = PendingIntent.getActivity(
             context,
@@ -59,16 +60,15 @@ class ExportNotificationHelper @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = mimeType
-            putExtra(Intent.EXTRA_STREAM, uri)
+        val shareIntent = Intent(context, NotificationActionActivity::class.java).apply {
+            action = NotificationActionActivity.ACTION_SHARE_EXPORT
+            setDataAndType(uri, mimeType)
             flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
         }
-        val chooserIntent = Intent.createChooser(shareIntent, "Export teilen")
         val sharePendingIntent = PendingIntent.getActivity(
             context,
             notifId + 10000,
-            chooserIntent,
+            shareIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 

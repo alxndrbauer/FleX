@@ -125,18 +125,21 @@ class ExportNotificationHelperTest {
     }
 
     @Nested
-    @DisplayName("MIME Type Verification")
+    @DisplayName("MIME Type Verification and Explicit Intents")
     inner class MimeTypeTests {
 
         @Test
-        fun `showExportNotification with ExportFormat PDF uses application-pdf mime type`() {
+        fun `showExportNotification with ExportFormat PDF uses application-pdf mime type and explicit intents`() {
+            val capturedIntentContexts = mutableListOf<MockedConstruction.Context>()
             val builderConstruction = Mockito.mockConstruction(
                 NotificationCompat.Builder::class.java,
                 Mockito.withSettings().defaultAnswer(Answers.RETURNS_SELF)
             ) { mock, _ ->
                 whenever(mock.build()).thenReturn(mockNotification)
             }
-            val intentConstruction = Mockito.mockConstruction(Intent::class.java)
+            val intentConstruction = Mockito.mockConstruction(Intent::class.java) { _, context ->
+                capturedIntentContexts.add(context)
+            }
 
             try {
                 val helper = ExportNotificationHelper(context)
@@ -146,15 +149,20 @@ class ExportNotificationHelperTest {
                 val intents = intentConstruction.constructed()
                 assertThat(intents).hasSize(2)
 
-                // First intent: viewIntent
+                // First intent: viewIntent directed to NotificationActionActivity
+                assertThat(capturedIntentContexts[0].arguments()[0]).isSameInstanceAs(context)
+                assertThat(capturedIntentContexts[0].arguments()[1]).isEqualTo(NotificationActionActivity::class.java)
                 val viewIntent = intents[0]
+                verify(viewIntent).action = NotificationActionActivity.ACTION_VIEW_EXPORT
                 verify(viewIntent).setDataAndType(uri, "application/pdf")
-                verify(viewIntent).flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+                verify(viewIntent).flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
 
-                // Second intent: shareIntent
+                // Second intent: shareIntent directed to NotificationActionActivity
+                assertThat(capturedIntentContexts[1].arguments()[0]).isSameInstanceAs(context)
+                assertThat(capturedIntentContexts[1].arguments()[1]).isEqualTo(NotificationActionActivity::class.java)
                 val shareIntent = intents[1]
-                verify(shareIntent).setType("application/pdf")
-                verify(shareIntent).putExtra(Intent.EXTRA_STREAM, uri)
+                verify(shareIntent).action = NotificationActionActivity.ACTION_SHARE_EXPORT
+                verify(shareIntent).setDataAndType(uri, "application/pdf")
                 verify(shareIntent).flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             } finally {
                 intentConstruction.close()
@@ -163,14 +171,17 @@ class ExportNotificationHelperTest {
         }
 
         @Test
-        fun `showExportNotification with ExportFormat CSV uses text-csv mime type`() {
+        fun `showExportNotification with ExportFormat CSV uses text-csv mime type and explicit intents`() {
+            val capturedIntentContexts = mutableListOf<MockedConstruction.Context>()
             val builderConstruction = Mockito.mockConstruction(
                 NotificationCompat.Builder::class.java,
                 Mockito.withSettings().defaultAnswer(Answers.RETURNS_SELF)
             ) { mock, _ ->
                 whenever(mock.build()).thenReturn(mockNotification)
             }
-            val intentConstruction = Mockito.mockConstruction(Intent::class.java)
+            val intentConstruction = Mockito.mockConstruction(Intent::class.java) { _, context ->
+                capturedIntentContexts.add(context)
+            }
 
             try {
                 val helper = ExportNotificationHelper(context)
@@ -180,15 +191,20 @@ class ExportNotificationHelperTest {
                 val intents = intentConstruction.constructed()
                 assertThat(intents).hasSize(2)
 
-                // First intent: viewIntent
+                // First intent: viewIntent directed to NotificationActionActivity
+                assertThat(capturedIntentContexts[0].arguments()[0]).isSameInstanceAs(context)
+                assertThat(capturedIntentContexts[0].arguments()[1]).isEqualTo(NotificationActionActivity::class.java)
                 val viewIntent = intents[0]
+                verify(viewIntent).action = NotificationActionActivity.ACTION_VIEW_EXPORT
                 verify(viewIntent).setDataAndType(uri, "text/csv")
-                verify(viewIntent).flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+                verify(viewIntent).flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
 
-                // Second intent: shareIntent
+                // Second intent: shareIntent directed to NotificationActionActivity
+                assertThat(capturedIntentContexts[1].arguments()[0]).isSameInstanceAs(context)
+                assertThat(capturedIntentContexts[1].arguments()[1]).isEqualTo(NotificationActionActivity::class.java)
                 val shareIntent = intents[1]
-                verify(shareIntent).setType("text/csv")
-                verify(shareIntent).putExtra(Intent.EXTRA_STREAM, uri)
+                verify(shareIntent).action = NotificationActionActivity.ACTION_SHARE_EXPORT
+                verify(shareIntent).setDataAndType(uri, "text/csv")
                 verify(shareIntent).flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             } finally {
                 intentConstruction.close()

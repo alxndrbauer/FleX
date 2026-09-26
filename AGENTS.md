@@ -108,10 +108,6 @@ Allows configuring which weekdays count as working days.
 fix(ui): Delete button now appears in month view dialog
 ```
 
-## Versioning
-
-Mit jeder Änderung soll die Version der App gemäß semver angepasst werden.
-
 ## Regeln
 
 ✅ **DO**
