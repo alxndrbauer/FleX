@@ -7,12 +7,14 @@ Für komplexe Aufgaben wird folgende Strategie verwendet:
 ### 1️⃣ Komplexe Tasks (Planung & Review)
 **Wann:** Komplexe Probleme, Architektur-Entscheidungen, Code-Review
 - Codebase analysieren
-- Implementierungs-Plan erstellen
-- Teilaufgaben delegieren (falls unterstützt)
-- Ergebnisse reviewen und korrigieren
+- Implementierungs-Plan erstellen mit gezielter Aufteilung für mehrere Subagents
+- Aufgaben in klar abgegrenzte, delegierbare Arbeitspakete schneiden (z. B. Recherche, Domain/Model, Data/Room, UI/Compose, Tests)
+- Teilaufgaben an spezialisierte Subagents delegieren
+- Ergebnisse reviewen, integrieren und korrigieren
 
 ### 2️⃣ Mittlere Tasks (Implementierung mittlerer Komplexität)
 **Wann:** Klare Anforderungen, mehrere zusammenhängende Änderungen, >10 Zeilen Code
+- Kann als eigenständiger Subagent-Task delegiert werden
 - UI-Komponenten erweitern
 - Repository/DAO Änderungen
 - Use Cases implementieren
@@ -29,15 +31,20 @@ Für komplexe Aufgaben wird folgende Strategie verwendet:
 ## Workflow
 
 ### 1. Plan erstellen
-Bei komplexen Aufgaben immer erst einen Plan (`/plan`) erstellen, bevor Code geschrieben wird.
+- Bei komplexen Aufgaben immer erst einen Plan (`/plan`) erstellen, bevor Code geschrieben wird.
+- **Subagent-Aufteilung:** Die Planung muss Aufgaben explizit in Teilaufgaben für mehrere Subagents aufteilen (mit klarem Scope, Schnittstellen und Akzeptanzkriterien), damit diese gezielt und effizient delegiert werden können.
 
 ### 2. Implementierung
 - TDD: Tests zuerst schreiben, dann implementieren
+- Arbeitspakete an Subagents delegieren
 - Code-Review nach größeren Änderungen
 
 ### 3. Git & Commit
-- `git add` + `git commit` → selbst ausführen
-- Conventional Commits verwenden (siehe unten)
+- **Keine automatischen Commits!** Es werden **keine** Commits mehr automatisch erstellt.
+- `git commit` wird **nur** ausgeführt, wenn der User ausdrücklich anweist, jetzt einen Commit zu erstellen (z. B. "erstelle jetzt einen commit").
+- Wenn ein Commit vom User beauftragt wurde:
+  - Conventional Commits verwenden (siehe unten)
+  - `git add` + `git commit` ausführen
 - `git push` → **niemals ausführen** – der User pusht immer selbst
 
 ### 4. Verifikation
@@ -108,17 +115,18 @@ Mit jeder Änderung soll die Version der App gemäß semver angepasst werden.
 ## Regeln
 
 ✅ **DO**
-- Komplexe Tasks in Subtasks aufteilen
+- Komplexe Tasks in Subtasks aufteilen und für mehrere Subagents strukturieren
 - TDD: Tests vor der Implementierung schreiben
 - Tests für neue Features schreiben
 - Code-Review nach größeren Änderungen
-- Descriptive Commit Messages (Conventional Commits)
+- Descriptive Commit Messages (Conventional Commits) – *nur wenn vom User ausdrücklich beauftragt*
 - Gradle Tasks dürfen ohne Nachfragen ausgeführt werden
 - **Niemals `git push` ausführen** – der User pusht immer selbst
 - Bei neuen Room-Feldern: immer Migration hinzufügen + DB-Version erhöhen
 - Bei Konstruktor-Änderungen: alle Aufrufe in androidTest prüfen
 
 ❌ **DON'T**
+- Automatische Commits erstellen (`git commit` ist verboten, außer der User verlangt ausdrücklich die Erstellung eines Commits)
 - Force-Push zu main
 - Unsigned Releases pushen
 - `.env`, `*.jks`, `local.properties` committen
