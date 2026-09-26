@@ -83,10 +83,10 @@ object UpdateDownloader {
                     s.fsync(output)
                 }
             }
-            val callbackIntent = Intent(context, com.flex.MainActivity::class.java).apply {
+            val callbackIntent = Intent(context, PackageInstallerStatusReceiver::class.java).apply {
                 action = ACTION_INSTALL_COMPLETE
             }
-            val pendingIntent = PendingIntent.getActivity(
+            val pendingIntent = PendingIntent.getBroadcast(
                 context,
                 sessionId,
                 callbackIntent,

@@ -484,6 +484,12 @@ fun SettingsScreen(
                         isDownloading = true
                         runCatching {
                             UpdateDownloader.downloadAndInstall(context, update.downloadUrl)
+                        }.onFailure { error ->
+                            android.widget.Toast.makeText(
+                                context,
+                                "Download fehlgeschlagen: ${error.localizedMessage ?: "Unbekannter Fehler"}",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
                         }
                         isDownloading = false
                         pendingUpdate = null

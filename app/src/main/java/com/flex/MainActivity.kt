@@ -94,6 +94,12 @@ class MainActivity : ComponentActivity() {
                                             context = this@MainActivity,
                                             downloadUrl = update.downloadUrl
                                         )
+                                    }.onFailure { error ->
+                                        android.widget.Toast.makeText(
+                                            this@MainActivity,
+                                            "Download fehlgeschlagen: ${error.localizedMessage ?: "Unbekannter Fehler"}",
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
                                     }
                                     isDownloading = false
                                     pendingUpdate = null

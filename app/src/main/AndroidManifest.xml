@@ -103,6 +103,10 @@
             android:name=".notification.ResumeWorkReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".data.update.PackageInstallerStatusReceiver"
+            android:exported="false" />
+
         <activity
             android:name=".notification.NotificationActionActivity"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"

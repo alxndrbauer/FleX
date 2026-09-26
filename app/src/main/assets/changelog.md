@@ -15,6 +15,7 @@
 - Resolve compiler deprecations and packaging warnings
 - Prevent timer reset to 0 on app reopen and update immediately on resume
 - Resolve CodeQL security and quality alerts
+- Launch user confirmation prompt in PackageInstaller receiver
 
 ### Features
 
