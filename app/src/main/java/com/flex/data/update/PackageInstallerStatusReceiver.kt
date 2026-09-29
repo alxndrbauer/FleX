@@ -4,11 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
-import android.os.Build
-import android.os.Bundle
+import androidx.core.content.IntentCompat
 import android.util.Log
 import android.widget.Toast
-import androidx.core.os.BundleCompat
 
 class PackageInstallerStatusReceiver : BroadcastReceiver() {
 
@@ -16,8 +14,8 @@ class PackageInstallerStatusReceiver : BroadcastReceiver() {
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)
         when (status) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                val confirmationIntent = BundleCompat.getParcelable(
-                    intent.extras ?: Bundle.EMPTY,
+                val confirmationIntent = IntentCompat.getParcelableExtra(
+                    intent,
                     Intent.EXTRA_INTENT,
                     Intent::class.java
                 )

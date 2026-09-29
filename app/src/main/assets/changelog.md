@@ -3,6 +3,12 @@
 
 ### Bugfixes
 
+- Launch user confirmation prompt in PackageInstaller receiver
+- Use IntentCompat.getParcelableExtra in PackageInstaller receiver
+## [1.8.0] - 2026-09-26
+
+### Bugfixes
+
 - Disable application backup in app manifest (Alert #16)
 - Disable application backup in wear manifest (Alert #17)
 - Refactor work time sum in YearOverviewViewModel (Alert #33)
@@ -15,7 +21,6 @@
 - Resolve compiler deprecations and packaging warnings
 - Prevent timer reset to 0 on app reopen and update immediately on resume
 - Resolve CodeQL security and quality alerts
-- Launch user confirmation prompt in PackageInstaller receiver
 
 ### Features
 
