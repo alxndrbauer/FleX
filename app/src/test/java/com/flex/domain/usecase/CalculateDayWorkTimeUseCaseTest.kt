@@ -605,8 +605,109 @@ class CalculateDayWorkTimeUseCaseTest {
         assertThat(result.netMinutes).isEqualTo(540)
     }
 
+    // Dienstreise (Business Trip) tests
+
+    @Test
+    fun testBusinessTripWhen12HoursSingleBlockExpectLegalBreakDeductedAndNoExceedsMax() {
+        // Dienstreise mit 12h Einzelblock (07:00 - 19:00): gesetzl. Pause 45 min abgezogen
+        // brutto = 720, netto = 720 - 45 = 675, exceedsMaxHours = false (Dienstreise!)
+        val timeBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(7, 0),
+            endTime = LocalTime.of(19, 0),
+            isDuration = false
+        )
+
+        val result = useCase(listOf(timeBlock), isBusinessTrip = true)
+
+        assertThat(result.grossMinutes).isEqualTo(720)
+        assertThat(result.netMinutes).isEqualTo(675) // 720 - 45 min gesetzl. Pause
+        assertThat(result.breakMinutes).isEqualTo(45)
+        assertThat(result.exceedsMaxHours).isFalse()
+    }
+
+    @Test
+    fun testBusinessTripWhenTwoBlocksWithSufficientGapExpectNoAdditionalDeduction() {
+        // Dienstreise mit 2 Blöcken (08:00 - 12:00, 13:00 - 18:00)
+        // Lücke = 60 min >= Pflicht 30 min (9h brutto) → kein Abzug, netto = 540
+        val timeBlocks = listOf(
+            TimeBlock(1, 1, LocalTime.of(8, 0), LocalTime.of(12, 0), isDuration = false),
+            TimeBlock(2, 1, LocalTime.of(13, 0), LocalTime.of(18, 0), isDuration = false)
+        )
+
+        val result = useCase(timeBlocks, isBusinessTrip = true)
+
+        assertThat(result.grossMinutes).isEqualTo(540)
+        assertThat(result.netMinutes).isEqualTo(540) // Lücke reicht aus
+        assertThat(result.breakMinutes).isEqualTo(60)
+        assertThat(result.exceedsMaxHours).isFalse()
+    }
+
+    @Test
+    fun testBusinessTripWhenTwoBlocksWithInsufficientGapExpectShortfallDeducted() {
+        // Szenario aus Screenshot Mi: 07:58-13:04 + 13:43-19:32
+        // Blöcke: 306 + 349 = 655 min brutto, Lücke = 39 min
+        // Pflicht bei >9h: 45 min, Fehlbetrag: 45 - 39 = 6 min
+        // netto = 655 - 6 = 649 min = 10h49m
+        val timeBlocks = listOf(
+            TimeBlock(1, 1, LocalTime.of(7, 58), LocalTime.of(13, 4), isDuration = false),
+            TimeBlock(2, 1, LocalTime.of(13, 43), LocalTime.of(19, 32), isDuration = false)
+        )
+
+        val result = useCase(timeBlocks, isBusinessTrip = true)
+
+        assertThat(result.grossMinutes).isEqualTo(655)
+        assertThat(result.netMinutes).isEqualTo(649) // 655 - 6 min Fehlbetrag
+        assertThat(result.breakMinutes).isEqualTo(45) // max(39, 45) = 45
+        assertThat(result.exceedsMaxHours).isFalse()
+    }
+
+    @Test
+    fun testBusinessTripWhenDurationModeOver10HoursExpectNoCappingAndNoExceedsMax() {
+        // Dienstreise im Duration-Modus mit 11h ergibt 660 min netto, exceedsMaxHours = false
+        val timeBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(8, 0),
+            endTime = LocalTime.of(19, 0), // 11h = 660 min
+            isDuration = true
+        )
+
+        val result = useCase(listOf(timeBlock), isBusinessTrip = true)
+
+        assertThat(result.grossMinutes).isEqualTo(660)
+        assertThat(result.netMinutes).isEqualTo(660)
+        assertThat(result.breakMinutes).isEqualTo(0)
+        assertThat(result.exceedsMaxHours).isFalse()
+    }
+
+    @Test
+    fun testBusinessTripNoRoundingApplied() {
+        // Dienstreise: 07:58 darf NICHT auf 07:55 abgerundet werden
+        // Normaler Tag: 07:58 → 07:55 (5-min Rundung)
+        val timeBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(7, 58),
+            endTime = LocalTime.of(13, 4), // 306 min exakt
+            isDuration = false
+        )
+
+        val btResult = useCase(listOf(timeBlock), isBusinessTrip = true)
+        val normalResult = useCase(listOf(timeBlock), isBusinessTrip = false)
+
+        // Dienstreise: exakt 306 min (5h06m)
+        assertThat(btResult.grossMinutes).isEqualTo(306)
+        // Normaler Tag: gerundet 07:55-13:05 = 310 min (5h10m)
+        assertThat(normalResult.grossMinutes).isEqualTo(310)
+    }
+
     // Helper function to invoke use case with single block
-    private operator fun CalculateDayWorkTimeUseCase.invoke(timeBlock: TimeBlock): DayWorkTimeResult {
-        return this.invoke(listOf(timeBlock))
+    private operator fun CalculateDayWorkTimeUseCase.invoke(
+        timeBlock: TimeBlock,
+        isBusinessTrip: Boolean = false
+    ): DayWorkTimeResult {
+        return this.invoke(listOf(timeBlock), isBusinessTrip)
     }
 }

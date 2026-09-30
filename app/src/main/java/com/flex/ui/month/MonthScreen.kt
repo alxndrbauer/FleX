@@ -97,6 +97,7 @@ import com.flex.ui.components.TOOLTIP_PROGNOSIS
 import com.flex.ui.components.TOOLTIP_PROGNOSIS_TITLE
 import com.flex.ui.components.diagonalHatch
 import com.flex.ui.components.formatTimeInput
+import com.flex.ui.theme.BusinessTripColor
 import com.flex.ui.theme.FlexDayColor
 import com.flex.ui.theme.HomeOfficeColor
 import com.flex.ui.theme.OfficeColor
@@ -474,6 +475,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
         ) {
             LegendItem(color = OfficeColor, label = "Büro")
             LegendItem(color = HomeOfficeColor, label = "HO")
+            LegendItem(color = BusinessTripColor, label = "Dienstgang / Dienstreise")
             LegendItem(color = VacationColor, label = "Urlaub")
             LegendItem(color = SpecialVacationColor, label = "Sonderurlaub")
             LegendItem(color = FlexDayColor, label = "Gleittag")
@@ -631,6 +633,7 @@ fun DayCell(
     val bgColor = when {
         holidayName != null -> PublicHolidayColor.copy(alpha = 0.3f)
         workDay == null -> Color.Transparent
+        workDay.dayType == DayType.BUSINESS_TRIP -> BusinessTripColor.copy(alpha = 0.3f)
         workDay.dayType == DayType.VACATION -> VacationColor.copy(alpha = 0.3f)
         workDay.dayType == DayType.SPECIAL_VACATION -> SpecialVacationColor.copy(alpha = 0.3f)
         workDay.dayType == DayType.FLEX_DAY -> FlexDayColor.copy(alpha = 0.3f)
@@ -736,7 +739,7 @@ fun WorkDayListItem(
     hasOverlap: Boolean = false,
     onClick: () -> Unit
 ) {
-    val isWorkType = workDay.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
+    val isWorkType = workDay.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP)
     val workBlocks = workDay.timeBlocks.filter { it.endTime != null }
 
     // Compute office/HO split once for both accentColor and typeLabel
@@ -754,6 +757,7 @@ fun WorkDayListItem(
         DayType.SPECIAL_VACATION -> SpecialVacationColor
         DayType.FLEX_DAY -> FlexDayColor
         DayType.SICK_DAY -> SickDayColor
+        DayType.BUSINESS_TRIP -> BusinessTripColor
         else -> when {
             workBlocks.isEmpty() -> if (workDay.location == WorkLocation.OFFICE) OfficeColor else HomeOfficeColor
             officeMin >= hoMin -> OfficeColor
@@ -773,6 +777,7 @@ fun WorkDayListItem(
                 }
             }
         }
+        DayType.BUSINESS_TRIP -> "Dienstgang / Dienstreise"
         DayType.VACATION -> "Urlaub"
         DayType.SPECIAL_VACATION -> "Sonderurlaub"
         DayType.FLEX_DAY -> "Gleittag"
@@ -997,6 +1002,9 @@ fun EditDayDialog(
                         selected = dayType == DayType.WORK, onClick = { dayType = DayType.WORK },
                         label = { Text("Arbeitstag") })
                     FilterChip(
+                        selected = dayType == DayType.BUSINESS_TRIP, onClick = { dayType = DayType.BUSINESS_TRIP },
+                        label = { Text("Dienstgang / Dienstreise") })
+                    FilterChip(
                         selected = dayType == DayType.VACATION,
                         onClick = { dayType = DayType.VACATION },
                         label = { Text("Urlaub") })
@@ -1019,7 +1027,7 @@ fun EditDayDialog(
                 }
 
                 // Time entry — only for work day types
-                if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)) {
+                if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP)) {
                     PrimaryTabRow(selectedTabIndex = selectedTab) {
                         Tab(
                             selected = selectedTab == 0, onClick = { selectedTab = 0 },
@@ -1103,17 +1111,19 @@ fun EditDayDialog(
                         }
 
                         // Location per block
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilterChip(
-                                selected = block.location == WorkLocation.OFFICE,
-                                onClick = { block.location = WorkLocation.OFFICE },
-                                label = { Text("Büro") }
-                            )
-                            FilterChip(
-                                selected = block.location == WorkLocation.HOME_OFFICE,
-                                onClick = { block.location = WorkLocation.HOME_OFFICE },
-                                label = { Text("HO") }
-                            )
+                        if (dayType != DayType.BUSINESS_TRIP) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilterChip(
+                                    selected = block.location == WorkLocation.OFFICE,
+                                    onClick = { block.location = WorkLocation.OFFICE },
+                                    label = { Text("Büro") }
+                                )
+                                FilterChip(
+                                    selected = block.location == WorkLocation.HOME_OFFICE,
+                                    onClick = { block.location = WorkLocation.HOME_OFFICE },
+                                    label = { Text("HO") }
+                                )
+                            }
                         }
 
                         // Time fields
@@ -1161,7 +1171,7 @@ fun EditDayDialog(
                     // Add block button
                     TextButton(
                         onClick = {
-                            val lastLocation = blocks.lastOrNull()?.location ?: WorkLocation.HOME_OFFICE
+                            val lastLocation = if (dayType == DayType.BUSINESS_TRIP) WorkLocation.OFFICE else (blocks.lastOrNull()?.location ?: WorkLocation.HOME_OFFICE)
                             blocks.add(
                                 MutableBlockState(
                                     startText = TextFieldValue(""),
@@ -1187,8 +1197,9 @@ fun EditDayDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                val timeBlockInputs = if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)) {
+                val timeBlockInputs = if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP)) {
                     blocks.mapNotNull { block ->
+                        val effectiveLocation = if (dayType == DayType.BUSINESS_TRIP) WorkLocation.OFFICE else block.location
                         if (selectedTab == 0) {
                             try {
                                 val start = LocalTime.parse(
@@ -1199,7 +1210,7 @@ fun EditDayDialog(
                                     block.endText.text,
                                     DateTimeFormatter.ofPattern("HH:mm")
                                 )
-                                TimeBlockInput(start, end, block.location, isDuration = false)
+                                TimeBlockInput(start, end, effectiveLocation, isDuration = false)
                             } catch (_: Exception) {
                                 null
                             }
@@ -1212,7 +1223,7 @@ fun EditDayDialog(
                                 TimeBlockInput(
                                     start,
                                     start.plusMinutes(total.toLong()),
-                                    block.location,
+                                    effectiveLocation,
                                     isDuration = true
                                 )
                             } else null

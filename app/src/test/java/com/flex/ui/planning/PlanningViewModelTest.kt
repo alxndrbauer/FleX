@@ -62,6 +62,7 @@ class PlanningViewModelTest : BaseUnitTest() {
         whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
         whenever(calculateFlextime(any(), any(), anyOrNull(), any())).thenReturn(FlextimeBalance())
         whenever(calculateDayWorkTime(any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
+        whenever(calculateDayWorkTime(any(), any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
         whenever(buildPrognosisDays(any(), any(), any(), any())).thenAnswer { inv -> inv.getArgument(1) }
         whenever(settingsRepository.getQuotaRuleForMonth(any(), any())).thenReturn(null)
         whenever(settingsRepository.getWorkTimeRuleForDate(any(), any())).thenReturn(null)
@@ -139,4 +140,25 @@ class PlanningViewModelTest : BaseUnitTest() {
         assertThat(captor.allValues.all { it.startTime == customStartTime }).isTrue()
         assertThat(captor.allValues.all { it.endTime == customStartTime.plusMinutes(420) }).isTrue()
     }
+
+    @Test
+    fun `planDay with PlanType BUSINESS_TRIP saves WorkLocation OFFICE and DayType BUSINESS_TRIP`() = runTest {
+        val testDate = YearMonth.now().plusMonths(1).atDay(5)
+        whenever(workDayRepository.saveWorkDay(any())).thenReturn(15L)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.setSelectedPlanType(PlanType.BUSINESS_TRIP)
+        viewModel.planDay(testDate)
+        advanceUntilIdle()
+
+        val captor = argumentCaptor<com.flex.domain.model.WorkDay>()
+        verify(workDayRepository).saveWorkDay(captor.capture())
+
+        assertThat(captor.firstValue.dayType).isEqualTo(DayType.BUSINESS_TRIP)
+        assertThat(captor.firstValue.location).isEqualTo(com.flex.domain.model.WorkLocation.OFFICE)
+        assertThat(captor.firstValue.isPlanned).isTrue()
+    }
 }
+

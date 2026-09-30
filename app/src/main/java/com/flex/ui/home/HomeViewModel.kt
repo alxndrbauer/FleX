@@ -126,7 +126,8 @@ class HomeViewModel @Inject constructor(
         val blocksForCalc = state.timeBlocks.map { block ->
             if (block.endTime == null) block.copy(endTime = now) else block
         }
-        val result = calculateDayWorkTime(blocksForCalc)
+        val isBusinessTrip = state.selectedDayType == DayType.BUSINESS_TRIP
+        val result = if (isBusinessTrip) calculateDayWorkTime(blocksForCalc, isBusinessTrip = true) else calculateDayWorkTime(blocksForCalc)
         val dailyTarget = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)?.dailyWorkMinutes
             ?: state.settings.dailyWorkMinutes
         return (dailyTarget - result.netMinutes).toInt().coerceAtLeast(0)
@@ -179,11 +180,13 @@ class HomeViewModel @Inject constructor(
             val blocksForCalc = state.timeBlocks.map { block ->
                 if (block.endTime == null) block.copy(endTime = now) else block
             }
-            val liveWorkTime = calculateDayWorkTime(blocksForCalc)
+            val isBusinessTrip = state.selectedDayType == DayType.BUSINESS_TRIP
+            val liveWorkTime = if (isBusinessTrip) calculateDayWorkTime(blocksForCalc, isBusinessTrip = true) else calculateDayWorkTime(blocksForCalc)
             val liveFlexDelta = liveWorkTime.netMinutes - state.baseDayNetMinutes
-            val liveBreakCheck = if (state.settings.breakWarningEnabled)
-                checkBreakViolation(blocksForCalc)
-            else BreakCheckResult(emptyList(), skipped = false)
+            val liveBreakCheck = if (state.settings.breakWarningEnabled) {
+                if (isBusinessTrip) checkBreakViolation(blocksForCalc, isBusinessTrip = true)
+                else checkBreakViolation(blocksForCalc)
+            } else BreakCheckResult(emptyList(), skipped = false)
 
             val todayWithNow = (state.workDay ?: WorkDay(date = today, location = state.selectedLocation, dayType = state.selectedDayType)).copy(timeBlocks = blocksForCalc)
             val todayYearMonth = YearMonth.from(today)
@@ -252,9 +255,12 @@ class HomeViewModel @Inject constructor(
                         val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
                         val qDays = rule?.officeQuotaMinDays ?: settings.officeQuotaMinDays
 
+                        val selectedDayType = override ?: workDay?.dayType ?: DayType.WORK
+                        val isBusinessTrip = selectedDayType == DayType.BUSINESS_TRIP
+
                         val timeBlocks = workDay?.timeBlocks ?: emptyList()
                         val isRunning = timeBlocks.any { it.endTime == null }
-                        val baseDayResult = calculateDayWorkTime(timeBlocks)
+                        val baseDayResult = if (isBusinessTrip) calculateDayWorkTime(timeBlocks, isBusinessTrip = true) else calculateDayWorkTime(timeBlocks)
                         val hasOverlap = checkTimeBlockOverlap(timeBlocks)
                         val isToday = date == today
                         val now = LocalTime.now()
@@ -266,7 +272,7 @@ class HomeViewModel @Inject constructor(
                             timeBlocks
                         }
                         val initialDayResult = if (isRunning && isToday) {
-                            calculateDayWorkTime(blocksForCalc)
+                            if (isBusinessTrip) calculateDayWorkTime(blocksForCalc, isBusinessTrip = true) else calculateDayWorkTime(blocksForCalc)
                         } else {
                             baseDayResult
                         }
@@ -275,25 +281,28 @@ class HomeViewModel @Inject constructor(
                         } else {
                             0L
                         }
-                        val breakCheckResult = if (settings.breakWarningEnabled)
-                            checkBreakViolation(blocksForCalc)
-                        else
+                        val breakCheckResult = if (settings.breakWarningEnabled) {
+                            if (isBusinessTrip) checkBreakViolation(blocksForCalc, isBusinessTrip = true)
+                            else checkBreakViolation(blocksForCalc)
+                        } else {
                             BreakCheckResult(emptyList(), skipped = false)
+                        }
                         // Exclude planned days from calculations in current month.
-                        // Also exclude today if it's a WORK day with no completed time blocks yet
+                        // Also exclude today if it's a WORK or BUSINESS_TRIP day with no completed time blocks yet
                         // (running blocks count as 0 min, empty entries from auto-clockin etc.
                         // would wrongly deduct the full daily target before the day is over).
                         fun hasCompletedBlocks(day: WorkDay) = day.timeBlocks.any { it.endTime != null }
+                        fun isWorkLike(dayType: DayType) = dayType == DayType.WORK || dayType == DayType.BUSINESS_TRIP
                         val actualMonthDays = monthDays.filter { !it.isPlanned }.mapNotNull { day ->
                             val resolved = if (day.date == today && workDay != null && date == today) workDay else day
-                            if (resolved.date == today && resolved.dayType == DayType.WORK && !hasCompletedBlocks(resolved)) null
+                            if (resolved.date == today && isWorkLike(resolved.dayType) && !hasCompletedBlocks(resolved)) null
                             else resolved
                         }
 
                         // Cumulative flextime: all year's actual days (not planned), with today replaced
                         val actualYearDays = yearDays.filter { !it.isPlanned }.mapNotNull { day ->
                             val resolved = if (day.date == today && workDay != null && date == today) workDay else day
-                            if (resolved.date == today && resolved.dayType == DayType.WORK && !hasCompletedBlocks(resolved)) null
+                            if (resolved.date == today && isWorkLike(resolved.dayType) && !hasCompletedBlocks(resolved)) null
                             else resolved
                         }
                         cachedWorkTimeRules = workTimeRules
@@ -301,7 +310,7 @@ class HomeViewModel @Inject constructor(
                         cachedYearDays = yearDays
 
                         val (flextime, monthlyFlextime, liveFlextime, liveMonthlyFlextime) = if (isRunning && isToday) {
-                            val todayWithNow = (workDay ?: WorkDay(date = today, location = workDay?.location ?: WorkLocation.OFFICE, dayType = override ?: workDay?.dayType ?: DayType.WORK)).copy(timeBlocks = blocksForCalc)
+                            val todayWithNow = (workDay ?: WorkDay(date = today, location = workDay?.location ?: WorkLocation.OFFICE, dayType = selectedDayType)).copy(timeBlocks = blocksForCalc)
                             val liveMDays = monthDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
                             val liveYDays = yearDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
                             val baseMDays = monthDays.filter { !it.isPlanned && it.date.isBefore(today) }
@@ -332,16 +341,17 @@ class HomeViewModel @Inject constructor(
                         val workingDays = actualMonthDays.filter { it.dayType !in neutralTypes }
                         var officeMin = 0L
                         for (day in workingDays) {
+                            val isDayBusinessTrip = day.dayType == DayType.BUSINESS_TRIP
                             val adjustedBlocks =
                                 CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
-                            val dayResult = calculateDayWorkTime(day.timeBlocks)
+                            val dayResult = if (isDayBusinessTrip) calculateDayWorkTime(day.timeBlocks, isBusinessTrip = true) else calculateDayWorkTime(day.timeBlocks)
                             val totalGross = dayResult.grossMinutes
                             if (totalGross == 0L) continue
                             var dayOfficeGross = 0L
                             for (block in adjustedBlocks) {
                                 val blockEnd = block.endTime ?: continue
                                 val blockMin = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
-                                if (blockMin > 0 && block.location == WorkLocation.OFFICE) dayOfficeGross += blockMin
+                                if (blockMin > 0 && (block.location == WorkLocation.OFFICE || isDayBusinessTrip)) dayOfficeGross += blockMin
                             }
                             officeMin += dayOfficeGross * dayResult.netMinutes / totalGross
                         }
@@ -354,7 +364,7 @@ class HomeViewModel @Inject constructor(
                                 timeBlocks = timeBlocks,
                                 isClockRunning = isRunning,
                                 selectedLocation = workDay?.location ?: WorkLocation.OFFICE,
-                                selectedDayType = override ?: workDay?.dayType ?: DayType.WORK,
+                                selectedDayType = selectedDayType,
                                 dayWorkTime = initialDayResult,
                                 baseDayNetMinutes = baseDayResult.netMinutes,
                                 liveFlextimeDelta = initialLiveDelta,
@@ -450,25 +460,27 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val state = _uiState.value
             val now = LocalTime.now().withSecond(0).withNano(0)
+            val isBT = state.selectedDayType == DayType.BUSINESS_TRIP
+            val effectiveLocation = if (isBT) WorkLocation.OFFICE else state.selectedLocation
 
             val workDayId = if (state.workDay == null) {
                 workDayRepository.saveWorkDay(
                     WorkDay(
                         date = state.selectedDate,
-                        location = state.selectedLocation,
+                        location = effectiveLocation,
                         dayType = state.selectedDayType
                     )
                 )
             } else {
                 val needsUpdate = state.workDay.isPlanned ||
                     state.workDay.dayType != state.selectedDayType ||
-                    state.workDay.location != state.selectedLocation
+                    state.workDay.location != effectiveLocation
                 if (needsUpdate) {
                     workDayRepository.saveWorkDay(
                         state.workDay.copy(
                             isPlanned = false,
                             dayType = state.selectedDayType,
-                            location = state.selectedLocation
+                            location = effectiveLocation
                         )
                     )
                 }
@@ -479,7 +491,7 @@ class HomeViewModel @Inject constructor(
             }
 
             workDayRepository.saveTimeBlock(
-                TimeBlock(workDayId = workDayId, startTime = now, location = state.selectedLocation)
+                TimeBlock(workDayId = workDayId, startTime = now, location = effectiveLocation)
             )
             if (state.settings.breakWarningEnabled) {
                 breakWarningScheduler.scheduleWarning(now)
@@ -539,25 +551,28 @@ class HomeViewModel @Inject constructor(
     fun saveManualEntry(startTime: LocalTime, endTime: LocalTime, location: WorkLocation) {
         viewModelScope.launch {
             val state = _uiState.value
+            val isBT = state.selectedDayType == DayType.BUSINESS_TRIP
+            val effectiveLocation = if (isBT) WorkLocation.OFFICE else location
+            val effectiveDayLocation = if (isBT) WorkLocation.OFFICE else state.selectedLocation
 
             val workDayId = if (state.workDay == null) {
                 workDayRepository.saveWorkDay(
                     WorkDay(
                         date = state.selectedDate,
-                        location = state.selectedLocation,
+                        location = effectiveDayLocation,
                         dayType = state.selectedDayType
                     )
                 )
             } else {
                 val needsUpdate = state.workDay.isPlanned ||
                     state.workDay.dayType != state.selectedDayType ||
-                    state.workDay.location != state.selectedLocation
+                    state.workDay.location != effectiveDayLocation
                 if (needsUpdate) {
                     workDayRepository.saveWorkDay(
                         state.workDay.copy(
                             isPlanned = false,
                             dayType = state.selectedDayType,
-                            location = state.selectedLocation
+                            location = effectiveDayLocation
                         )
                     )
                 }
@@ -568,7 +583,7 @@ class HomeViewModel @Inject constructor(
             }
 
             workDayRepository.saveTimeBlock(
-                TimeBlock(workDayId = workDayId, startTime = startTime, endTime = endTime, location = location)
+                TimeBlock(workDayId = workDayId, startTime = startTime, endTime = endTime, location = effectiveLocation)
             )
             _localDayTypeOverride.value = null
         }
@@ -579,25 +594,28 @@ class HomeViewModel @Inject constructor(
             val state = _uiState.value
             val start = state.settings.defaultStartTime
             val end = start.plusMinutes(totalMinutes.toLong())
+            val isBT = state.selectedDayType == DayType.BUSINESS_TRIP
+            val effectiveLocation = if (isBT) WorkLocation.OFFICE else location
+            val effectiveDayLocation = if (isBT) WorkLocation.OFFICE else state.selectedLocation
 
             val workDayId = if (state.workDay == null) {
                 workDayRepository.saveWorkDay(
                     WorkDay(
                         date = state.selectedDate,
-                        location = state.selectedLocation,
+                        location = effectiveDayLocation,
                         dayType = state.selectedDayType
                     )
                 )
             } else {
                 val needsUpdate = state.workDay.isPlanned ||
                     state.workDay.dayType != state.selectedDayType ||
-                    state.workDay.location != state.selectedLocation
+                    state.workDay.location != effectiveDayLocation
                 if (needsUpdate) {
                     workDayRepository.saveWorkDay(
                         state.workDay.copy(
                             isPlanned = false,
                             dayType = state.selectedDayType,
-                            location = state.selectedLocation
+                            location = effectiveDayLocation
                         )
                     )
                 }
@@ -608,7 +626,7 @@ class HomeViewModel @Inject constructor(
             }
 
             workDayRepository.saveTimeBlock(
-                TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = location)
+                TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = effectiveLocation)
             )
             _localDayTypeOverride.value = null
         }
@@ -625,14 +643,16 @@ class HomeViewModel @Inject constructor(
             val wasRunning = block.endTime == null
             val isNowRunning = endTime == null
             val workDay = _uiState.value.workDay
+            val isBT = _uiState.value.selectedDayType == DayType.BUSINESS_TRIP || workDay?.dayType == DayType.BUSINESS_TRIP
+            val effectiveLocation = if (isBT) WorkLocation.OFFICE else location
             if (workDay != null && workDay.isPlanned) {
-                workDayRepository.saveWorkDay(workDay.copy(isPlanned = false, location = location))
+                workDayRepository.saveWorkDay(workDay.copy(isPlanned = false, location = effectiveLocation))
                 workDay.timeBlocks.filter { it.id != block.id && it.isDuration }.forEach {
                     workDayRepository.deleteTimeBlock(it)
                 }
             }
             workDayRepository.saveTimeBlock(
-                block.copy(startTime = startTime, endTime = endTime, location = location, isDuration = isDuration)
+                block.copy(startTime = startTime, endTime = endTime, location = effectiveLocation, isDuration = isDuration)
             )
             if (wasRunning && !isNowRunning) {
                 breakWarningScheduler.cancelWarning()
@@ -657,6 +677,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun toggleTimeBlockLocation(block: TimeBlock) {
+        if (_uiState.value.selectedDayType == DayType.BUSINESS_TRIP || _uiState.value.workDay?.dayType == DayType.BUSINESS_TRIP) return
         val newLocation = if (block.location == WorkLocation.OFFICE) WorkLocation.HOME_OFFICE else WorkLocation.OFFICE
         val wasRunning = block.endTime == null
         viewModelScope.launch {

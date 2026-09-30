@@ -69,6 +69,7 @@ class PlanningViewModelWorkTimeRuleTest : BaseUnitTest() {
         whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
         whenever(calculateFlextime(any(), any(), anyOrNull(), any())).thenReturn(FlextimeBalance())
         whenever(calculateDayWorkTime(any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
+        whenever(calculateDayWorkTime(any(), any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
         whenever(buildPrognosisDays(any(), any(), any(), any())).thenAnswer { inv -> inv.getArgument(1) }
         whenever(settingsRepository.getQuotaRuleForMonth(any(), any())).thenReturn(null)
         whenever(settingsRepository.getWorkTimeRuleForDate(any(), any())).thenReturn(null)

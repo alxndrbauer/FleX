@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.flex.domain.model.DayType
 import com.flex.domain.model.WorkLocation
+import com.flex.ui.theme.BusinessTripColor
 import com.flex.ui.theme.FlexDayColor
 import com.flex.ui.theme.HomeOfficeColor
 import com.flex.ui.theme.OfficeColor
@@ -72,6 +73,7 @@ private fun cellColor(entry: DayHeatmapEntry?, dailyWorkMinutes: Int, isSurface:
         entry.dayType == DayType.FLEX_DAY -> FlexDayColor.copy(alpha = 0.8f)
         entry.dayType == DayType.SICK_DAY -> SickDayColor.copy(alpha = 0.8f)
         entry.dayType == DayType.SATURDAY_BONUS -> SaturdayBonusColor.copy(alpha = 0.8f)
+        entry.dayType == DayType.BUSINESS_TRIP -> BusinessTripColor.copy(alpha = 0.8f)
         entry.dayType == DayType.WORK -> {
             val intensity = (entry.netMinutes.toFloat() / (dailyWorkMinutes * 1.2f)).coerceIn(0.15f, 1.0f)
             val base = if (entry.location == WorkLocation.OFFICE) OfficeColor else HomeOfficeColor
@@ -293,6 +295,7 @@ private fun HeatmapLegend() {
     val legendItems = listOf(
         "Büro" to OfficeColor,
         "Home-Office" to HomeOfficeColor,
+        "Dienstgang / Dienstreise" to BusinessTripColor,
         "Urlaub" to VacationColor,
         "Sonderurlaub" to SpecialVacationColor,
         "Gleittag" to FlexDayColor,
@@ -419,6 +422,12 @@ private fun YearSummaryCard(summary: YearSummary) {
                     modifier = Modifier.weight(1f)
                 )
                 SummaryItem(
+                    label = "Dienstgang / Dienstreise",
+                    value = summary.businessTripDays.toString(),
+                    accentColor = BusinessTripColor,
+                    modifier = Modifier.weight(1f)
+                )
+                SummaryItem(
                     label = "Stunden",
                     value = "${totalHours}h ${totalMins}m",
                     modifier = Modifier.weight(1f)
@@ -460,7 +469,7 @@ private fun SummaryItem(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            maxLines = 1
+            maxLines = 2
         )
     }
 }

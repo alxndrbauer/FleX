@@ -415,4 +415,11 @@ class CalendarEventMapperTest {
         val workDay = WorkDay(id = 1, date = LocalDate.of(2026, 4, 5), location = WorkLocation.OFFICE, dayType = DayType.FLEX_DAY)
         assertThat(mapper.eventTitle(workDay, "FleX")).isEqualTo("FleX: Gleittag ☀️")
     }
+
+    @Test
+    fun `eventTitle for BUSINESS_TRIP returns business trip title`() {
+        val workDay = WorkDay(id = 1, date = LocalDate.of(2026, 4, 5), location = WorkLocation.OFFICE, dayType = DayType.BUSINESS_TRIP)
+        assertThat(mapper.eventTitle(workDay, "FleX")).isEqualTo("FleX: Dienstgang / Dienstreise 🚆")
+        assertThat(mapper.eventTitle(workDay, "")).isEqualTo("Dienstgang / Dienstreise 🚆")
+    }
 }

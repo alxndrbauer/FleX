@@ -446,6 +446,59 @@ class CalculateFlextimeUseCaseTest {
         assertThat(balance.overtimeMinutes).isEqualTo(213)  // 50% to overtime (426 * 0.5 = 213)
     }
 
+    // BUSINESS_TRIP day type tests
+
+    @Test
+    fun testBusinessTripOnWeekdayOver10Hours_shouldCountNetMinusDailyTargetWithoutCapping() {
+        // Business trip on a weekday (Tuesday) lasting 12 hours (720 min net)
+        // Daily target = 426 min
+        // Flextime = 720 - 426 = 294 min (not capped at 10h / 600 min)
+        val businessTripDay = createWorkDay(
+            date = LocalDate.of(2026, 2, 3), // Tuesday
+            dayType = DayType.BUSINESS_TRIP
+        )
+
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
+            DayWorkTimeResult(
+                grossMinutes = 720,
+                netMinutes = 720,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
+        )
+
+        val balance = useCase(listOf(businessTripDay), settings)
+
+        assertThat(balance.earnedMinutes).isEqualTo(294) // 720 - 426
+        assertThat(balance.totalMinutes).isEqualTo(294)
+        assertThat(balance.overtimeMinutes).isEqualTo(0)
+    }
+
+    @Test
+    fun testBusinessTripOnWeekend_shouldCountFullTimeAsFlextime() {
+        // Business trip on a Saturday lasting 11 hours (660 min net)
+        // Weekend work counts FULL time as flextime
+        val businessTripWeekend = createWorkDay(
+            date = LocalDate.of(2026, 2, 7), // Saturday
+            dayType = DayType.BUSINESS_TRIP
+        )
+
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
+            DayWorkTimeResult(
+                grossMinutes = 660,
+                netMinutes = 660,
+                breakMinutes = 0,
+                exceedsMaxHours = false
+            )
+        )
+
+        val balance = useCase(listOf(businessTripWeekend), settings)
+
+        assertThat(balance.earnedMinutes).isEqualTo(660) // full time
+        assertThat(balance.totalMinutes).isEqualTo(660)
+        assertThat(balance.overtimeMinutes).isEqualTo(0)
+    }
+
     // Edge cases
 
     @Test

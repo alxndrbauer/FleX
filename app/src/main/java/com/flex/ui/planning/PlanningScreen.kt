@@ -80,6 +80,7 @@ import com.flex.ui.components.TOOLTIP_FLEXTIME_PROGNOSIS_TITLE
 import com.flex.ui.components.TOOLTIP_QUOTA_PREVIEW
 import com.flex.ui.components.TOOLTIP_QUOTA_PREVIEW_TITLE
 import com.flex.ui.components.diagonalHatch
+import com.flex.ui.theme.BusinessTripColor
 import com.flex.ui.theme.FlexDayColor
 import com.flex.ui.theme.HomeOfficeColor
 import com.flex.ui.theme.OfficeColor
@@ -183,6 +184,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                         PlanType.SPECIAL_VACATION -> SpecialVacationColor
                         PlanType.FLEX_DAY -> FlexDayColor
                         PlanType.SATURDAY_BONUS -> SaturdayBonusColor
+                        PlanType.BUSINESS_TRIP -> BusinessTripColor
                     }
                     FilterChip(
                         selected = state.selectedPlanType == type,
@@ -246,6 +248,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                                     val bgColor = when {
                                         isHoliday -> PublicHolidayColor.copy(alpha = 0.3f)
                                         workDay == null -> if (isWeekend) Color.LightGray.copy(alpha = 0.2f) else Color.Transparent
+                                        workDay.dayType == DayType.BUSINESS_TRIP -> BusinessTripColor.copy(alpha = 0.3f)
                                         workDay.dayType == DayType.VACATION -> VacationColor.copy(alpha = 0.3f)
                                         workDay.dayType == DayType.SPECIAL_VACATION -> SpecialVacationColor.copy(alpha = 0.3f)
                                         workDay.dayType == DayType.FLEX_DAY -> FlexDayColor.copy(alpha = 0.3f)

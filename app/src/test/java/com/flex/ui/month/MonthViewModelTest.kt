@@ -112,7 +112,9 @@ class MonthViewModelTest : BaseUnitTest() {
         whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
         whenever(calculateFlextime(any(), any(), anyOrNull(), any())).thenReturn(FlextimeBalance())
         whenever(calculateDayWorkTime(any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
+        whenever(calculateDayWorkTime(any(), any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
         whenever(checkBreakViolation(any(), any())).thenReturn(BreakCheckResult(emptyList(), skipped = false))
+        whenever(checkBreakViolation(any(), any(), any())).thenReturn(BreakCheckResult(emptyList(), skipped = false))
         whenever(buildPrognosisDays(any(), any(), any(), any())).thenAnswer { inv -> inv.getArgument(1) }
     }
 
@@ -726,4 +728,32 @@ class MonthViewModelTest : BaseUnitTest() {
         verify(exportNotificationHelper, never()).showExportNotification(any(), any())
         assertThat(viewModel.uiState.value.exportMessage).contains("Export fehlgeschlagen: Disk error")
     }
+
+    @Test
+    fun `actualWorkedMinutesMonth includes BUSINESS_TRIP days`() = runTest {
+        val today = java.time.LocalDate.now()
+        val btDay = com.flex.domain.model.WorkDay(
+            id = 1,
+            date = today,
+            location = com.flex.domain.model.WorkLocation.OFFICE,
+            dayType = DayType.BUSINESS_TRIP,
+            timeBlocks = listOf(
+                com.flex.domain.model.TimeBlock(id = 1, workDayId = 1, startTime = java.time.LocalTime.of(8, 0), endTime = java.time.LocalTime.of(16, 0))
+            )
+        )
+        whenever(getMonthWorkDays(any())).thenReturn(flowOf(listOf(btDay)))
+        whenever(calculateDayWorkTime(org.mockito.kotlin.eq(btDay.timeBlocks), org.mockito.kotlin.eq(true))).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        viewModel = MonthViewModel(
+            getMonthWorkDays, getSettings, workDayRepository,
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.actualWorkedMinutesMonth).isEqualTo(480L)
+    }
 }
+

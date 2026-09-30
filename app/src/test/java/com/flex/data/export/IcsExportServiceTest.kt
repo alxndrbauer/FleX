@@ -26,7 +26,7 @@ class IcsExportServiceTest {
 
     private val syncAllSettings = Settings(
         calendarSyncEnabled = true,
-        calendarSyncTypes = "VACATION,SPECIAL_VACATION,WORK,SICK_DAY,FLEX_DAY",
+        calendarSyncTypes = "VACATION,SPECIAL_VACATION,WORK,BUSINESS_TRIP,SICK_DAY,FLEX_DAY",
         calendarEventPrefix = "FleX"
     )
 
@@ -35,6 +35,9 @@ class IcsExportServiceTest {
 
     private fun workDay(id: Long, date: LocalDate) =
         WorkDay(id = id, date = date, location = WorkLocation.OFFICE, dayType = DayType.WORK)
+
+    private fun businessTrip(id: Long, date: LocalDate, note: String? = null) =
+        WorkDay(id = id, date = date, location = WorkLocation.OFFICE, dayType = DayType.BUSINESS_TRIP, note = note)
 
     // ========== Vacation grouping ==========
 
@@ -151,6 +154,52 @@ class IcsExportServiceTest {
 
         assertThat(count).isEqualTo(1)
         assertThat(content.countVevents()).isEqualTo(1)
+    }
+
+    // ========== Business Trip tests ==========
+
+    @Test
+    fun `business trip day produces individual VEVENT with LOCATION Dienstreise`() {
+        val days = listOf(
+            businessTrip(1, LocalDate.of(2026, 4, 7), note = "Kundenbesuch Hamburg")
+        )
+        val (content, count) = service.exportToIcs(days, syncAllSettings)
+
+        assertThat(count).isEqualTo(1)
+        assertThat(content.countVevents()).isEqualTo(1)
+        assertThat(content).contains("DTSTART;VALUE=DATE:20260407")
+        assertThat(content).contains("DTEND;VALUE=DATE:20260408")
+        assertThat(content).contains("SUMMARY:FleX: Dienstgang / Dienstreise 🚆")
+        assertThat(content).contains("LOCATION:Dienstgang / Dienstreise")
+        assertThat(content).contains("DESCRIPTION:Kundenbesuch Hamburg")
+    }
+
+    @Test
+    fun `adjacent business trip days produce separate individual VEVENTs`() {
+        val days = listOf(
+            businessTrip(1, LocalDate.of(2026, 4, 7)),
+            businessTrip(2, LocalDate.of(2026, 4, 8))
+        )
+        val (content, count) = service.exportToIcs(days, syncAllSettings)
+
+        assertThat(count).isEqualTo(2)
+        assertThat(content.countVevents()).isEqualTo(2)
+        assertThat(content).contains("LOCATION:Dienstgang / Dienstreise")
+    }
+
+    @Test
+    fun `business trip day is excluded when BUSINESS_TRIP not in calendarSyncTypes`() {
+        val settings = syncAllSettings.copy(calendarSyncTypes = "WORK,VACATION")
+        val days = listOf(
+            businessTrip(1, LocalDate.of(2026, 4, 7)),
+            workDay(2, LocalDate.of(2026, 4, 8))
+        )
+        val (content, count) = service.exportToIcs(days, settings)
+
+        assertThat(count).isEqualTo(1)
+        assertThat(content.countVevents()).isEqualTo(1)
+        assertThat(content).doesNotContain("LOCATION:Dienstgang / Dienstreise")
+        assertThat(content).contains("LOCATION:Büro")
     }
 
     // ========== Helper ==========

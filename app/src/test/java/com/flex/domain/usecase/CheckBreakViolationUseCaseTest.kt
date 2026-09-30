@@ -270,4 +270,18 @@ class CheckBreakViolationUseCaseTest {
         assertThat(result.skipped).isTrue()
         assertThat(result.violations).isEmpty()
     }
+
+    @Test
+    fun whenIsBusinessTrip_expectSkippedAndNoViolations() {
+        // Business trip should skip all break violation checks
+        val timeBlocks = listOf(
+            TimeBlock(1, 1, LocalTime.of(5, 0), LocalTime.of(13, 0)),
+            TimeBlock(2, 1, LocalTime.of(13, 10), LocalTime.of(19, 0))
+        )
+
+        val result = useCase(timeBlocks, isBusinessTrip = true)
+
+        assertThat(result.skipped).isTrue()
+        assertThat(result.violations).isEmpty()
+    }
 }

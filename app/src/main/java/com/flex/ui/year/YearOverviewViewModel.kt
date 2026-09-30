@@ -36,6 +36,7 @@ data class YearSummary(
     val sickDays: Int = 0,
     val flexDays: Int = 0,
     val saturdayBonusDays: Int = 0,
+    val businessTripDays: Int = 0,
     val publicHolidayCount: Int = 0,
     val officeWorkDays: Int = 0,
     val homeOfficeWorkDays: Int = 0
@@ -85,7 +86,10 @@ class YearOverviewViewModel @Inject constructor(
                     while (!d.isAfter(dec31)) {
                         val wd = workDayMap[d]
                         val holidayName = holidays[d]
-                        val netMin = if (wd != null) calculateDayWorkTime(wd.timeBlocks).netMinutes else 0L
+                        val netMin = if (wd != null) {
+                            if (wd.dayType == DayType.BUSINESS_TRIP) calculateDayWorkTime(wd.timeBlocks, isBusinessTrip = true).netMinutes
+                            else calculateDayWorkTime(wd.timeBlocks).netMinutes
+                        } else 0L
                         entries[d] = DayHeatmapEntry(
                             date = d,
                             dayType = wd?.dayType,
@@ -102,8 +106,11 @@ class YearOverviewViewModel @Inject constructor(
                     val actualDays = workDays.filter { !it.isPlanned }
                     val workDaysCount = actualDays.count { it.dayType == DayType.WORK }
                     val totalWorkMinutes = actualDays
-                        .filter { it.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS) }
-                        .sumOf { calculateDayWorkTime(it.timeBlocks).netMinutes }
+                        .filter { it.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP) }
+                        .sumOf {
+                            if (it.dayType == DayType.BUSINESS_TRIP) calculateDayWorkTime(it.timeBlocks, isBusinessTrip = true).netMinutes
+                            else calculateDayWorkTime(it.timeBlocks).netMinutes
+                        }
 
                     // Count office vs HO days
                     var officeDays = 0
@@ -130,6 +137,7 @@ class YearOverviewViewModel @Inject constructor(
                         sickDays = actualDays.count { it.dayType == DayType.SICK_DAY },
                         flexDays = actualDays.count { it.dayType == DayType.FLEX_DAY },
                         saturdayBonusDays = actualDays.count { it.dayType == DayType.SATURDAY_BONUS },
+                        businessTripDays = actualDays.count { it.dayType == DayType.BUSINESS_TRIP },
                         publicHolidayCount = holidays.count { it.key.year == year },
                         officeWorkDays = officeDays,
                         homeOfficeWorkDays = hoDays

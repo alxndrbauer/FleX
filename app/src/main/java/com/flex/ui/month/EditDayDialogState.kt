@@ -35,10 +35,10 @@ fun calculateEditDayDialogState(
     val defaultDurationHours = (dailyWorkMinutes / 60).toString()
     val defaultDurationMinutes = (dailyWorkMinutes % 60).toString()
     val defaultEndTime = calculateDefaultEndTime(defaultStartTime, dailyWorkMinutes)
-    val defaultLocation = workDay.location
+    val defaultLocation = if (workDay.dayType == DayType.BUSINESS_TRIP) WorkLocation.OFFICE else workDay.location
 
     // For non-work day types, always use Gesamtzeit (duration) tab — no per-block editors needed
-    if (workDay.dayType !in listOf(DayType.WORK, DayType.SATURDAY_BONUS)) {
+    if (workDay.dayType !in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP)) {
         return EditDayDialogState(
             selectedTab = 1,
             blocks = listOf(

@@ -34,8 +34,12 @@ class CalculateFlextimeUseCase @Inject constructor(
         for (day in workDays) {
             val dailyTarget = getDailyTarget(day.date)
             when (day.dayType) {
-                DayType.WORK -> {
-                    val result = calculateDayWorkTime(day.timeBlocks)
+                DayType.WORK, DayType.BUSINESS_TRIP -> {
+                    val result = if (day.dayType == DayType.BUSINESS_TRIP) {
+                        calculateDayWorkTime(day.timeBlocks, isBusinessTrip = true)
+                    } else {
+                        calculateDayWorkTime(day.timeBlocks)
+                    }
                     // Check if this is a weekend day (Saturday or Sunday)
                     val isWeekend = day.date.dayOfWeek == DayOfWeek.SATURDAY || day.date.dayOfWeek == DayOfWeek.SUNDAY
 

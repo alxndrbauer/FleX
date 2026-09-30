@@ -2,6 +2,7 @@ package com.flex.domain.model
 
 enum class DayType {
     WORK,
+    BUSINESS_TRIP,
     VACATION,
     SPECIAL_VACATION,
     FLEX_DAY,
