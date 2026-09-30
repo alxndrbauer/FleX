@@ -4,7 +4,10 @@
 ### Bugfixes
 
 - Launch user confirmation prompt in PackageInstaller receiver
-- Use IntentCompat.getParcelableExtra in PackageInstaller receiver
+
+### Features
+
+- Add Dienstgang / Dienstreise day type
 ## [1.8.0] - 2026-09-26
 
 ### Bugfixes

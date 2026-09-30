@@ -100,7 +100,8 @@ enum class PlanType(val label: String) {
     VACATION("Urlaub"),
     SPECIAL_VACATION("Sonderurlaub"),
     FLEX_DAY("Gleittag"),
-    SATURDAY_BONUS("Samstag+")
+    SATURDAY_BONUS("Samstag+"),
+    BUSINESS_TRIP("Dienstgang / Dienstreise")
 }
 
 @HiltViewModel
@@ -224,7 +225,7 @@ private data class PlanningConfig(
             val officeHours = calculateOfficeHours(prognosisDays, qPercent, settings, workTimeRules, month)
 
             val plannedDays = days.count { it.isPlanned }
-            val officeDays = days.count { it.dayType == DayType.WORK && it.location == WorkLocation.OFFICE }
+            val officeDays = days.count { (it.dayType == DayType.WORK && it.location == WorkLocation.OFFICE) || it.dayType == DayType.BUSINESS_TRIP }
             val homeOfficeDays = days.count { it.dayType == DayType.WORK && it.location == WorkLocation.HOME_OFFICE }
             val vacationDays = days.count { it.dayType in listOf(DayType.VACATION, DayType.SPECIAL_VACATION) }
 
@@ -270,9 +271,10 @@ private data class PlanningConfig(
         var officeMinutes = 0L
         var plannedTotalMinutes = 0L
         for (day in workingDays) {
-            val result = calculateDayWorkTime(day.timeBlocks)
+            val isBusinessTrip = day.dayType == DayType.BUSINESS_TRIP
+            val result = if (isBusinessTrip) calculateDayWorkTime(day.timeBlocks, isBusinessTrip = true) else calculateDayWorkTime(day.timeBlocks)
             plannedTotalMinutes += result.netMinutes
-            if (day.location == WorkLocation.OFFICE) {
+            if (day.location == WorkLocation.OFFICE || isBusinessTrip) {
                 officeMinutes += result.netMinutes
             }
         }
@@ -319,6 +321,7 @@ private data class PlanningConfig(
                 PlanType.SPECIAL_VACATION -> WorkLocation.HOME_OFFICE to DayType.SPECIAL_VACATION
                 PlanType.FLEX_DAY -> WorkLocation.HOME_OFFICE to DayType.FLEX_DAY
                 PlanType.SATURDAY_BONUS -> WorkLocation.OFFICE to DayType.SATURDAY_BONUS
+                PlanType.BUSINESS_TRIP -> WorkLocation.OFFICE to DayType.BUSINESS_TRIP
             }
 
             val existing = state.workDays.find { it.date == date }
@@ -332,7 +335,7 @@ private data class PlanningConfig(
                 )
             )
 
-            if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)) {
+            if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP)) {
                 existing?.timeBlocks?.forEach { workDayRepository.deleteTimeBlock(it) }
                 val dailyTarget = settingsRepository.getWorkTimeRuleForDate(date, state.workTimeRules)?.dailyWorkMinutes
                     ?: state.settings.dailyWorkMinutes

@@ -36,6 +36,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.kotlin.any
+import org.mockito.kotlin.atLeastOnce
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -116,10 +118,12 @@ class HomeViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(emptyList()))
         whenever(calculateDayWorkTime(any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
+        whenever(calculateDayWorkTime(any(), any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
         whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(FlextimeBalance())
         whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
         whenever(dataChangeEventBus.events).thenReturn(MutableSharedFlow())
         whenever(checkBreakViolation(any(), any())).thenReturn(BreakCheckResult(emptyList(), skipped = false))
+        whenever(checkBreakViolation(any(), any(), any())).thenReturn(BreakCheckResult(emptyList(), skipped = false))
         whenever(whatsNewPreferences.getLastSeenVersionCode()).thenReturn(0)
         whenever(backupPreferences.isAutoBackupEnabled).thenReturn(false)
     }
@@ -625,6 +629,26 @@ class HomeViewModelTest : BaseUnitTest() {
         verify(workDayRepository).deleteTimeBlock(plannedBlock)
     }
 
+    @Test
+    fun `saveManualEntry with DayType BUSINESS_TRIP forces WorkLocation OFFICE for WorkDay and TimeBlock`() = runTest {
+        whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
+        whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.setDayType(DayType.BUSINESS_TRIP)
+        viewModel.saveManualEntry(LocalTime.of(8, 0), LocalTime.of(16, 0), WorkLocation.HOME_OFFICE)
+        advanceUntilIdle()
+
+        verify(workDayRepository).saveWorkDay(org.mockito.kotlin.argThat {
+            dayType == DayType.BUSINESS_TRIP && location == WorkLocation.OFFICE
+        })
+        verify(workDayRepository).saveTimeBlock(org.mockito.kotlin.argThat {
+            location == WorkLocation.OFFICE
+        })
+    }
+
     // ========== saveDurationEntry Tests ==========
 
     @Test
@@ -678,6 +702,26 @@ class HomeViewModelTest : BaseUnitTest() {
         // Then: TimeBlock with custom defaultStartTime should be saved
         verify(workDayRepository).saveTimeBlock(org.mockito.kotlin.argThat {
             isDuration && startTime == customStartTime && endTime == customStartTime.plusMinutes(480)
+        })
+    }
+
+    @Test
+    fun `saveDurationEntry with DayType BUSINESS_TRIP forces WorkLocation OFFICE for WorkDay and TimeBlock`() = runTest {
+        whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
+        whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.setDayType(DayType.BUSINESS_TRIP)
+        viewModel.saveDurationEntry(480, WorkLocation.HOME_OFFICE)
+        advanceUntilIdle()
+
+        verify(workDayRepository).saveWorkDay(org.mockito.kotlin.argThat {
+            dayType == DayType.BUSINESS_TRIP && location == WorkLocation.OFFICE
+        })
+        verify(workDayRepository).saveTimeBlock(org.mockito.kotlin.argThat {
+            location == WorkLocation.OFFICE
         })
     }
 
@@ -964,6 +1008,23 @@ class HomeViewModelTest : BaseUnitTest() {
         verify(context).startForegroundService(any())
     }
 
+    @Test
+    fun `toggleTimeBlockLocation does nothing when DayType is BUSINESS_TRIP`() = runTest {
+        val today = LocalDate.now()
+        val btBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 0), location = WorkLocation.OFFICE)
+        val btDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, dayType = DayType.BUSINESS_TRIP, timeBlocks = listOf(btBlock))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(btDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        org.mockito.kotlin.clearInvocations(workDayRepository)
+
+        viewModel.toggleTimeBlockLocation(btBlock)
+        advanceUntilIdle()
+
+        verify(workDayRepository, never()).saveTimeBlock(any())
+    }
+
 
     // ========== saveDayType Tests ==========
 
@@ -1117,5 +1178,24 @@ class HomeViewModelTest : BaseUnitTest() {
 
         assertThat(viewModel.uiState.value.hasTimeBlockOverlap).isFalse()
     }
+
+    @Test
+    fun `BUSINESS_TRIP day type calls calculateDayWorkTime and checkBreakViolation with isBusinessTrip true`() = runTest {
+        val today = LocalDate.now()
+        val blocks = listOf(
+            TimeBlock(id = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(16, 0))
+        )
+        val workDay = WorkDay(id = 1, date = today, dayType = DayType.BUSINESS_TRIP, timeBlocks = blocks)
+        val settings = Settings(breakWarningEnabled = true)
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        verify(calculateDayWorkTime, atLeastOnce()).invoke(org.mockito.kotlin.eq(blocks), org.mockito.kotlin.eq(true))
+        verify(checkBreakViolation, atLeastOnce()).invoke(org.mockito.kotlin.eq(blocks), any(), org.mockito.kotlin.eq(true))
+    }
 }
+
 

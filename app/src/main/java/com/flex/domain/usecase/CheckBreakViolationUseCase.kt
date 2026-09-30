@@ -21,7 +21,17 @@ class CheckBreakViolationUseCase @Inject constructor() {
     operator fun invoke(
         timeBlocks: List<TimeBlock>,
         now: LocalTime = LocalTime.now()
+    ): BreakCheckResult = invoke(timeBlocks, now, isBusinessTrip = false)
+
+    operator fun invoke(
+        timeBlocks: List<TimeBlock>,
+        now: LocalTime = LocalTime.now(),
+        isBusinessTrip: Boolean
     ): BreakCheckResult {
+        if (isBusinessTrip) {
+            return BreakCheckResult(violations = emptyList(), skipped = true)
+        }
+
         // EXCLUSION: if any block has isDuration = true, skip check entirely
         if (timeBlocks.any { it.isDuration }) {
             return BreakCheckResult(violations = emptyList(), skipped = true)

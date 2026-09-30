@@ -67,12 +67,14 @@ class IcsExportService @Inject constructor(
                 if (!day.note.isNullOrBlank()) {
                     append("DESCRIPTION:${day.note.escapeIcs()}\r\n")
                 }
-                val location = when (calendarEventMapper.effectiveLocation(day)) {
-                    WorkLocation.OFFICE -> "Büro"
-                    WorkLocation.HOME_OFFICE -> "Homeoffice"
-                }
                 if (day.dayType == DayType.WORK) {
+                    val location = when (calendarEventMapper.effectiveLocation(day)) {
+                        WorkLocation.OFFICE -> "Büro"
+                        WorkLocation.HOME_OFFICE -> "Homeoffice"
+                    }
                     append("LOCATION:$location\r\n")
+                } else if (day.dayType == DayType.BUSINESS_TRIP) {
+                    append("LOCATION:Dienstgang / Dienstreise\r\n")
                 }
                 append("END:VEVENT\r\n")
             }

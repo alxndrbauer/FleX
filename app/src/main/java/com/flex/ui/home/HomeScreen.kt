@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Commute
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -121,6 +122,7 @@ import com.flex.ui.components.TOOLTIP_FLEXTIME_TITLE
 import com.flex.ui.components.TOOLTIP_OFFICE_QUOTA
 import com.flex.ui.components.TOOLTIP_OFFICE_QUOTA_TITLE
 import com.flex.ui.components.formatTimeInput
+import com.flex.ui.theme.BusinessTripColor
 import com.flex.ui.theme.FlexDayColor
 import com.flex.ui.theme.HomeOfficeColor
 import com.flex.ui.theme.OfficeColor
@@ -191,7 +193,7 @@ fun HomeScreen(
 
     val isToday = state.selectedDate == state.today
     val holidayName = PublicHolidays.getHolidayName(state.selectedDate)
-    val isWorkDay = state.selectedDayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
+    val isWorkDay = state.selectedDayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP)
 
     Scaffold(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
@@ -361,6 +363,7 @@ fun HomeScreen(
 
                         val dayTypes = listOf(
                             DayType.WORK             to Triple("Arbeitstag",    Icons.Default.Work,          MaterialTheme.colorScheme.primary),
+                            DayType.BUSINESS_TRIP    to Triple("Dienstgang / Dienstreise", Icons.Default.Commute, BusinessTripColor),
                             DayType.VACATION         to Triple("Urlaub",         Icons.Default.BeachAccess,   VacationColor),
                             DayType.SPECIAL_VACATION to Triple("Sonderurlaub",   Icons.Default.Star,          SpecialVacationColor),
                             DayType.FLEX_DAY         to Triple("Gleittag",       Icons.Default.Schedule,      FlexDayColor),
@@ -522,18 +525,20 @@ fun HomeScreen(
 
     // Manual entry dialog
     if (showManualEntry) {
+        val isBusinessTrip = state.selectedDayType == DayType.BUSINESS_TRIP
         ManualTimeEntryDialog(
             dailyWorkMinutes = state.settings.dailyWorkMinutes,
-            selectedLocation = state.selectedLocation,
+            selectedLocation = if (isBusinessTrip) WorkLocation.OFFICE else state.selectedLocation,
             defaultStartTime = state.settings.defaultStartTime,
             existingBlocks = state.timeBlocks,
+            isBusinessTrip = isBusinessTrip,
             onDismiss = { showManualEntry = false },
             onConfirmStartEnd = { start, end, location ->
-                viewModel.saveManualEntry(start, end, location)
+                viewModel.saveManualEntry(start, end, if (isBusinessTrip) WorkLocation.OFFICE else location)
                 showManualEntry = false
             },
             onConfirmDuration = { totalMinutes, location ->
-                viewModel.saveDurationEntry(totalMinutes, location)
+                viewModel.saveDurationEntry(totalMinutes, if (isBusinessTrip) WorkLocation.OFFICE else location)
                 showManualEntry = false
             }
         )
@@ -541,12 +546,14 @@ fun HomeScreen(
 
     // Edit time block dialog
     editingBlock?.let { block ->
+        val isBusinessTrip = state.selectedDayType == DayType.BUSINESS_TRIP
         EditTimeBlockDialog(
             block = block,
             existingBlocks = state.timeBlocks,
+            isBusinessTrip = isBusinessTrip,
             onDismiss = { editingBlock = null },
             onSave = { startTime, endTime, location, isDuration ->
-                viewModel.updateTimeBlock(block, startTime, endTime, location, isDuration)
+                viewModel.updateTimeBlock(block, startTime, endTime, if (isBusinessTrip) WorkLocation.OFFICE else location, isDuration)
                 editingBlock = null
             },
             onDelete = {
@@ -554,7 +561,7 @@ fun HomeScreen(
                 editingBlock = null
             },
             onBook = if (state.workDay?.isPlanned == true) ({ startTime, endTime, location, isDuration ->
-                viewModel.bookTimeBlock(block, startTime, endTime, location, isDuration)
+                viewModel.bookTimeBlock(block, startTime, endTime, if (isBusinessTrip) WorkLocation.OFFICE else location, isDuration)
                 editingBlock = null
             }) else null
         )
@@ -1272,6 +1279,7 @@ fun ManualTimeEntryDialog(
     selectedLocation: WorkLocation = WorkLocation.OFFICE,
     defaultStartTime: LocalTime = LocalTime.of(8, 0),
     existingBlocks: List<TimeBlock> = emptyList(),
+    isBusinessTrip: Boolean = false,
     onDismiss: () -> Unit,
     onConfirmStartEnd: (LocalTime, LocalTime, WorkLocation) -> Unit,
     onConfirmDuration: (Int, WorkLocation) -> Unit
@@ -1282,7 +1290,7 @@ fun ManualTimeEntryDialog(
     var endText by remember { mutableStateOf(TextFieldValue(defaultEnd.format(DateTimeFormatter.ofPattern("HH:mm")))) }
     var durationHours by remember { mutableStateOf((dailyWorkMinutes / 60).toString()) }
     var durationMinutes by remember { mutableStateOf((dailyWorkMinutes % 60).toString()) }
-    var dialogLocation by remember { mutableStateOf(selectedLocation) }
+    var dialogLocation by remember { mutableStateOf(if (isBusinessTrip) WorkLocation.OFFICE else selectedLocation) }
 
     val overlappingBlock = remember(startText.text, endText.text, existingBlocks) {
         try {
@@ -1311,20 +1319,22 @@ fun ManualTimeEntryDialog(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Arbeitsort", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = dialogLocation == WorkLocation.OFFICE,
-                        onClick = { dialogLocation = WorkLocation.OFFICE },
-                        label = { Text("Büro") }
-                    )
-                    FilterChip(
-                        selected = dialogLocation == WorkLocation.HOME_OFFICE,
-                        onClick = { dialogLocation = WorkLocation.HOME_OFFICE },
-                        label = { Text("Home-Office") }
-                    )
+                if (!isBusinessTrip) {
+                    Text("Arbeitsort", style = MaterialTheme.typography.labelMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = dialogLocation == WorkLocation.OFFICE,
+                            onClick = { dialogLocation = WorkLocation.OFFICE },
+                            label = { Text("Büro") }
+                        )
+                        FilterChip(
+                            selected = dialogLocation == WorkLocation.HOME_OFFICE,
+                            onClick = { dialogLocation = WorkLocation.HOME_OFFICE },
+                            label = { Text("Home-Office") }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-                Spacer(modifier = Modifier.height(8.dp))
 
                 if (selectedTab == 0) {
                     OutlinedTextField(
@@ -1422,6 +1432,7 @@ fun ManualTimeEntryDialog(
 fun EditTimeBlockDialog(
     block: TimeBlock,
     existingBlocks: List<TimeBlock> = emptyList(),
+    isBusinessTrip: Boolean = false,
     onDismiss: () -> Unit,
     onSave: (startTime: LocalTime, endTime: LocalTime?, location: WorkLocation, isDuration: Boolean) -> Unit,
     onDelete: () -> Unit,
@@ -1430,7 +1441,7 @@ fun EditTimeBlockDialog(
     val fmt = DateTimeFormatter.ofPattern("HH:mm")
     var startText by remember { mutableStateOf(TextFieldValue(block.startTime.format(fmt))) }
     var endText by remember { mutableStateOf(TextFieldValue(block.endTime?.format(fmt) ?: "")) }
-    var dialogLocation by remember { mutableStateOf(block.location) }
+    var dialogLocation by remember { mutableStateOf(if (isBusinessTrip) WorkLocation.OFFICE else block.location) }
     var isDuration by remember { mutableStateOf(block.isDuration) }
     var hasSwitchedFromDuration by remember { mutableStateOf(false) }
 
@@ -1476,18 +1487,20 @@ fun EditTimeBlockDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Arbeitsort", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = dialogLocation == WorkLocation.OFFICE,
-                        onClick = { dialogLocation = WorkLocation.OFFICE },
-                        label = { Text("Büro") }
-                    )
-                    FilterChip(
-                        selected = dialogLocation == WorkLocation.HOME_OFFICE,
-                        onClick = { dialogLocation = WorkLocation.HOME_OFFICE },
-                        label = { Text("Home-Office") }
-                    )
+                if (!isBusinessTrip) {
+                    Text("Arbeitsort", style = MaterialTheme.typography.labelMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = dialogLocation == WorkLocation.OFFICE,
+                            onClick = { dialogLocation = WorkLocation.OFFICE },
+                            label = { Text("Büro") }
+                        )
+                        FilterChip(
+                            selected = dialogLocation == WorkLocation.HOME_OFFICE,
+                            onClick = { dialogLocation = WorkLocation.HOME_OFFICE },
+                            label = { Text("Home-Office") }
+                        )
+                    }
                 }
 
                 Text("Erfassungstyp", style = MaterialTheme.typography.labelMedium)

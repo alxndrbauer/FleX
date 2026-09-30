@@ -312,4 +312,25 @@ class EditDayDialogStateTest {
 
         assertThat(state.blocks[0].startText).isEqualTo("07:30")
     }
+
+    @Test
+    fun workDayType_businessTrip_returnStartEndTab() {
+        val workDay = WorkDay(
+            id = 13,
+            date = LocalDate.of(2026, 2, 15),
+            location = WorkLocation.HOME_OFFICE,
+            dayType = DayType.BUSINESS_TRIP,
+            isPlanned = false,
+            timeBlocks = emptyList()
+        )
+
+        val state = calculateEditDayDialogState(workDay, dailyWorkMinutes = 480)
+
+        assertThat(state.selectedTab).isEqualTo(0)  // Start/Ende
+        assertThat(state.blocks).hasSize(1)
+        assertThat(state.blocks[0].location).isEqualTo(WorkLocation.OFFICE)
+        assertThat(state.blocks[0].startText).isEqualTo("08:00")
+        assertThat(state.blocks[0].durationHours).isEqualTo("8")
+        assertThat(state.blocks[0].durationMinutes).isEqualTo("0")
+    }
 }

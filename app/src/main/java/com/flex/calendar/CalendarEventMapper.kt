@@ -42,6 +42,7 @@ class CalendarEventMapper @Inject constructor() {
                 WorkLocation.OFFICE -> "Büro 🏢"
                 WorkLocation.HOME_OFFICE -> "Homeoffice 🏠"
             }
+            DayType.BUSINESS_TRIP -> "Dienstgang / Dienstreise 🚆"
             DayType.VACATION -> "Urlaub 🏖"
             DayType.SICK_DAY -> "Krank 🤒"
             DayType.FLEX_DAY -> "Gleittag ☀️"

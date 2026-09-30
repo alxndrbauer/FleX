@@ -180,15 +180,16 @@ private data class MonthConfig(
                 val workingDays = prognosisDays.filter { it.dayType !in neutralTypes }
                 var officeMin = 0L
                 for (day in workingDays) {
+                    val isDayBusinessTrip = day.dayType == DayType.BUSINESS_TRIP
                     val adjustedBlocks = CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
-                    val dayResult = calculateDayWorkTime(day.timeBlocks)
+                    val dayResult = if (isDayBusinessTrip) calculateDayWorkTime(day.timeBlocks, isBusinessTrip = true) else calculateDayWorkTime(day.timeBlocks)
                     val totalGross = dayResult.grossMinutes
                     if (totalGross == 0L) continue
                     var dayOfficeGross = 0L
                     for (block in adjustedBlocks) {
                         val blockEnd = block.endTime ?: continue
                         val blockMin = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
-                        if (blockMin > 0 && block.location == WorkLocation.OFFICE) dayOfficeGross += blockMin
+                        if (blockMin > 0 && (block.location == WorkLocation.OFFICE || isDayBusinessTrip)) dayOfficeGross += blockMin
                     }
                     officeMin += dayOfficeGross * dayResult.netMinutes / totalGross
                 }
@@ -202,12 +203,17 @@ private data class MonthConfig(
                 }
 
                 val netByDate = days.filter { !it.isPlanned || !isCurrentOrPast }.associate { day ->
-                    day.date to calculateDayWorkTime(day.timeBlocks).netMinutes
+                    val isBT = day.dayType == DayType.BUSINESS_TRIP
+                    val net = if (isBT) calculateDayWorkTime(day.timeBlocks, isBusinessTrip = true).netMinutes else calculateDayWorkTime(day.timeBlocks).netMinutes
+                    day.date to net
                 }
 
                 val violationDates = if (settings.breakWarningEnabled) {
                     days.filter { !it.isPlanned }.mapNotNull { workDay ->
-                        val result = checkBreakViolation(workDay.timeBlocks)
+                        val result = if (workDay.dayType == DayType.BUSINESS_TRIP)
+                            checkBreakViolation(workDay.timeBlocks, isBusinessTrip = true)
+                        else
+                            checkBreakViolation(workDay.timeBlocks)
                         if (!result.skipped && result.violations.isNotEmpty()) workDay.date else null
                     }.toSet()
                 } else emptySet()
@@ -216,16 +222,17 @@ private data class MonthConfig(
                     if (checkTimeBlockOverlap(workDay.timeBlocks)) workDay.date else null
                 }.toSet()
 
-                // Calculate monthly worked hours: WORK + SATURDAY_BONUS actual minutes,
+                // Calculate monthly worked hours: WORK + SATURDAY_BONUS + BUSINESS_TRIP actual minutes,
                 // plus dailyWorkMinutes credit for vacation/sick (they count as worked),
                 // but NOT for flex days (those are deducted flextime, shown as deficit)
                 val workingDaysMonth = daysForCalc.filter {
-                    it.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
+                    it.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP)
                 }
                 val creditTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY, DayType.FLEX_DAY)
                 val creditDaysInMonth = prognosisDays.filter { it.dayType in creditTypes }
                 val actualWorkedMinutesMonth = workingDaysMonth.sumOf { day ->
-                    calculateDayWorkTime(day.timeBlocks).netMinutes
+                    if (day.dayType == DayType.BUSINESS_TRIP) calculateDayWorkTime(day.timeBlocks, isBusinessTrip = true).netMinutes
+                    else calculateDayWorkTime(day.timeBlocks).netMinutes
                 }
                 val creditMinutesMonth = creditDaysInMonth.sumOf { day ->
                     (settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()

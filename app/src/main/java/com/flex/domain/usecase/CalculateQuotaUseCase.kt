@@ -36,7 +36,11 @@ class CalculateQuotaUseCase @Inject constructor(
 
         for (day in workingDays) {
             val adjustedBlocks = CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
-            val dayResult = calculateDayWorkTime(day.timeBlocks)
+            val dayResult = if (day.dayType == DayType.BUSINESS_TRIP) {
+                calculateDayWorkTime(day.timeBlocks, isBusinessTrip = true)
+            } else {
+                calculateDayWorkTime(day.timeBlocks)
+            }
             val totalGross = dayResult.grossMinutes
 
             var dayOfficeGross = 0L

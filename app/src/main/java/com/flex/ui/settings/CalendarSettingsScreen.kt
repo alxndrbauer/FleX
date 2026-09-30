@@ -464,7 +464,8 @@ fun CalendarSettingsScreen(
             "FLEX_DAY" to "Flextag",
             "SPECIAL_VACATION" to "Sonderurlaub",
             "OVERTIME_DAY" to "Überstunden-Tag",
-            "SATURDAY_BONUS" to "Samstag-Bonus"
+            "SATURDAY_BONUS" to "Samstag-Bonus",
+            "BUSINESS_TRIP" to "Dienstgang / Dienstreise"
         )
         var selectedRangeIndex by remember { mutableStateOf(1) }
         var icsExportTypes by remember(settings.calendarSyncTypes) {
@@ -604,7 +605,8 @@ fun CalendarSettingsScreen(
             "FLEX_DAY" to "Flextag",
             "SPECIAL_VACATION" to "Sonderurlaub",
             "OVERTIME_DAY" to "Überstunden-Tag",
-            "SATURDAY_BONUS" to "Samstag-Bonus"
+            "SATURDAY_BONUS" to "Samstag-Bonus",
+            "BUSINESS_TRIP" to "Dienstgang / Dienstreise"
         )
         val enabledTypes = remember(settings.calendarSyncTypes) {
             settings.calendarSyncTypes.split(",").map { it.trim() }.toMutableSet()

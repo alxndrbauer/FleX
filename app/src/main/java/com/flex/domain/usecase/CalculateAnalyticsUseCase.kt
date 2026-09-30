@@ -25,6 +25,9 @@ class CalculateAnalyticsUseCase @Inject constructor(
     private val calculateFlextimeUseCase: CalculateFlextimeUseCase
 ) {
 
+    private fun dayWorkTime(day: WorkDay) =
+        calculateDayWorkTime(day.timeBlocks, isBusinessTrip = day.dayType == DayType.BUSINESS_TRIP)
+
     operator fun invoke(
         workDays: List<WorkDay>,
         settings: Settings,
@@ -119,8 +122,8 @@ class CalculateAnalyticsUseCase @Inject constructor(
     private fun calculateDayFlextime(day: WorkDay, settings: Settings, workTimeRules: List<WorkTimeRule>): Long {
         val dailyTarget = getDailyTarget(day.date, settings, workTimeRules)
         return when (day.dayType) {
-            DayType.WORK -> {
-                val result = calculateDayWorkTime(day.timeBlocks)
+            DayType.WORK, DayType.BUSINESS_TRIP -> {
+                val result = dayWorkTime(day)
                 val isWeekend = day.date.dayOfWeek == DayOfWeek.SATURDAY || day.date.dayOfWeek == DayOfWeek.SUNDAY
                 if (isWeekend) result.netMinutes else result.netMinutes - dailyTarget
             }
@@ -155,7 +158,7 @@ class CalculateAnalyticsUseCase @Inject constructor(
 
             for (day in daysInWeek) {
                 val adjustedBlocks = CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
-                val result = calculateDayWorkTime(day.timeBlocks)
+                val result = dayWorkTime(day)
                 totalMinutes += result.netMinutes
                 val totalGross = result.grossMinutes
                 if (totalGross == 0L) continue
@@ -192,7 +195,7 @@ class CalculateAnalyticsUseCase @Inject constructor(
 
         return monthlyGroups.map { (yearMonth, daysInMonth) ->
             val totalMinutes = daysInMonth.sumOf { day ->
-                calculateDayWorkTime(day.timeBlocks).netMinutes
+                dayWorkTime(day).netMinutes
             }
             TimeSeriesPoint(yearMonth.atDay(1), totalMinutes)
         }
@@ -212,13 +215,13 @@ class CalculateAnalyticsUseCase @Inject constructor(
                 it.date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR) == currentIsoWeek &&
                 it.date.get(IsoFields.WEEK_BASED_YEAR) == currentIsoYear
             }
-            .sumOf { calculateDayWorkTime(it.timeBlocks).netMinutes }
+            .sumOf { dayWorkTime(it).netMinutes }
         val prevMinutes = workDays
             .filter {
                 it.date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR) == prevIsoWeek &&
                 it.date.get(IsoFields.WEEK_BASED_YEAR) == prevIsoYear
             }
-            .sumOf { calculateDayWorkTime(it.timeBlocks).netMinutes }
+            .sumOf { dayWorkTime(it).netMinutes }
 
         return if (currentMinutes == 0L && prevMinutes == 0L) null
         else WeekComparison(currentMinutes, prevMinutes)
@@ -230,7 +233,7 @@ class CalculateAnalyticsUseCase @Inject constructor(
 
         for (day in workDays) {
             val adjustedBlocks = CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
-            val result = calculateDayWorkTime(day.timeBlocks)
+            val result = dayWorkTime(day)
             val totalGross = result.grossMinutes
             if (totalGross == 0L) continue
 

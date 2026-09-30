@@ -223,6 +223,7 @@ class ExportService @Inject constructor() {
 
     private fun dayTypeLabel(dayType: DayType): String = when (dayType) {
         DayType.WORK -> "Arbeit"
+        DayType.BUSINESS_TRIP -> "Dienstgang / Dienstreise"
         DayType.VACATION -> "Urlaub"
         DayType.SPECIAL_VACATION -> "Sonderurlaub"
         DayType.FLEX_DAY -> "Gleittag"

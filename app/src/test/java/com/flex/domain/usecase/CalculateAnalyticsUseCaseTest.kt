@@ -55,6 +55,9 @@ class CalculateAnalyticsUseCaseTest {
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
             DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
         )
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
+        )
 
         // Mock flextime calculation
         // Feb: 3 days * 480 min = 1440 min (cumulative: 1440)
@@ -118,6 +121,9 @@ class CalculateAnalyticsUseCaseTest {
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
             DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
         )
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
+        )
 
         whenever(calculateFlextime.invoke(any(), any(), any(), any())).thenReturn(
             FlextimeBalance(earnedMinutes = 0, totalMinutes = 0, overtimeMinutes = 0, targetMinutes = 0, initialMinutes = 0)
@@ -152,6 +158,9 @@ class CalculateAnalyticsUseCaseTest {
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
             DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
         )
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
+        )
 
         whenever(calculateFlextime.invoke(any(), any(), any(), any())).thenReturn(
             FlextimeBalance(earnedMinutes = 0, totalMinutes = 0, overtimeMinutes = 0, targetMinutes = 0, initialMinutes = 0)
@@ -174,6 +183,9 @@ class CalculateAnalyticsUseCaseTest {
         )
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
+        )
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
             DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
         )
 
@@ -221,6 +233,9 @@ class CalculateAnalyticsUseCaseTest {
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
             DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
         )
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
+        )
 
         whenever(calculateFlextime.invoke(any(), any(), any(), any())).thenReturn(
             FlextimeBalance(earnedMinutes = 1440, totalMinutes = 1440, overtimeMinutes = 0, targetMinutes = 0, initialMinutes = 0)
@@ -257,6 +272,9 @@ class CalculateAnalyticsUseCaseTest {
         }
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
+        )
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
             DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
         )
 
@@ -296,6 +314,9 @@ class CalculateAnalyticsUseCaseTest {
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
             DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
         )
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
+        )
 
         // Feb: +60 minutes flextime
         // March: -30 minutes flextime
@@ -323,6 +344,9 @@ class CalculateAnalyticsUseCaseTest {
         )
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
+        )
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
             DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
         )
 
@@ -354,6 +378,9 @@ class CalculateAnalyticsUseCaseTest {
         )
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
+        )
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
             DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 30, exceedsMaxHours = false)
         )
 
@@ -392,6 +419,9 @@ class CalculateAnalyticsUseCaseTest {
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
             DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 0, exceedsMaxHours = false)
         )
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 0, exceedsMaxHours = false)
+        )
         whenever(calculateFlextime.invoke(any(), any(), any(), any())).thenReturn(
             FlextimeBalance(earnedMinutes = 0, totalMinutes = 0, overtimeMinutes = 0, targetMinutes = 0, initialMinutes = 0)
         )
@@ -414,6 +444,9 @@ class CalculateAnalyticsUseCaseTest {
         }
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 0, exceedsMaxHours = false)
+        )
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
             DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 0, exceedsMaxHours = false)
         )
         whenever(calculateFlextime.invoke(any(), any(), any(), any())).thenReturn(

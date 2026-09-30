@@ -46,11 +46,23 @@ class CalculateDayWorkTimeUseCase @Inject constructor() {
     }
 
     operator fun invoke(timeBlocks: List<TimeBlock>): DayWorkTimeResult {
+        return invoke(timeBlocks, isBusinessTrip = false)
+    }
+
+    operator fun invoke(
+        timeBlocks: List<TimeBlock>,
+        isBusinessTrip: Boolean
+    ): DayWorkTimeResult {
         if (timeBlocks.isEmpty()) {
             return DayWorkTimeResult(0, 0, 0, false)
         }
 
-        val adjusted = adjustTimeBlocks(timeBlocks)
+        // Business trips: no 5-min rounding (minutengenau, Wohnungstür zu Wohnungstür)
+        val adjusted = if (isBusinessTrip) {
+            timeBlocks.sortedBy { it.startTime }
+        } else {
+            adjustTimeBlocks(timeBlocks)
+        }
 
         // Calculate gross time per block
         var totalGrossMinutes = 0L
@@ -65,10 +77,10 @@ class CalculateDayWorkTimeUseCase @Inject constructor() {
         val allDurationBased = completedBlocks.isNotEmpty() && completedBlocks.all { it.isDuration }
 
         if (allDurationBased) {
-            val exceedsMax = totalGrossMinutes > MAX_WORK_MINUTES
+            val exceedsMax = if (isBusinessTrip) false else totalGrossMinutes > MAX_WORK_MINUTES
             return DayWorkTimeResult(
                 grossMinutes = totalGrossMinutes,
-                netMinutes = minOf(totalGrossMinutes, MAX_WORK_MINUTES),
+                netMinutes = if (isBusinessTrip) totalGrossMinutes else minOf(totalGrossMinutes, MAX_WORK_MINUTES),
                 breakMinutes = 0,
                 exceedsMaxHours = exceedsMax
             )
@@ -110,11 +122,11 @@ class CalculateDayWorkTimeUseCase @Inject constructor() {
         }
 
         val cappedNet = netMinutes.coerceAtLeast(0)
-        val exceedsMax = cappedNet > MAX_WORK_MINUTES
+        val exceedsMax = if (isBusinessTrip) false else cappedNet > MAX_WORK_MINUTES
 
         return DayWorkTimeResult(
             grossMinutes = totalGrossMinutes,
-            netMinutes = minOf(cappedNet, MAX_WORK_MINUTES),
+            netMinutes = if (isBusinessTrip) cappedNet else minOf(cappedNet, MAX_WORK_MINUTES),
             breakMinutes = effectiveBreak,
             exceedsMaxHours = exceedsMax
         )

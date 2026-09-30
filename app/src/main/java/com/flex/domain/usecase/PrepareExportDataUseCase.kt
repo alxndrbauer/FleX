@@ -41,14 +41,18 @@ class PrepareExportDataUseCase @Inject constructor(
             val dailyTarget = getDailyTarget(date)
 
             if (workDay != null) {
-                val result = calculateDayWorkTime(workDay.timeBlocks)
+                val result = if (workDay.dayType == DayType.BUSINESS_TRIP) {
+                    calculateDayWorkTime(workDay.timeBlocks, isBusinessTrip = true)
+                } else {
+                    calculateDayWorkTime(workDay.timeBlocks)
+                }
                 val completedBlocks = workDay.timeBlocks
                     .filter { !it.isDuration }
                     .sortedBy { it.startTime }
                 val startTime = completedBlocks.firstOrNull()?.startTime
                 val endTime = completedBlocks.lastOrNull()?.endTime
 
-                val isWorkType = workDay.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
+                val isWorkType = workDay.dayType in listOf(DayType.WORK, DayType.BUSINESS_TRIP, DayType.SATURDAY_BONUS)
                 val target = if (isWorkType) dailyTarget else 0
 
                 rows.add(ExportDayRow(
