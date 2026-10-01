@@ -7,7 +7,7 @@
 
 ### Features
 
-- Add Dienstgang / Dienstreise day type
+- Add Dienstgang / Dienstreise day type (#87)
 ## [1.8.0] - 2026-09-26
 
 ### Bugfixes
