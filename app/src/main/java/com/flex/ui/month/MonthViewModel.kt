@@ -181,7 +181,11 @@ private data class MonthConfig(
                 var officeMin = 0L
                 for (day in workingDays) {
                     val isDayBusinessTrip = day.dayType == DayType.BUSINESS_TRIP
-                    val adjustedBlocks = CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
+                    val adjustedBlocks = if (isDayBusinessTrip) {
+                        day.timeBlocks.sortedBy { it.startTime }
+                    } else {
+                        CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
+                    }
                     val dayResult = if (isDayBusinessTrip) calculateDayWorkTime(day.timeBlocks, isBusinessTrip = true) else calculateDayWorkTime(day.timeBlocks)
                     val totalGross = dayResult.grossMinutes
                     if (totalGross == 0L) continue

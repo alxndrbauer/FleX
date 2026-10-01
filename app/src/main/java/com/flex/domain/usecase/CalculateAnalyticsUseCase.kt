@@ -157,7 +157,12 @@ class CalculateAnalyticsUseCase @Inject constructor(
             var homeOfficeMinutes = 0L
 
             for (day in daysInWeek) {
-                val adjustedBlocks = CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
+                val isBusinessTrip = day.dayType == DayType.BUSINESS_TRIP
+                val adjustedBlocks = if (isBusinessTrip) {
+                    day.timeBlocks.sortedBy { it.startTime }
+                } else {
+                    CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
+                }
                 val result = dayWorkTime(day)
                 totalMinutes += result.netMinutes
                 val totalGross = result.grossMinutes
@@ -169,9 +174,10 @@ class CalculateAnalyticsUseCase @Inject constructor(
                     val blockEnd = block.endTime ?: continue
                     val blockMinutes = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
                     if (blockMinutes <= 0) continue
-                    when (block.location) {
-                        WorkLocation.OFFICE -> dayOfficeGross += blockMinutes
-                        WorkLocation.HOME_OFFICE -> dayHomeOfficeGross += blockMinutes
+                    if (block.location == WorkLocation.OFFICE || isBusinessTrip) {
+                        dayOfficeGross += blockMinutes
+                    } else {
+                        dayHomeOfficeGross += blockMinutes
                     }
                 }
                 officeMinutes += dayOfficeGross * result.netMinutes / totalGross
@@ -232,7 +238,12 @@ class CalculateAnalyticsUseCase @Inject constructor(
         var homeOfficeMinutes = 0L
 
         for (day in workDays) {
-            val adjustedBlocks = CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
+            val isBusinessTrip = day.dayType == DayType.BUSINESS_TRIP
+            val adjustedBlocks = if (isBusinessTrip) {
+                day.timeBlocks.sortedBy { it.startTime }
+            } else {
+                CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
+            }
             val result = dayWorkTime(day)
             val totalGross = result.grossMinutes
             if (totalGross == 0L) continue
@@ -243,9 +254,10 @@ class CalculateAnalyticsUseCase @Inject constructor(
                 val blockEnd = block.endTime ?: continue
                 val blockMinutes = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
                 if (blockMinutes <= 0) continue
-                when (block.location) {
-                    WorkLocation.OFFICE -> dayOfficeGross += blockMinutes
-                    WorkLocation.HOME_OFFICE -> dayHomeOfficeGross += blockMinutes
+                if (block.location == WorkLocation.OFFICE || isBusinessTrip) {
+                    dayOfficeGross += blockMinutes
+                } else {
+                    dayHomeOfficeGross += blockMinutes
                 }
             }
             officeMinutes += dayOfficeGross * result.netMinutes / totalGross

@@ -35,8 +35,13 @@ class CalculateQuotaUseCase @Inject constructor(
         var homeOfficeDays = 0
 
         for (day in workingDays) {
-            val adjustedBlocks = CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
-            val dayResult = if (day.dayType == DayType.BUSINESS_TRIP) {
+            val isBusinessTrip = day.dayType == DayType.BUSINESS_TRIP
+            val adjustedBlocks = if (isBusinessTrip) {
+                day.timeBlocks.sortedBy { it.startTime }
+            } else {
+                CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
+            }
+            val dayResult = if (isBusinessTrip) {
                 calculateDayWorkTime(day.timeBlocks, isBusinessTrip = true)
             } else {
                 calculateDayWorkTime(day.timeBlocks)
@@ -49,9 +54,10 @@ class CalculateQuotaUseCase @Inject constructor(
                 val blockEnd = block.endTime ?: continue
                 val blockMinutes = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
                 if (blockMinutes <= 0) continue
-                when (block.location) {
-                    WorkLocation.OFFICE -> dayOfficeGross += blockMinutes
-                    WorkLocation.HOME_OFFICE -> dayHomeOfficeGross += blockMinutes
+                if (block.location == WorkLocation.OFFICE || isBusinessTrip) {
+                    dayOfficeGross += blockMinutes
+                } else {
+                    dayHomeOfficeGross += blockMinutes
                 }
             }
             // Only count days that have at least one completed block
