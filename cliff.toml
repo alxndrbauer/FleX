@@ -1,20 +1,36 @@
 [changelog]
-header = "# Changelog\n"
+header = """
+# Changelog
+
+Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert.
+
+Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/de/).\n
+"""
 body = """
-{% if version %}\
+{% if version -%}
 ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
-{% else %}\
+{% else -%}
 ## [Unreleased]
-{% endif %}\
+{% endif -%}
 {% for group, commits in commits | group_by(attribute="group") %}
-### {{ group }}
+### {{ group | striptags | trim }}
 {% for commit in commits %}
 - {{ commit.message | upper_first | trim }}\
 {% endfor %}
+{% endfor %}\n
+"""
+footer = """
+{% for release in releases -%}
+{% if release.version and release.previous and release.previous.version -%}
+[{{ release.version | trim_start_matches(pat="v") }}]: https://github.com/alxndrbauer/FleX/compare/{{ release.previous.version }}...{{ release.version }}
+{% elif not release.version and release.previous and release.previous.version -%}
+[Unreleased]: https://github.com/alxndrbauer/FleX/compare/{{ release.previous.version }}...HEAD
+{% elif release.version -%}
+[{{ release.version | trim_start_matches(pat="v") }}]: https://github.com/alxndrbauer/FleX/releases/tag/{{ release.version }}
+{% endif -%}
 {% endfor %}
 """
 trim = true
-footer = ""
 
 [git]
 conventional_commits = true
@@ -22,11 +38,11 @@ filter_unconventional = true
 split_commits = false
 commit_preprocessors = []
 commit_parsers = [
-  { message = ".*changelog", skip = true },
-  { message = "^feat", group = "Features" },
-  { message = "^fix", group = "Bugfixes" },
-  { message = "^refactor", group = "Verbesserungen" },
-  { message = "^perf", group = "Performance" },
+  { message = "^(chore|docs).*changelog", skip = true },
+  { message = "^feat", group = "<!-- 0 -->Features" },
+  { message = "^refactor", group = "<!-- 1 -->Verbesserungen" },
+  { message = "^perf", group = "<!-- 2 -->Performance" },
+  { message = "^fix", group = "<!-- 3 -->Bugfixes" },
   { message = "^chore", skip = true },
   { message = "^ci", skip = true },
   { message = "^docs", skip = true },
