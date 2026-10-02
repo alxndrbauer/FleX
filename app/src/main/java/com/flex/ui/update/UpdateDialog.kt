@@ -1,10 +1,16 @@
 package com.flex.ui.update
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,13 +40,23 @@ fun UpdateDialog(
                     CircularProgressIndicator()
                 }
             } else {
-                val text = buildString {
-                    append("Version ${updateInfo.versionName} ist verfügbar.")
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = "Version ${updateInfo.versionName} ist verfügbar.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                     if (updateInfo.changelog.isNotBlank()) {
-                        append("\n\n${updateInfo.changelog}")
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = updateInfo.changelog,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
                 }
-                Text(text)
             }
         },
         confirmButton = {
