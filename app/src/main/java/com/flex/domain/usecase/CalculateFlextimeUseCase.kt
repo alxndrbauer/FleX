@@ -40,14 +40,16 @@ class CalculateFlextimeUseCase @Inject constructor(
                     } else {
                         calculateDayWorkTime(day.timeBlocks)
                     }
-                    // Check if this is a weekend day (Saturday or Sunday)
-                    val isWeekend = day.date.dayOfWeek == DayOfWeek.SATURDAY || day.date.dayOfWeek == DayOfWeek.SUNDAY
+                    val ruleForDate = workTimeRules.getRuleForDate(day.date)
+                    val activeWorkDays = ruleForDate?.workDays ?: DEFAULT_WORK_DAYS
+                    // Check if this is a non-working day (weekend or day off according to work time rule)
+                    val isNonWorkingDay = day.date.dayOfWeek !in activeWorkDays
 
-                    if (isWeekend) {
-                        // Weekend work: count FULL time as flextime (it's extra over normal Mon-Fri work)
+                    if (isNonWorkingDay) {
+                        // Work on scheduled off-days (e.g. weekend, off-Friday in 4-day week): count FULL time as flextime
                         earnedMinutes += result.netMinutes
                     } else {
-                        // Weekday work: count only extra hours over daily target
+                        // Regular work day: count only extra hours over daily target
                         earnedMinutes += result.netMinutes - dailyTarget
                     }
                 }
