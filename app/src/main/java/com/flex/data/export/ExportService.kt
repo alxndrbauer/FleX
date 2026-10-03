@@ -36,7 +36,6 @@ class ExportService @Inject constructor() {
         for (row in data.rows) {
             val dayName = row.date.format(dayNameFormatter)
             val typeLabel = row.dayType?.let { dayTypeLabel(it) } ?: "-"
-            val locationLabel = row.location?.let { locationLabel(it) } ?: "-"
             val startStr = row.startTime?.format(timeFormatter) ?: "-"
             val endStr = row.endTime?.format(timeFormatter) ?: "-"
             val grossStr = if (row.grossMinutes > 0) formatDuration(row.grossMinutes) else "-"
@@ -50,7 +49,19 @@ class ExportService @Inject constructor() {
             } else "-"
             val noteStr = row.note?.replace(";", ",") ?: ""
 
-            sb.append("${row.date.format(dateFormatter)};$dayName;$typeLabel;$locationLabel;$startStr;$endStr;$grossStr;$breakStr;$netStr;$targetStr;$diffStr;$noteStr\n")
+            if (row.hasMultipleLocations && row.blocks.isNotEmpty()) {
+                for (block in row.blocks) {
+                    val locLabel = locationLabel(block.location)
+                    val blockStartStr = block.startTime.format(timeFormatter)
+                    val blockEndStr = block.endTime?.format(timeFormatter) ?: "-"
+                    val durStr = formatDuration(block.durationMinutes)
+                    sb.append("${row.date.format(dateFormatter)};$dayName;$typeLabel;$locLabel;$blockStartStr;$blockEndStr;$durStr;-;$durStr;-;-;\n")
+                }
+                sb.append("${row.date.format(dateFormatter)};$dayName;Gesamt;-;$startStr;$endStr;$grossStr;$breakStr;$netStr;$targetStr;$diffStr;$noteStr\n")
+            } else {
+                val locationLabel = row.location?.let { locationLabel(it) } ?: "-"
+                sb.append("${row.date.format(dateFormatter)};$dayName;$typeLabel;$locationLabel;$startStr;$endStr;$grossStr;$breakStr;$netStr;$targetStr;$diffStr;$noteStr\n")
+            }
         }
 
         // Summary row
@@ -83,49 +94,102 @@ class ExportService @Inject constructor() {
         val titlePaint = paint(12f, Color.BLACK, bold = true)
         val colHeaderPaint = paint(7.5f, Color.BLACK, bold = true)
         val cellPaint = paint(7f, Color.BLACK)
+        val subCellPaint = paint(6.5f, Color.DKGRAY)
         val summaryPaint = paint(7.5f, Color.BLACK, bold = true)
         val footerPaint = paint(7f, Color.DKGRAY)
         val grayFill = fillPaint(Color.rgb(235, 235, 235))
         val headerFill = fillPaint(Color.rgb(210, 210, 210))
+        val daySummaryFill = fillPaint(Color.rgb(245, 245, 245))
         val linePaint = strokePaint(Color.rgb(180, 180, 180), 0.5f)
 
         val pdfDocument = PdfDocument()
-        val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
-        val page = pdfDocument.startPage(pageInfo)
-        val canvas = page.canvas
+        var pageNumber = 1
+        var pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
+        var page = pdfDocument.startPage(pageInfo)
+        var canvas = page.canvas
 
         var y = margin
 
-        // Title
-        canvas.drawText(
-            "Monatsbericht ${data.yearMonth.format(monthFormatter)}",
-            margin, y + 12f, titlePaint
-        )
-        y += 20f
-
-        // Column headers
-        drawRow(canvas, columns, margin, y, headerRowHeight, headerFill, linePaint) {
-            columns.forEachIndexed { i, (label, _) ->
-                val x = columnX(columns, i, margin)
-                canvas.drawText(label, x + 2f, y + 10f, colHeaderPaint)
+        fun drawHeader(isFirstPage: Boolean) {
+            if (isFirstPage) {
+                // Title
+                canvas.drawText(
+                    "Monatsbericht ${data.yearMonth.format(monthFormatter)}",
+                    margin, y + 12f, titlePaint
+                )
+                y += 20f
             }
-        }
-        y += headerRowHeight
-
-        // Data rows
-        data.rows.forEachIndexed { index, row ->
-            val fill = if (index % 2 == 0) null else grayFill
-            drawRow(canvas, columns, margin, y, rowHeight, fill, linePaint) {
-                val values = rowValues(row)
-                values.forEachIndexed { i, value ->
+            // Column headers
+            drawRow(canvas, columns, margin, y, headerRowHeight, headerFill, linePaint) {
+                columns.forEachIndexed { i, (label, _) ->
                     val x = columnX(columns, i, margin)
-                    canvas.drawText(value, x + 2f, y + 9f, cellPaint)
+                    canvas.drawText(label, x + 2f, y + 10f, colHeaderPaint)
                 }
             }
-            y += rowHeight
+            y += headerRowHeight
+        }
+
+        fun ensureSpace(neededHeight: Float) {
+            if (y + neededHeight > pageHeight - margin - 20f) {
+                pdfDocument.finishPage(page)
+                pageNumber++
+                pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
+                page = pdfDocument.startPage(pageInfo)
+                canvas = page.canvas
+                y = margin
+                drawHeader(isFirstPage = false)
+            }
+        }
+
+        drawHeader(isFirstPage = true)
+
+        var rowIndex = 0
+        for (row in data.rows) {
+            if (row.hasMultipleLocations && row.blocks.isNotEmpty()) {
+                // Einzelne Block-Zeilen
+                for (block in row.blocks) {
+                    ensureSpace(rowHeight)
+                    val fill = if (rowIndex % 2 == 0) null else grayFill
+                    rowIndex++
+                    drawRow(canvas, columns, margin, y, rowHeight, fill, linePaint) {
+                        val values = blockRowValues(row, block)
+                        values.forEachIndexed { i, value ->
+                            val x = columnX(columns, i, margin)
+                            canvas.drawText(value, x + 2f, y + 9f, subCellPaint)
+                        }
+                    }
+                    y += rowHeight
+                }
+
+                // Tagessummen-Zeile
+                ensureSpace(rowHeight)
+                rowIndex++
+                drawRow(canvas, columns, margin, y, rowHeight, daySummaryFill, linePaint) {
+                    val values = daySummaryRowValues(row)
+                    values.forEachIndexed { i, value ->
+                        val x = columnX(columns, i, margin)
+                        val textPaint = if (i == 2 || i == 8 || i == 10) summaryPaint else cellPaint
+                        canvas.drawText(value, x + 2f, y + 9f, textPaint)
+                    }
+                }
+                y += rowHeight
+            } else {
+                ensureSpace(rowHeight)
+                val fill = if (rowIndex % 2 == 0) null else grayFill
+                rowIndex++
+                drawRow(canvas, columns, margin, y, rowHeight, fill, linePaint) {
+                    val values = rowValues(row)
+                    values.forEachIndexed { i, value ->
+                        val x = columnX(columns, i, margin)
+                        canvas.drawText(value, x + 2f, y + 9f, cellPaint)
+                    }
+                }
+                y += rowHeight
+            }
         }
 
         // Summary row
+        ensureSpace(rowHeight + 25f)
         y += 3f
         val totalDiff = data.totalNetMinutes - data.totalTargetMinutes
         val totalDiffSign = if (totalDiff >= 0) "+" else ""
@@ -213,6 +277,39 @@ class ExportService @Inject constructor() {
         val noteStr = row.note ?: ""
         return listOf(
             row.date.format(dateFormatter), dayName, typeLabel, locationLabel,
+            startStr, endStr, grossStr, breakStr, netStr, targetStr, diffStr, noteStr
+        )
+    }
+
+    private fun blockRowValues(row: com.flex.domain.model.ExportDayRow, block: com.flex.domain.model.ExportBlockRow): List<String> {
+        val dayName = row.date.format(dayNameShortFormatter)
+        val typeLabel = row.dayType?.let { dayTypeLabel(it) } ?: "-"
+        val locationLabel = locationLabel(block.location)
+        val startStr = block.startTime.format(timeFormatter)
+        val endStr = block.endTime?.format(timeFormatter) ?: "-"
+        val durStr = formatDuration(block.durationMinutes)
+        return listOf(
+            row.date.format(dateFormatter), dayName, typeLabel, locationLabel,
+            startStr, endStr, durStr, "-", durStr, "-", "-", ""
+        )
+    }
+
+    private fun daySummaryRowValues(row: com.flex.domain.model.ExportDayRow): List<String> {
+        val dayName = row.date.format(dayNameShortFormatter)
+        val startStr = row.startTime?.format(timeFormatter) ?: "-"
+        val endStr = row.endTime?.format(timeFormatter) ?: "-"
+        val grossStr = if (row.grossMinutes > 0) formatDuration(row.grossMinutes) else "-"
+        val breakStr = if (row.grossMinutes > 0) formatDuration(row.breakMinutes) else "-"
+        val netStr = if (row.netMinutes > 0) formatDuration(row.netMinutes) else "-"
+        val targetStr = if (row.targetMinutes > 0) formatDuration(row.targetMinutes.toLong()) else "-"
+        val diff = row.netMinutes - row.targetMinutes
+        val diffStr = if (row.targetMinutes > 0 || row.netMinutes > 0) {
+            val sign = if (diff >= 0) "+" else ""
+            "$sign${formatDuration(kotlin.math.abs(diff))}"
+        } else "-"
+        val noteStr = row.note ?: ""
+        return listOf(
+            row.date.format(dateFormatter), dayName, "Gesamt", "-",
             startStr, endStr, grossStr, breakStr, netStr, targetStr, diffStr, noteStr
         )
     }

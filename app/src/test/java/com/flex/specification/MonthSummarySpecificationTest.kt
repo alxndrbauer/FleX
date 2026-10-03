@@ -5,6 +5,8 @@ import android.net.Uri
 import com.google.common.truth.Truth.assertThat
 import com.flex.data.export.ExportService
 import com.flex.domain.model.DayType
+import com.flex.domain.model.TimeBlock
+import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
@@ -24,6 +26,7 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import java.io.ByteArrayOutputStream
 import java.time.LocalDate
+import java.time.LocalTime
 
 @DisplayName("Spezifikation: Monatsabschluss & Export-Roundtrip BDD Test (September 2026)")
 class MonthSummarySpecificationTest {
@@ -77,7 +80,7 @@ class MonthSummarySpecificationTest {
     inner class QuotaEvaluationScenario {
 
         @Test
-        @DisplayName("Ermittelt 7 Büro- und 15 Home-Office-Tage, 158:16h Gesamtarbeitszeit und prüft Quotenerfüllung")
+        @DisplayName("Ermittelt 8 Büro- und 14 Home-Office-Tage, 158:16h Gesamtarbeitszeit und prüft Quotenerfüllung")
         fun evaluatesSeptemberQuotaCorrectly() {
             // Given: 22 Arbeitstage und Default Settings
             val workDays = septemberWorkDays
@@ -91,32 +94,32 @@ class MonthSummarySpecificationTest {
             )
 
             // Then:
-            // 7 Tage im Büro (01., 02., 07., 08., 14., 15., 22.09.)
+            // 8 Tage im Büro (01., 02., 07., 08., 14., 15., 22., 30.09.)
             assertThat(quotaStatus.officeDays).isEqualTo(September2026ExportFixture.EXPECTED_OFFICE_DAYS)
-            assertThat(quotaStatus.officeDays).isEqualTo(7)
+            assertThat(quotaStatus.officeDays).isEqualTo(8)
 
-            // 15 Tage im Home Office
+            // 14 Tage im Home Office
             assertThat(quotaStatus.homeOfficeDays).isEqualTo(September2026ExportFixture.EXPECTED_HOME_OFFICE_DAYS)
-            assertThat(quotaStatus.homeOfficeDays).isEqualTo(15)
+            assertThat(quotaStatus.homeOfficeDays).isEqualTo(14)
 
             // Summe der Netto-Minuten aus Büro + HO = 9496L (158:16 h)
             val totalMinutes = quotaStatus.officeMinutes + quotaStatus.homeOfficeMinutes
             assertThat(totalMinutes).isEqualTo(September2026ExportFixture.EXPECTED_NET_MINUTES)
             assertThat(totalMinutes).isEqualTo(9496L)
-            assertThat(quotaStatus.officeMinutes).isEqualTo(3275L) // 54:35 h
-            assertThat(quotaStatus.homeOfficeMinutes).isEqualTo(6221L) // 103:41 h
+            assertThat(quotaStatus.officeMinutes).isEqualTo(3635L) // 60:35 h
+            assertThat(quotaStatus.homeOfficeMinutes).isEqualTo(5861L) // 97:41 h
 
-            // Tage-basierte Büro-Quote: 7 von 22 Tagen = 31.818% (~31.8%)
+            // Tage-basierte Büro-Quote: 8 von 22 Tagen = 36.36% (~36.4%)
             val officeDaysPercentage = (quotaStatus.officeDays.toDouble() / (quotaStatus.officeDays + quotaStatus.homeOfficeDays)) * 100
-            assertThat(officeDaysPercentage).isWithin(0.1).of(31.8)
+            assertThat(officeDaysPercentage).isWithin(0.1).of(36.4)
 
-            // Zeit-basierte Büro-Quote (UseCase): 3275 min / 9372 Sollminuten = 34.94%
-            assertThat(quotaStatus.officePercent).isWithin(0.1).of(34.9)
+            // Zeit-basierte Büro-Quote (UseCase): 3635 min / 9372 Sollminuten = 38.78% (~38.8%)
+            assertThat(quotaStatus.officePercent).isWithin(0.1).of(38.8)
 
-            // Tage-Quote nicht erfüllt: 7 Tage < 8 Mindesttage
-            assertThat(quotaStatus.daysQuotaMet).isFalse()
+            // Tage-Quote erfüllt: 8 Tage >= 8 Mindesttage
+            assertThat(quotaStatus.daysQuotaMet).isTrue()
 
-            // Prozent-Quote nicht erfüllt: < 40% Mindestquote
+            // Prozent-Quote nicht erfüllt: 38.8% < 40% Mindestquote
             assertThat(quotaStatus.percentQuotaMet).isFalse()
         }
     }
@@ -207,8 +210,8 @@ class MonthSummarySpecificationTest {
             val generatedLines = generatedCsv.trim().lines()
             val expectedLines = expectedCsv.trim().lines()
 
-            // Zeilenanzahl: 1 Kopfzeile + 30 Tage + 1 Summenzeile = 32 Zeilen
-            assertThat(generatedLines).hasSize(32)
+            // Zeilenanzahl: 1 Kopfzeile + 29 Einzeltage + 3 Zeilen für 30.09. (2 Blöcke + Tagessumme) + 1 Monatssummenzeile = 34 Zeilen
+            assertThat(generatedLines).hasSize(34)
 
             // Kopfzeile prüfen
             assertThat(generatedLines.first()).isEqualTo("Datum;Tag;Typ;Ort;Start;Ende;Brutto;Pause;Netto;Soll;Differenz;Notiz")
@@ -221,12 +224,72 @@ class MonthSummarySpecificationTest {
             // 05.09.2026 (Wochenende)
             assertThat(generatedLines[5]).isEqualTo("05.09.2026;Samstag;-;-;-;-;-;-;-;-;-;")
 
+            // 30.09.2026 (Misch-Tag: 2 Blöcke + Tagessumme)
+            assertThat(generatedLines[30]).isEqualTo("30.09.2026;Mittwoch;Arbeit;Büro;09:02;15:00;5:58;-;5:58;-;-;")
+            assertThat(generatedLines[31]).isEqualTo("30.09.2026;Mittwoch;Arbeit;HO;15:51;16:31;0:40;-;0:40;-;-;")
+            assertThat(generatedLines[32]).isEqualTo("30.09.2026;Mittwoch;Gesamt;-;09:02;16:31;6:44;0:51;6:44;7:06;0:22;")
+
             // Summenzeile verifizieren
             val summaryLine = generatedLines.last()
             assertThat(summaryLine).isEqualTo(";;;;;;;Gesamt;;158:16;156:12;+2:04;")
 
             // Vollständiger CSV-Inhalt stimmt 1:1 überein
             assertThat(generatedCsv.trim()).isEqualTo(expectedCsv.trim())
+        }
+
+        @Test
+        @DisplayName("ExportService erzeugt bei Split-Tagen mit unterschiedlichen Orten Blockzeilen und Tagessumme ohne dominanten Ort")
+        fun exportServiceOutputsSplitDayBlocksAndSummaryRow() = runTest {
+            // Given: Ein Tag mit 2 Blöcken an unterschiedlichen Orten (HO und Büro)
+            val splitDay = WorkDay(
+                date = LocalDate.of(2026, 9, 15),
+                dayType = DayType.WORK,
+                location = WorkLocation.OFFICE,
+                timeBlocks = listOf(
+                    TimeBlock(
+                        id = 1L,
+                        startTime = LocalTime.of(8, 30),
+                        endTime = LocalTime.of(12, 0),
+                        location = WorkLocation.HOME_OFFICE,
+                        isDuration = false
+                    ),
+                    TimeBlock(
+                        id = 2L,
+                        startTime = LocalTime.of(13, 0),
+                        endTime = LocalTime.of(17, 0),
+                        location = WorkLocation.OFFICE,
+                        isDuration = false
+                    )
+                )
+            )
+
+            val mockWorkDayRepo: WorkDayRepository = mock()
+            whenever(mockWorkDayRepo.getWorkDaysForMonth(September2026ExportFixture.YEAR_MONTH))
+                .thenReturn(flowOf(listOf(splitDay)))
+
+            val useCase = PrepareExportDataUseCase(
+                workDayRepository = mockWorkDayRepo,
+                settingsRepository = settingsRepository,
+                calculateDayWorkTime = calculateDayWorkTime
+            )
+
+            val exportData = useCase(September2026ExportFixture.YEAR_MONTH)
+            val outputStream = ByteArrayOutputStream()
+            val contentResolver: ContentResolver = mock()
+            val uri: Uri = mock()
+            whenever(contentResolver.openOutputStream(uri)).thenReturn(outputStream)
+
+            // When: CSV exportiert wird
+            exportService.exportToCsv(exportData, uri, contentResolver)
+
+            val generatedCsv = outputStream.toString(Charsets.UTF_8).removePrefix("\uFEFF")
+            val day15Lines = generatedCsv.trim().lines().filter { it.startsWith("15.09.2026;") }
+
+            // Then: 2 Blockzeilen und 1 Tagessummenzeile
+            assertThat(day15Lines).hasSize(3)
+            assertThat(day15Lines[0]).isEqualTo("15.09.2026;Dienstag;Arbeit;HO;08:30;12:00;3:30;-;3:30;-;-;")
+            assertThat(day15Lines[1]).isEqualTo("15.09.2026;Dienstag;Arbeit;Büro;13:00;17:00;4:00;-;4:00;-;-;")
+            assertThat(day15Lines[2]).isEqualTo("15.09.2026;Dienstag;Gesamt;-;08:30;17:00;7:30;1:00;7:30;7:06;+0:24;")
         }
     }
 }

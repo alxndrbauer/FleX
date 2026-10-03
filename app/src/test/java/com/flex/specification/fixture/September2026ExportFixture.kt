@@ -20,8 +20,8 @@ object September2026ExportFixture {
     const val EXPECTED_MONTHLY_TARGET_MINUTES: Long = 9372L // 156:12 h (22 * 426)
     const val EXPECTED_NET_MINUTES: Long = 9496L // 158:16 h
     const val EXPECTED_DIFF_MINUTES: Long = 124L // +2:04 h
-    const val EXPECTED_OFFICE_DAYS: Int = 7
-    const val EXPECTED_HOME_OFFICE_DAYS: Int = 15
+    const val EXPECTED_OFFICE_DAYS: Int = 8
+    const val EXPECTED_HOME_OFFICE_DAYS: Int = 14
 
     fun createDefaultSettings(): Settings = Settings(
         dailyWorkMinutes = DAILY_TARGET_MINUTES,
@@ -215,13 +215,13 @@ object September2026ExportFixture {
                 block(LocalTime.of(13, 13), LocalTime.of(17, 33), WorkLocation.HOME_OFFICE)
             )
         ),
-        // 30.09.2026: Mi, HO, 09:02–16:31 (2 Blöcke, 0:51h Pause, Brutto 6:44, Netto 6:44)
+        // 30.09.2026: Mi, Misch-Tag Büro & HO, 09:02–16:31 (2 Blöcke: Büro 09:02–15:00, HO 15:51–16:31, 0:51h Pause, Brutto 6:44, Netto 6:44)
         workDay(
             date = LocalDate.of(2026, 9, 30),
-            location = WorkLocation.HOME_OFFICE,
+            location = WorkLocation.OFFICE,
             blocks = listOf(
-                block(LocalTime.of(9, 2), LocalTime.of(12, 30), WorkLocation.HOME_OFFICE),
-                block(LocalTime.of(13, 21), LocalTime.of(16, 31), WorkLocation.HOME_OFFICE)
+                block(LocalTime.of(9, 2), LocalTime.of(15, 0), WorkLocation.OFFICE),
+                block(LocalTime.of(15, 51), LocalTime.of(16, 31), WorkLocation.HOME_OFFICE)
             )
         )
     )
@@ -257,7 +257,9 @@ Datum;Tag;Typ;Ort;Start;Ende;Brutto;Pause;Netto;Soll;Differenz;Notiz
 27.09.2026;Sonntag;-;-;-;-;-;-;-;-;-;
 28.09.2026;Montag;Arbeit;HO;09:08;16:58;6:54;1:01;6:54;7:06;0:12;
 29.09.2026;Dienstag;Arbeit;HO;08:36;17:33;8:17;0:43;8:17;7:06;+1:11;
-30.09.2026;Mittwoch;Arbeit;HO;09:02;16:31;6:44;0:51;6:44;7:06;0:22;
+30.09.2026;Mittwoch;Arbeit;Büro;09:02;15:00;5:58;-;5:58;-;-;
+30.09.2026;Mittwoch;Arbeit;HO;15:51;16:31;0:40;-;0:40;-;-;
+30.09.2026;Mittwoch;Gesamt;-;09:02;16:31;6:44;0:51;6:44;7:06;0:22;
 ;;;;;;;Gesamt;;158:16;156:12;+2:04;
 """.trimIndent()
 

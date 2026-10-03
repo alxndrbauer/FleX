@@ -4,6 +4,13 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
 
+data class ExportBlockRow(
+    val startTime: LocalTime,
+    val endTime: LocalTime?,
+    val location: WorkLocation,
+    val durationMinutes: Long
+)
+
 data class ExportDayRow(
     val date: LocalDate,
     val dayType: DayType?,
@@ -14,7 +21,9 @@ data class ExportDayRow(
     val breakMinutes: Long,
     val netMinutes: Long,
     val targetMinutes: Int,
-    val note: String?
+    val note: String?,
+    val hasMultipleLocations: Boolean = false,
+    val blocks: List<ExportBlockRow> = emptyList()
 )
 
 data class ExportData(

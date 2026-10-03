@@ -1,6 +1,7 @@
 package com.flex.domain.usecase
 
 import com.flex.domain.model.DayType
+import com.flex.domain.model.ExportBlockRow
 import com.flex.domain.model.ExportData
 import com.flex.domain.model.ExportDayRow
 import com.flex.domain.model.PublicHolidays
@@ -9,6 +10,7 @@ import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import kotlinx.coroutines.flow.firstOrNull
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.YearMonth
 import javax.inject.Inject
 
@@ -46,26 +48,54 @@ class PrepareExportDataUseCase @Inject constructor(
                 } else {
                     calculateDayWorkTime(workDay.timeBlocks)
                 }
-                val completedBlocks = workDay.timeBlocks
+                val allBlocks = workDay.timeBlocks
                     .filter { !it.isDuration }
                     .sortedBy { it.startTime }
-                val startTime = completedBlocks.firstOrNull()?.startTime
+                val completedBlocks = allBlocks.filter { it.endTime != null }
+                val startTime = allBlocks.firstOrNull()?.startTime
                 val endTime = completedBlocks.lastOrNull()?.endTime
 
                 val isWorkType = workDay.dayType in listOf(DayType.WORK, DayType.BUSINESS_TRIP, DayType.SATURDAY_BONUS)
+                val distinctLocations = completedBlocks.map { it.location }.distinct()
+                val hasMultipleLocations = isWorkType && distinctLocations.size > 1
+
+                val exportBlocks = if (hasMultipleLocations) {
+                    completedBlocks.map { b ->
+                        val dur = Duration.between(b.startTime, b.endTime!!).toMinutes().coerceAtLeast(0)
+                        ExportBlockRow(
+                            startTime = b.startTime,
+                            endTime = b.endTime,
+                            location = b.location,
+                            durationMinutes = dur
+                        )
+                    }
+                } else {
+                    emptyList()
+                }
+
+                val dayLocation = if (hasMultipleLocations) {
+                    null
+                } else if (completedBlocks.isNotEmpty()) {
+                    completedBlocks.first().location
+                } else {
+                    workDay.location
+                }
+
                 val target = if (isWorkType) dailyTarget else 0
 
                 rows.add(ExportDayRow(
                     date = date,
                     dayType = workDay.dayType,
-                    location = workDay.location,
+                    location = dayLocation,
                     startTime = startTime,
                     endTime = endTime,
                     grossMinutes = result.grossMinutes,
                     breakMinutes = result.breakMinutes,
                     netMinutes = result.netMinutes,
                     targetMinutes = target,
-                    note = workDay.note
+                    note = workDay.note,
+                    hasMultipleLocations = hasMultipleLocations,
+                    blocks = exportBlocks
                 ))
                 if (isWorkType) totalNet += result.netMinutes
                 totalTarget += target

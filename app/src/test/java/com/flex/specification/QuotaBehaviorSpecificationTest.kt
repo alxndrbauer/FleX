@@ -666,7 +666,7 @@ class QuotaBehaviorSpecificationTest {
         }
 
         @Test
-        @DisplayName("Verifikation mit Realdaten: September 2026 Fixture (7 Bürotage, 15 HO-Tage)")
+        @DisplayName("Verifikation mit Realdaten: September 2026 Fixture (8 Bürotage, 14 HO-Tage)")
         fun `verify September 2026 real export dataset quota calculation`() {
             // Given: Die 22 Arbeitstage des realen September 2026 FleX-Exports
             val workDays = September2026ExportFixture.createSeptember2026WorkDays()
@@ -680,20 +680,20 @@ class QuotaBehaviorSpecificationTest {
             )
 
             // Then:
-            // 1. Exakt 7 Bürotage und 15 HO-Tage gemäß Fixture-Erwartung
+            // 1. Exakt 8 Bürotage und 14 HO-Tage gemäß Fixture-Erwartung
             assertThat(result.officeDays).isEqualTo(September2026ExportFixture.EXPECTED_OFFICE_DAYS)
             assertThat(result.homeOfficeDays).isEqualTo(September2026ExportFixture.EXPECTED_HOME_OFFICE_DAYS)
 
-            // 2. Tagequote verfehlt: 7 von 8 Tagen -> 1 Tag fehlt
-            assertThat(result.daysQuotaMet).isFalse()
-            assertThat(result.requiredOfficeDaysForQuota).isEqualTo(1)
+            // 2. Tagequote erfüllt: 8 von 8 Tagen -> 0 Tage fehlen
+            assertThat(result.daysQuotaMet).isTrue()
+            assertThat(result.requiredOfficeDaysForQuota).isEqualTo(0)
 
-            // 3. Prozentquote: 3275 min Bürozeit bei 9372 min Soll = 34.94% (< 40%)
-            assertThat(result.officePercent).isWithin(0.1).of(34.94)
+            // 3. Prozentquote: 3635 min Bürozeit bei 9372 min Soll = 38.78% (< 40%)
+            assertThat(result.officePercent).isWithin(0.1).of(38.78)
             assertThat(result.percentQuotaMet).isFalse()
 
-            // 4. Gesamtquote verfehlt
-            assertThat(result.quotaMet).isFalse()
+            // 4. Gesamtquote erfüllt (da Tagequote erfüllt ist: percentQuotaMet || daysQuotaMet)
+            assertThat(result.quotaMet).isTrue()
         }
     }
 
