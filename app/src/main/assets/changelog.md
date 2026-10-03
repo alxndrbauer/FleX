@@ -10,6 +10,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 
 - Add Dienstgang / Dienstreise day type (#87)
 - Export individual time blocks for split-location days in reports
+- Display daily flextime difference in month view
 
 ### Bugfixes
 

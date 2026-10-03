@@ -292,4 +292,54 @@ class MonthSummarySpecificationTest {
             assertThat(day15Lines[2]).isEqualTo("15.09.2026;Dienstag;Gesamt;-;08:30;17:00;7:30;1:00;7:30;7:06;+0:24;")
         }
     }
+
+    @Nested
+    @DisplayName("Szenario 4: Tagesdifferenz vs. Kumulierte Gleitzeit (Kalender- und Eintragsanzeige)")
+    inner class DailyDifferenceAndCumulativeFlextimeScenario {
+
+        @Test
+        @DisplayName("Ermittelt für jeden Tag die korrekte Tagesdifferenz zum Tagessoll und die kumulierte Gesamtgleitzeit")
+        fun calculatesDailyDifferenceAndCumulativeFlextimeCorrectly() {
+            // Given: Default Settings (426 min Tagessoll) und die realen September 2026 Arbeitstage
+            val workDays = septemberWorkDays
+            val settings = defaultSettings
+
+            // When: Tagesdifferenzen und kumulierte Gleitzeiten berechnet werden
+            val dailyDifferenceByDate = mutableMapOf<LocalDate, Long>()
+            val cumulativeFlextimeByDate = mutableMapOf<LocalDate, Long>()
+            var runningBalance = 0L
+
+            for (day in workDays.sortedBy { it.date }) {
+                val dailyDelta = calculateFlextime(listOf(day), settings.copy(initialFlextimeMinutes = 0), null).totalMinutes
+                dailyDifferenceByDate[day.date] = dailyDelta
+                runningBalance += dailyDelta
+                cumulativeFlextimeByDate[day.date] = runningBalance
+            }
+
+            // Then:
+            // 01.09.2026 (Di): Netto 7:25h (445m) vs Soll 7:06h (426m) -> Tag: +19m (+0:19), Kumuliert: +19m (+0:19)
+            assertThat(dailyDifferenceByDate[LocalDate.of(2026, 9, 1)]).isEqualTo(19L)
+            assertThat(cumulativeFlextimeByDate[LocalDate.of(2026, 9, 1)]).isEqualTo(19L)
+
+            // 02.09.2026 (Mi): Netto 8:45h (525m) vs Soll 7:06h (426m) -> Tag: +99m (+1:39), Kumuliert: +118m (+1:58)
+            assertThat(dailyDifferenceByDate[LocalDate.of(2026, 9, 2)]).isEqualTo(99L)
+            assertThat(cumulativeFlextimeByDate[LocalDate.of(2026, 9, 2)]).isEqualTo(118L)
+
+            // 03.09.2026 (Do): Netto 5:40h (340m) vs Soll 7:06h (426m) -> Tag: -86m (-1:26), Kumuliert: +32m (+0:32)
+            // WICHTIG: Kalender zeigt Tages-Minus (-86m / -1:26), Eintragsliste zeigt sowohl Tag (-86m) als auch Gesamt (+32m)!
+            assertThat(dailyDifferenceByDate[LocalDate.of(2026, 9, 3)]).isEqualTo(-86L)
+            assertThat(cumulativeFlextimeByDate[LocalDate.of(2026, 9, 3)]).isEqualTo(32L)
+
+            // 04.09.2026 (Fr): Netto 6:00h (360m) vs Soll 7:06h (426m) -> Tag: -66m (-1:06), Kumuliert: -34m (-0:34)
+            assertThat(dailyDifferenceByDate[LocalDate.of(2026, 9, 4)]).isEqualTo(-66L)
+            assertThat(cumulativeFlextimeByDate[LocalDate.of(2026, 9, 4)]).isEqualTo(-34L)
+
+            // 11.09.2026 (Fr): Netto 4:28h (268m) vs Soll 7:06h (426m) -> Tag: -158m (-2:38)
+            assertThat(dailyDifferenceByDate[LocalDate.of(2026, 9, 11)]).isEqualTo(-158L)
+
+            // 30.09.2026 (Mi): Netto 6:44h (404m) vs Soll 7:06h (426m) -> Tag: -22m (-0:22), Kumulierter Monatsendsaldo: +124m (+2:04)
+            assertThat(dailyDifferenceByDate[LocalDate.of(2026, 9, 30)]).isEqualTo(-22L)
+            assertThat(cumulativeFlextimeByDate[LocalDate.of(2026, 9, 30)]).isEqualTo(124L)
+        }
+    }
 }

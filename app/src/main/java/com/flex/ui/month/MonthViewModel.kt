@@ -66,6 +66,7 @@ data class MonthUiState(
     val requiredOfficeMinutes: Long = 0,
     val totalWorkMinutes: Long = 0,
     val netMinutesByDate: Map<LocalDate, Long> = emptyMap(),
+    val dailyFlextimeByDate: Map<LocalDate, Long> = emptyMap(),
     val flextimeByDate: Map<LocalDate, Long> = emptyMap(),
     val hasPlannedDays: Boolean = false,
     val actualWorkedMinutesMonth: Long = 0,
@@ -199,9 +200,11 @@ private data class MonthConfig(
                 }
 
                 val flexByDate = mutableMapOf<LocalDate, Long>()
+                val dailyFlexByDate = mutableMapOf<LocalDate, Long>()
                 var currentFlex = calculateFlextime(previousMonthsDays, settings, null, workTimeRules).totalMinutes
                 for (day in prognosisDays.sortedBy { it.date }) {
                     val singleDayEarned = calculateFlextime(listOf(day), settings.copy(initialFlextimeMinutes = 0), null, workTimeRules).totalMinutes
+                    dailyFlexByDate[day.date] = singleDayEarned
                     currentFlex += singleDayEarned
                     flexByDate[day.date] = currentFlex
                 }
@@ -280,6 +283,7 @@ private data class MonthConfig(
                     requiredOfficeMinutes = requiredMin,
                     totalWorkMinutes = totalMin,
                     netMinutesByDate = netByDate,
+                    dailyFlextimeByDate = dailyFlexByDate,
                     flextimeByDate = flexByDate,
                     hasPlannedDays = hasPlanned,
                     actualWorkedMinutesMonth = actualWorkedMinutesMonth,

@@ -449,13 +449,17 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                     week.forEach { date ->
                         Box(modifier = Modifier.weight(1f)) {
                             if (date != null) {
+                                val dayWorkDay = workDayMap[date]
+                                val showDailyFlex = dayWorkDay != null && (
+                                    dayWorkDay.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP, DayType.FLEX_DAY)
+                                )
                                 DayCell(
                                     date = date,
-                                    workDay = workDayMap[date],
+                                    workDay = dayWorkDay,
                                     isToday = date == LocalDate.now(),
                                     hasBreakViolation = state.breakViolationDates.contains(date),
                                     hasOverlap = state.overlappingDates.contains(date),
-                                    flextime = state.flextimeByDate[date],
+                                    flextime = if (showDailyFlex) state.dailyFlextimeByDate[date] else null,
                                     onClick = { viewModel.selectDay(date) }
                                 )
                             }
@@ -515,6 +519,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                     WorkDayListItem(
                         workDay = workDay,
                         netMinutes = state.netMinutesByDate[workDay.date] ?: 0,
+                        dailyFlextime = state.dailyFlextimeByDate[workDay.date],
                         flextime = state.flextimeByDate[workDay.date],
                         hasOverlap = state.overlappingDates.contains(workDay.date),
                         onClick = { viewModel.selectDay(workDay.date) }
@@ -731,11 +736,13 @@ fun LegendItem(color: Color, label: String) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun WorkDayListItem(
     workDay: WorkDay,
     netMinutes: Long,
-    flextime: Long?,
+    dailyFlextime: Long? = null,
+    flextime: Long? = null,
     hasOverlap: Boolean = false,
     onClick: () -> Unit
 ) {
@@ -777,7 +784,7 @@ fun WorkDayListItem(
                 }
             }
         }
-        DayType.BUSINESS_TRIP -> "Dienstgang / Dienstreise"
+        DayType.BUSINESS_TRIP -> "Dienstgang"
         DayType.VACATION -> "Urlaub"
         DayType.SPECIAL_VACATION -> "Sonderurlaub"
         DayType.FLEX_DAY -> "Gleittag"
@@ -805,11 +812,32 @@ fun WorkDayListItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                // Left Column: Date and time blocks
+                // Left Column: Date, type badge, and time blocks
                 Column(modifier = Modifier.weight(1f)) {
                     val dayName = workDay.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.GERMAN)
                     val dateStr = workDay.date.format(DateTimeFormatter.ofPattern("d. MMM"))
-                    Text("$dayName, $dateStr", style = MaterialTheme.typography.bodyMedium)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            "$dayName, $dateStr",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = accentColor.copy(alpha = 0.15f),
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        ) {
+                            Text(
+                                typeLabel,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = accentColor
+                            )
+                        }
+                    }
 
                     // Show individual time blocks for work days
                     if (isWorkType && workBlocks.isNotEmpty()) {
@@ -857,68 +885,64 @@ fun WorkDayListItem(
                     }
                 }
 
-                // Right Column: Total time, type bubble, and flextime
+                // Right Column: Total time, flextime, and overlap warning
                 Column(
                     horizontalAlignment = Alignment.End,
                     modifier = Modifier.padding(start = 12.dp)
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (netMinutes > 0) {
-                            Text(
-                                "${netMinutes / 60}h ${netMinutes % 60}min",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = accentColor.copy(alpha = 0.15f)
-                        ) {
-                            Text(
-                                typeLabel,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = accentColor
-                            )
-                        }
-                        if (hasOverlap) {
-                            Surface(
-                                shape = RoundedCornerShape(50),
-                                color = MaterialTheme.colorScheme.errorContainer
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Warning,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Text(
-                                        "Überlappung",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                }
-                            }
-                        }
+                    if (netMinutes > 0) {
+                        Text(
+                            "${netMinutes / 60}h ${netMinutes % 60}min",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (dailyFlextime != null && (isWorkType || workDay.dayType == DayType.FLEX_DAY || dailyFlextime != 0L)) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        val signDaily = if (dailyFlextime > 0) "+" else if (dailyFlextime < 0) "-" else ""
+                        val absDaily = Math.abs(dailyFlextime)
+                        val colorDaily = if (dailyFlextime < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        Text(
+                            "Tag: $signDaily${absDaily / 60}h ${absDaily % 60}m",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colorDaily
+                        )
                     }
                     if (flextime != null) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        val sign = if (flextime > 0) "+" else if (flextime < 0) "-" else ""
+                        Spacer(modifier = Modifier.height(2.dp))
+                        val signFlex = if (flextime > 0) "+" else if (flextime < 0) "-" else ""
                         val absFlex = Math.abs(flextime)
-                        val color = if (flextime < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        val colorFlex = if (flextime < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                         Text(
-                            "Gleitzeit: $sign${absFlex / 60}h ${absFlex % 60}m",
+                            "Gesamt: $signFlex${absFlex / 60}h ${absFlex % 60}m",
                             style = MaterialTheme.typography.labelSmall,
-                            color = color
+                            color = colorFlex
                         )
+                    }
+                    if (hasOverlap) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.errorContainer
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    "Überlappung",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
                     }
                 }
             }

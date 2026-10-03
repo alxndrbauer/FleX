@@ -755,5 +755,38 @@ class MonthViewModelTest : BaseUnitTest() {
 
         assertThat(viewModel.uiState.value.actualWorkedMinutesMonth).isEqualTo(480L)
     }
+
+    @Test
+    fun `dailyFlextimeByDate populates single-day earned flextime for each day`() = runTest {
+        val date1 = java.time.LocalDate.of(2026, 4, 1)
+        val date2 = java.time.LocalDate.of(2026, 4, 2)
+        val day1 = com.flex.domain.model.WorkDay(id = 1, date = date1, location = com.flex.domain.model.WorkLocation.OFFICE, dayType = DayType.WORK)
+        val day2 = com.flex.domain.model.WorkDay(id = 2, date = date2, location = com.flex.domain.model.WorkLocation.HOME_OFFICE, dayType = DayType.WORK)
+        whenever(getMonthWorkDays(any())).thenReturn(flowOf(listOf(day1, day2)))
+        whenever(buildPrognosisDays(any(), any(), any(), any())).thenReturn(listOf(day1, day2))
+
+        whenever(calculateFlextime(any(), any(), anyOrNull(), any())).thenAnswer { invocation ->
+            val days = invocation.getArgument<List<com.flex.domain.model.WorkDay>>(0)
+            if (days.size == 1 && days[0].date == date1) {
+                FlextimeBalance(totalMinutes = 19L)
+            } else if (days.size == 1 && days[0].date == date2) {
+                FlextimeBalance(totalMinutes = 99L)
+            } else {
+                FlextimeBalance(totalMinutes = 0L)
+            }
+        }
+
+        viewModel = MonthViewModel(
+            getMonthWorkDays, getSettings, workDayRepository,
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.dailyFlextimeByDate[date1]).isEqualTo(19L)
+        assertThat(viewModel.uiState.value.dailyFlextimeByDate[date2]).isEqualTo(99L)
+        assertThat(viewModel.uiState.value.flextimeByDate[date1]).isEqualTo(19L)
+        assertThat(viewModel.uiState.value.flextimeByDate[date2]).isEqualTo(118L)
+    }
 }
 
