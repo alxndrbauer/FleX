@@ -176,6 +176,13 @@ dependencies {
     testImplementation(libs.androidx.arch.core.testing)
     testImplementation(libs.kotlinx.coroutines.test)
 
+    // BDD Testing (Kotest + MockK + Turbine)
+    testImplementation(libs.kotest.runner.junit5)
+    testImplementation(libs.kotest.assertions.core)
+    testImplementation(libs.kotest.property)
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
+
     // Instrumented Testing (Switched to JUnit 4)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
@@ -190,6 +197,7 @@ dependencies {
     kspAndroidTest(libs.hilt.android.compiler)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.mockk)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
