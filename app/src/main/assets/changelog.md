@@ -4,7 +4,7 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unreleased]
+## [1.8.1] - 2026-10-08
 
 ### Features
 
@@ -146,7 +146,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - FleX time tracking app v1.5.0
 - Add in-app update checker with automatic APK download
 
-[Unreleased]: https://github.com/alxndrbauer/FleX/compare/v1.8.0...HEAD
+[1.8.1]: https://github.com/alxndrbauer/FleX/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/alxndrbauer/FleX/compare/v1.7.5...v1.8.0
 [1.7.5]: https://github.com/alxndrbauer/FleX/compare/v1.7.4...v1.7.5
 [1.7.3]: https://github.com/alxndrbauer/FleX/compare/v1.7.2...v1.7.3
