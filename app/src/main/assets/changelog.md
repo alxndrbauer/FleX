@@ -12,6 +12,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Export individual time blocks for split-location days in reports
 - Display daily flextime difference in month view
 - Support off-day flextime credit and add work time model BDD test suite
+- Invert click and long-press behavior on time blocks
 
 ### Bugfixes
 

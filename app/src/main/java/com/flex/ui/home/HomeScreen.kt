@@ -1042,7 +1042,7 @@ private fun CompactProgressRow(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TimelineBlockItem(
+internal fun TimelineBlockItem(
     block: TimeBlock,
     isFirst: Boolean,
     isLast: Boolean,
@@ -1124,10 +1124,10 @@ private fun TimelineBlockItem(
                     )
                 }
                 .combinedClickable(
-                    onClick = { onEdit(block) },
+                    onClick = { onToggleLocation(block) },
                     onLongClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleLocation(block)
+                        onEdit(block)
                     }
                 ),
             verticalAlignment = Alignment.Top
