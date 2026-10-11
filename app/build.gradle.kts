@@ -13,8 +13,8 @@ android {
         applicationId = "com.flex"
         minSdk = 33
         targetSdk = 37
-        versionCode = 19
-        versionName = "1.8.2"
+        versionCode = 20
+        versionName = "1.8.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
