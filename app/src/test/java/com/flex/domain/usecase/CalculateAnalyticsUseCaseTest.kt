@@ -11,6 +11,8 @@ import com.flex.domain.model.WorkLocation
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import java.time.DayOfWeek
@@ -401,20 +403,73 @@ class CalculateAnalyticsUseCaseTest {
 
     // 8. Week Comparison Tests
 
-    @Test
-    fun testWeekComparisonWhenTwoWeeksDataExpectCorrectDelta() {
-        val today = LocalDate.now()
-        val prevWeekBase = today.minusWeeks(1)
 
-        // Previous week: 3 days × 480 min = 1440 min
-        val prevWeekDays = (0..2).map { offset ->
-            createWorkDay(prevWeekBase.with(DayOfWeek.MONDAY).plusDays(offset.toLong()), 480)
-        }
-        // Current week: 2 days × 480 min = 960 min
-        val currentWeekDays = (0..1).map { offset ->
-            createWorkDay(today.with(DayOfWeek.MONDAY).plusDays(offset.toLong()), 480)
-        }
-        val workDays = prevWeekDays + currentWeekDays
+
+    @Test
+    fun testFlextimeSeriesIncludesPriorWorkDaysBalance() {
+        val customSettings = settings.copy(initialFlextimeMinutes = 60)
+        val priorDays = listOf(
+            createWorkDay(LocalDate.of(2025, 1, 15), 480)
+        )
+        val febDays = listOf(
+            createWorkDay(LocalDate.of(2025, 2, 10), 480)
+        )
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 0, exceedsMaxHours = false)
+        )
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 0, exceedsMaxHours = false)
+        )
+        whenever(calculateFlextime.invoke(eq(priorDays), any(), anyOrNull(), any())).thenReturn(
+            FlextimeBalance(
+                initialMinutes = 60,
+                earnedMinutes = 120,
+                totalMinutes = 180,
+                overtimeMinutes = 0,
+                targetMinutes = 0
+            )
+        )
+
+        val result = useCase(
+            workDays = febDays,
+            settings = customSettings,
+            timeRange = TimeRange.Month(YearMonth.of(2025, 2)),
+            priorWorkDays = priorDays
+        )
+
+        assertThat(result.flextimeSeries).hasSize(1)
+        assertThat(result.flextimeSeries[0].value).isEqualTo(180)
+    }
+
+    @Test
+    fun testWeeklyHoursUsesIsoWeekCalculation() {
+        // 2026-01-01 is Thursday -> ISO week 1 of 2026
+        // 2026-01-05 is Monday -> ISO week 2 of 2026
+        val workDays = listOf(
+            createWorkDay(LocalDate.of(2026, 1, 1), 480),
+            createWorkDay(LocalDate.of(2026, 1, 5), 480)
+        )
+
+        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 0, exceedsMaxHours = false)
+        )
+        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
+            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 0, exceedsMaxHours = false)
+        )
+
+        val result = useCase(workDays, settings, TimeRange.Month(YearMonth.of(2026, 1)))
+
+        assertThat(result.weeklyHours).hasSize(2)
+        assertThat(result.weeklyHours[0].weekOfYear).isEqualTo(1)
+        assertThat(result.weeklyHours[1].weekOfYear).isEqualTo(2)
+    }
+
+    @Test
+    fun testYearViewMonthlyHoursHas12MonthsEvenWhenOnlySingleMonthHasData() {
+        val workDays = listOf(
+            createWorkDay(LocalDate.of(2026, 10, 15), 480)
+        )
 
         whenever(calculateDayWorkTime.invoke(any())).thenReturn(
             DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 0, exceedsMaxHours = false)
@@ -426,45 +481,15 @@ class CalculateAnalyticsUseCaseTest {
             FlextimeBalance(earnedMinutes = 0, totalMinutes = 0, overtimeMinutes = 0, targetMinutes = 0, initialMinutes = 0)
         )
 
-        val result = useCase(workDays, settings, TimeRange.Custom(prevWeekBase.minusDays(7), today.plusDays(7)))
+        val result = useCase(workDays, settings, TimeRange.Year(2026))
 
-        val comparison = checkNotNull(result.weekComparison)
-        assertThat(comparison.currentWeekMinutes).isEqualTo(960)
-        assertThat(comparison.previousWeekMinutes).isEqualTo(1440)
-        assertThat(comparison.deltaMinutes).isEqualTo(-480)
-    }
-
-    @Test
-    fun testWeekComparisonWhenOnlyCurrentWeekExpectPreviousZero() {
-        val today = LocalDate.now()
-
-        // Current week only: 2 days × 480 min = 960 min
-        val currentWeekDays = (0..1).map { offset ->
-            createWorkDay(today.with(DayOfWeek.MONDAY).plusDays(offset.toLong()), 480)
-        }
-
-        whenever(calculateDayWorkTime.invoke(any())).thenReturn(
-            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 0, exceedsMaxHours = false)
-        )
-        whenever(calculateDayWorkTime.invoke(any(), any())).thenReturn(
-            DayWorkTimeResult(grossMinutes = 480, netMinutes = 480, breakMinutes = 0, exceedsMaxHours = false)
-        )
-        whenever(calculateFlextime.invoke(any(), any(), any(), any())).thenReturn(
-            FlextimeBalance(earnedMinutes = 0, totalMinutes = 0, overtimeMinutes = 0, targetMinutes = 0, initialMinutes = 0)
-        )
-
-        val result = useCase(currentWeekDays, settings, TimeRange.Custom(today.minusDays(7), today.plusDays(7)))
-
-        val comparison = checkNotNull(result.weekComparison)
-        assertThat(comparison.currentWeekMinutes).isEqualTo(960)
-        assertThat(comparison.previousWeekMinutes).isEqualTo(0)
-    }
-
-    @Test
-    fun testWeekComparisonWhenEmptyExpectNull() {
-        val result = useCase(emptyList(), settings, TimeRange.Month(YearMonth.of(2025, 2)))
-
-        assertThat(result.weekComparison).isNull()
+        assertThat(result.monthlyHours).hasSize(12)
+        assertThat(result.monthlyHours[0].yearMonth).isEqualTo(YearMonth.of(2026, 1))
+        assertThat(result.monthlyHours[0].value).isEqualTo(0)
+        assertThat(result.monthlyHours[9].yearMonth).isEqualTo(YearMonth.of(2026, 10))
+        assertThat(result.monthlyHours[9].value).isEqualTo(480)
+        assertThat(result.monthlyHours[11].yearMonth).isEqualTo(YearMonth.of(2026, 12))
+        assertThat(result.monthlyHours[11].value).isEqualTo(0)
     }
 
     // Helper functions

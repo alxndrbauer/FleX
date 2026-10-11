@@ -38,7 +38,8 @@ private data class AnalyticsDataRequest(
     val workDays: List<com.flex.domain.model.WorkDay>,
     val settings: Settings,
     val range: TimeRange,
-    val workTimeRules: List<com.flex.domain.model.WorkTimeRule>
+    val workTimeRules: List<com.flex.domain.model.WorkTimeRule>,
+    val priorWorkDays: List<com.flex.domain.model.WorkDay> = emptyList()
 )
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -73,29 +74,74 @@ class AnalyticsViewModel @Inject constructor(
                 )
                 AnalyticsConfig(range, settings, workTimeRules)
             }.flatMapLatest { (range, settings, workTimeRules) ->
-                val workDaysFlow = when (range) {
-                    is TimeRange.Month -> workDayRepository.getWorkDaysForMonth(range.yearMonth)
-                    is TimeRange.Year -> workDayRepository.getWorkDaysForYear(range.year)
-                    is TimeRange.Custom -> workDayRepository.getWorkDaysInRange(range.start, range.end)
+                when (range) {
+                    is TimeRange.Month -> {
+                        combine(
+                            workDayRepository.getWorkDaysForMonth(range.yearMonth),
+                            workDayRepository.getWorkDaysForYear(range.yearMonth.year)
+                        ) { monthDays, yearDays ->
+                            val priorDays = yearDays.filter {
+                                it.date.isBefore(range.yearMonth.atDay(1)) && !it.isPlanned
+                            }
+                            AnalyticsDataRequest(
+                                workDays = monthDays,
+                                settings = settings,
+                                range = range,
+                                workTimeRules = workTimeRules,
+                                priorWorkDays = priorDays
+                            )
+                        }
+                    }
+                    is TimeRange.Year -> {
+                        workDayRepository.getWorkDaysForYear(range.year).map { yearDays ->
+                            AnalyticsDataRequest(
+                                workDays = yearDays,
+                                settings = settings,
+                                range = range,
+                                workTimeRules = workTimeRules,
+                                priorWorkDays = emptyList()
+                            )
+                        }
+                    }
+                    is TimeRange.Custom -> {
+                        val yearStart = java.time.LocalDate.of(range.start.year, 1, 1)
+                        val priorFlow = if (range.start.isAfter(yearStart)) {
+                            workDayRepository.getWorkDaysInRange(yearStart, range.start.minusDays(1))
+                        } else {
+                            kotlinx.coroutines.flow.flowOf(emptyList())
+                        }
+                        combine(
+                            workDayRepository.getWorkDaysInRange(range.start, range.end),
+                            priorFlow
+                        ) { customDays, priorDays ->
+                            AnalyticsDataRequest(
+                                workDays = customDays,
+                                settings = settings,
+                                range = range,
+                                workTimeRules = workTimeRules,
+                                priorWorkDays = priorDays.filter { !it.isPlanned }
+                            )
+                        }
+                    }
                 }
-                workDaysFlow.map { workDays -> AnalyticsDataRequest(workDays, settings, range, workTimeRules) }
             }.catch {
                 _uiState.value = _uiState.value.copy(
                     analyticsData = null,
                     isLoading = false
                 )
-            }.collect { (workDays, settings, range, workTimeRules) ->
+            }.collect { req ->
                 val analyticsData = calculateAnalyticsUseCase(
-                    workDays = workDays,
-                    settings = settings,
-                    timeRange = range,
-                    workTimeRules = workTimeRules
+                    workDays = req.workDays,
+                    settings = req.settings,
+                    timeRange = req.range,
+                    workTimeRules = req.workTimeRules,
+                    priorWorkDays = req.priorWorkDays
                 )
 
                 _uiState.value = _uiState.value.copy(
-                    timeRange = range,
+                    timeRange = req.range,
                     analyticsData = analyticsData,
-                    settings = settings,
+                    settings = req.settings,
                     isLoading = false
                 )
             }

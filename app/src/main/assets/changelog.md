@@ -10,6 +10,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 
 - Add special vacation payout support and unify mixed day cell colors
 - Allow editing work time rules and sync planned days
+- Improve analytics charts and remove week comparison
 
 ## [1.8.2] - 2026-10-08
 

@@ -1,13 +1,18 @@
 package com.flex.ui.analytics.components
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
@@ -38,6 +43,14 @@ fun MonthlyWorkHoursChart(
         return
     }
 
+    val activeMonths = data.filter { it.value > 0 }
+    val totalHours = data.sumOf { it.value } / 60.0
+    val avgHours = if (activeMonths.isNotEmpty()) {
+        activeMonths.map { it.value / 60.0 }.average()
+    } else {
+        0.0
+    }
+
     val xLabels = data.map { it.date.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
 
     val bottomFormatter = CartesianValueFormatter { _, x, _ ->
@@ -55,6 +68,26 @@ fun MonthlyWorkHoursChart(
                 series(data.map { it.value / 60.0 }) // Convert minutes to hours
             }
         }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Gesamt: ${String.format("%.1f", totalHours)}h",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "Ø ${String.format("%.1f", avgHours)}h / Monat",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 
     CartesianChartHost(

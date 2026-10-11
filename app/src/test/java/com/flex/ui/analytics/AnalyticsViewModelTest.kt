@@ -27,6 +27,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -73,7 +75,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDaysForMonth(any())).thenReturn(flowOf(emptyList()))
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(emptyList()))
         whenever(workDayRepository.getWorkDaysInRange(any(), any())).thenReturn(flowOf(emptyList()))
-        whenever(calculateAnalyticsUseCase(any(), any(), any(), any())).thenReturn(defaultAnalyticsData)
+        whenever(calculateAnalyticsUseCase(any(), any(), any(), any(), any())).thenReturn(defaultAnalyticsData)
     }
 
     // ========== Initial State Tests ==========
@@ -269,7 +271,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             monthlyHours = emptyList(),
             locationDistribution = LocationDistribution(480, 240)
         )
-        whenever(calculateAnalyticsUseCase(any(), any(), any(), any())).thenReturn(expectedAnalytics)
+        whenever(calculateAnalyticsUseCase(any(), any(), any(), any(), any())).thenReturn(expectedAnalytics)
 
         // When: ViewModel is created and time range set
         viewModel = AnalyticsViewModel(
@@ -286,7 +288,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDays = eq(workDays),
             settings = eq(defaultSettings),
             timeRange = eq(TimeRange.Month(febMonth)),
-            workTimeRules = any()
+            workTimeRules = any(),
+            priorWorkDays = any()
         )
         assertThat(viewModel.uiState.value.analyticsData).isEqualTo(expectedAnalytics)
     }
@@ -319,7 +322,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         // Then: Year repository method called
-        verify(workDayRepository).getWorkDaysForYear(eq(year2025))
+        verify(workDayRepository, atLeastOnce()).getWorkDaysForYear(eq(year2025))
     }
 
     @Test
@@ -352,8 +355,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             locationDistribution = LocationDistribution(480, 240)
         )
 
-        whenever(calculateAnalyticsUseCase(eq(febWorkDays), any(), any(), any())).thenReturn(monthAnalytics)
-        whenever(calculateAnalyticsUseCase(eq(yearWorkDays), any(), any(), any())).thenReturn(yearAnalytics)
+        whenever(calculateAnalyticsUseCase(eq(febWorkDays), any(), any(), any(), any())).thenReturn(monthAnalytics)
+        whenever(calculateAnalyticsUseCase(eq(yearWorkDays), any(), any(), any(), any())).thenReturn(yearAnalytics)
 
         // When: ViewModel initialized and set to month
         viewModel = AnalyticsViewModel(
@@ -424,7 +427,7 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             monthlyHours = emptyList(),
             locationDistribution = LocationDistribution(0, 0)
         )
-        whenever(calculateAnalyticsUseCase(eq(emptyList()), any(), any(), any())).thenReturn(emptyAnalytics)
+        whenever(calculateAnalyticsUseCase(eq(emptyList()), any(), any(), any(), any())).thenReturn(emptyAnalytics)
 
         // When: ViewModel is created
         viewModel = AnalyticsViewModel(
@@ -682,7 +685,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDays = eq(listOf(actualWorkDay, plannedWorkDay)),
             settings = any(),
             timeRange = any(),
-            workTimeRules = any()
+            workTimeRules = any(),
+            priorWorkDays = any()
         )
     }
 
@@ -726,5 +730,32 @@ class AnalyticsViewModelTest : BaseUnitTest() {
 
         // Then: Should wrap to December 2024
         assertThat(viewModel.uiState.value.timeRange).isEqualTo(TimeRange.Month(YearMonth.of(2024, 12)))
+    }
+
+    @Test
+    fun `prior work days from beginning of year are passed to calculateAnalyticsUseCase in month view`() = runTest {
+        val marchMonth = YearMonth.of(2025, 3)
+        val janDay = WorkDay(id = 1, date = LocalDate.of(2025, 1, 15), location = WorkLocation.OFFICE)
+        val marchDay = WorkDay(id = 2, date = LocalDate.of(2025, 3, 10), location = WorkLocation.OFFICE)
+
+        whenever(workDayRepository.getWorkDaysForMonth(marchMonth)).thenReturn(flowOf(listOf(marchDay)))
+        whenever(workDayRepository.getWorkDaysForYear(2025)).thenReturn(flowOf(listOf(janDay, marchDay)))
+
+        viewModel = AnalyticsViewModel(
+            workDayRepository,
+            getSettingsUseCase,
+            settingsRepository,
+            calculateAnalyticsUseCase
+        )
+        viewModel.setTimeRange(TimeRange.Month(marchMonth))
+        advanceUntilIdle()
+
+        verify(calculateAnalyticsUseCase).invoke(
+            workDays = eq(listOf(marchDay)),
+            settings = any(),
+            timeRange = eq(TimeRange.Month(marchMonth)),
+            workTimeRules = any(),
+            priorWorkDays = eq(listOf(janDay))
+        )
     }
 }

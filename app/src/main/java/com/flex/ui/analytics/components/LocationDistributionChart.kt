@@ -11,8 +11,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.flex.domain.model.LocationDistribution
+import com.flex.ui.theme.HomeOfficeColor
+import com.flex.ui.theme.OfficeColor
 
 @Composable
 fun LocationDistributionChart(
@@ -31,6 +34,11 @@ fun LocationDistributionChart(
         return
     }
 
+    val officeHours = distribution.officeMinutes / 60
+    val officeMins = distribution.officeMinutes % 60
+    val hoHours = distribution.homeOfficeMinutes / 60
+    val hoMins = distribution.homeOfficeMinutes % 60
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -47,9 +55,10 @@ fun LocationDistributionChart(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "${String.format("%.1f", distribution.officePercent)}%",
+                text = "${officeHours}h ${officeMins}m (${String.format("%.1f", distribution.officePercent)}%)",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
+                fontWeight = FontWeight.Medium,
+                color = OfficeColor
             )
         }
         LinearProgressIndicator(
@@ -57,7 +66,7 @@ fun LocationDistributionChart(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(12.dp),
-            color = MaterialTheme.colorScheme.primary,
+            color = OfficeColor,
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
 
@@ -73,9 +82,10 @@ fun LocationDistributionChart(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "${String.format("%.1f", distribution.homeOfficePercent)}%",
+                text = "${hoHours}h ${hoMins}m (${String.format("%.1f", distribution.homeOfficePercent)}%)",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.secondary
+                fontWeight = FontWeight.Medium,
+                color = HomeOfficeColor
             )
         }
         LinearProgressIndicator(
@@ -83,7 +93,7 @@ fun LocationDistributionChart(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(12.dp),
-            color = MaterialTheme.colorScheme.secondary,
+            color = HomeOfficeColor,
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
     }

@@ -61,7 +61,7 @@ class AnalyticsViewModelBehaviorSpec : BehaviorSpec({
         every { workDayRepository.getWorkDaysForMonth(any()) } returns flowOf(emptyList())
         every { workDayRepository.getWorkDaysForYear(any()) } returns flowOf(emptyList())
         every { workDayRepository.getWorkDaysInRange(any(), any()) } returns flowOf(emptyList())
-        every { calculateAnalyticsUseCase(any(), any(), any(), any()) } returns analyticsData
+        every { calculateAnalyticsUseCase(any(), any(), any(), any(), any()) } returns analyticsData
 
         val vm = AnalyticsViewModel(
             workDayRepository = workDayRepository,

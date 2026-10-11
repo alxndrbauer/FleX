@@ -36,23 +36,14 @@ data class LocationDistribution(
     val homeOfficeHours: Double get() = homeOfficeMinutes / 60.0
 }
 
-data class WeekComparison(
-    val currentWeekMinutes: Long,
-    val previousWeekMinutes: Long
-) {
-    val deltaMinutes: Long get() = currentWeekMinutes - previousWeekMinutes
-    val hasData: Boolean get() = currentWeekMinutes > 0 || previousWeekMinutes > 0
-}
-
 data class AnalyticsData(
     val flextimeSeries: List<TimeSeriesPoint>,
     val overtimeSeries: List<TimeSeriesPoint>,
     val weeklyHours: List<WeeklyWorkHours>,
     val monthlyHours: List<TimeSeriesPoint>,
-    val locationDistribution: LocationDistribution,
-    val weekComparison: WeekComparison? = null
+    val locationDistribution: LocationDistribution
 ) {
     val isEmpty: Boolean
         get() = flextimeSeries.isEmpty() && overtimeSeries.isEmpty() &&
-                weeklyHours.isEmpty() && monthlyHours.isEmpty() && weekComparison == null
+                weeklyHours.isEmpty() && monthlyHours.isEmpty()
 }

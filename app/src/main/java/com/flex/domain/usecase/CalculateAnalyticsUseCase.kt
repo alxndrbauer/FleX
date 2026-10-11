@@ -6,16 +6,15 @@ import com.flex.domain.model.LocationDistribution
 import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeRange
 import com.flex.domain.model.TimeSeriesPoint
-import com.flex.domain.model.WeekComparison
 import com.flex.domain.model.WeeklyWorkHours
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.WorkTimeRule
+import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.getRuleForDate
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.temporal.ChronoField
 import java.time.temporal.IsoFields
 import javax.inject.Inject
 import kotlin.math.roundToLong
@@ -32,10 +31,12 @@ class CalculateAnalyticsUseCase @Inject constructor(
         workDays: List<WorkDay>,
         settings: Settings,
         timeRange: TimeRange,
-        workTimeRules: List<WorkTimeRule> = emptyList()
+        workTimeRules: List<WorkTimeRule> = emptyList(),
+        priorWorkDays: List<WorkDay> = emptyList()
     ): AnalyticsData {
         // Filter out planned days - only analyze actual work
         val actualWorkDays = workDays.filter { !it.isPlanned }
+        val actualPriorDays = priorWorkDays.filter { !it.isPlanned }
 
         if (actualWorkDays.isEmpty()) {
             return AnalyticsData(
@@ -48,12 +49,11 @@ class CalculateAnalyticsUseCase @Inject constructor(
         }
 
         return AnalyticsData(
-            flextimeSeries = calculateFlextimeSeries(actualWorkDays, settings, timeRange, workTimeRules),
-            overtimeSeries = calculateOvertimeSeries(actualWorkDays, settings, timeRange, workTimeRules),
+            flextimeSeries = calculateFlextimeSeries(actualWorkDays, settings, timeRange, workTimeRules, actualPriorDays),
+            overtimeSeries = calculateOvertimeSeries(actualWorkDays, settings, timeRange, workTimeRules, actualPriorDays),
             weeklyHours = calculateWeeklyHours(actualWorkDays),
-            monthlyHours = calculateMonthlyHours(actualWorkDays),
-            locationDistribution = calculateLocationDistribution(actualWorkDays),
-            weekComparison = calculateWeekComparison(actualWorkDays)
+            monthlyHours = calculateMonthlyHours(actualWorkDays, timeRange),
+            locationDistribution = calculateLocationDistribution(actualWorkDays)
         )
     }
 
@@ -65,12 +65,24 @@ class CalculateAnalyticsUseCase @Inject constructor(
         workDays: List<WorkDay>,
         settings: Settings,
         timeRange: TimeRange,
-        workTimeRules: List<WorkTimeRule>
+        workTimeRules: List<WorkTimeRule>,
+        priorWorkDays: List<WorkDay> = emptyList()
     ): List<TimeSeriesPoint> {
+        val initialFlextime = if (priorWorkDays.isNotEmpty()) {
+            calculateFlextimeUseCase(
+                priorWorkDays,
+                settings,
+                null,
+                workTimeRules
+            ).totalMinutes
+        } else {
+            settings.initialFlextimeMinutes.toLong()
+        }
+
         return when (timeRange) {
             is TimeRange.Month -> {
                 val sortedDays = workDays.sortedBy { it.date }
-                var cumulativeFlextime = settings.initialFlextimeMinutes.toLong()
+                var cumulativeFlextime = initialFlextime
                 sortedDays.map { day ->
                     cumulativeFlextime += calculateDayFlextime(day, settings, workTimeRules)
                     TimeSeriesPoint(day.date, cumulativeFlextime)
@@ -78,7 +90,7 @@ class CalculateAnalyticsUseCase @Inject constructor(
             }
             else -> {
                 val monthlyGroups = workDays.groupBy { YearMonth.from(it.date) }.toSortedMap()
-                var cumulativeFlextime = settings.initialFlextimeMinutes.toLong()
+                var cumulativeFlextime = initialFlextime
                 val series = mutableListOf<TimeSeriesPoint>()
                 for ((yearMonth, daysInMonth) in monthlyGroups) {
                     val balance = calculateFlextimeUseCase(daysInMonth, settings, yearMonth, workTimeRules)
@@ -94,12 +106,24 @@ class CalculateAnalyticsUseCase @Inject constructor(
         workDays: List<WorkDay>,
         settings: Settings,
         timeRange: TimeRange,
-        workTimeRules: List<WorkTimeRule>
+        workTimeRules: List<WorkTimeRule>,
+        priorWorkDays: List<WorkDay> = emptyList()
     ): List<TimeSeriesPoint> {
+        val initialOvertime = if (priorWorkDays.isNotEmpty()) {
+            calculateFlextimeUseCase(
+                priorWorkDays,
+                settings,
+                null,
+                workTimeRules
+            ).overtimeMinutes
+        } else {
+            settings.initialOvertimeMinutes.toLong()
+        }
+
         return when (timeRange) {
             is TimeRange.Month -> {
                 val sortedDays = workDays.sortedBy { it.date }
-                var cumulativeOvertime = settings.initialOvertimeMinutes.toLong()
+                var cumulativeOvertime = initialOvertime
                 sortedDays.map { day ->
                     cumulativeOvertime += calculateDayOvertime(day, settings, workTimeRules)
                     TimeSeriesPoint(day.date, cumulativeOvertime)
@@ -107,7 +131,7 @@ class CalculateAnalyticsUseCase @Inject constructor(
             }
             else -> {
                 val monthlyGroups = workDays.groupBy { YearMonth.from(it.date) }.toSortedMap()
-                var cumulativeOvertime = settings.initialOvertimeMinutes.toLong()
+                var cumulativeOvertime = initialOvertime
                 val series = mutableListOf<TimeSeriesPoint>()
                 for ((yearMonth, daysInMonth) in monthlyGroups) {
                     val balance = calculateFlextimeUseCase(daysInMonth, settings, yearMonth, workTimeRules)
@@ -124,8 +148,10 @@ class CalculateAnalyticsUseCase @Inject constructor(
         return when (day.dayType) {
             DayType.WORK, DayType.BUSINESS_TRIP -> {
                 val result = dayWorkTime(day)
-                val isWeekend = day.date.dayOfWeek == DayOfWeek.SATURDAY || day.date.dayOfWeek == DayOfWeek.SUNDAY
-                if (isWeekend) result.netMinutes else result.netMinutes - dailyTarget
+                val ruleForDate = workTimeRules.getRuleForDate(day.date)
+                val activeWorkDays = ruleForDate?.workDays ?: DEFAULT_WORK_DAYS
+                val isNonWorkingDay = day.date.dayOfWeek !in activeWorkDays
+                if (isNonWorkingDay) result.netMinutes else result.netMinutes - dailyTarget
             }
             DayType.SATURDAY_BONUS -> calculateDayWorkTime(day.timeBlocks).netMinutes
             DayType.FLEX_DAY -> -dailyTarget.toLong()
@@ -145,8 +171,8 @@ class CalculateAnalyticsUseCase @Inject constructor(
 
     private fun calculateWeeklyHours(workDays: List<WorkDay>): List<WeeklyWorkHours> {
         val weeklyGroups = workDays.groupBy { day ->
-            val weekOfYear = day.date.get(ChronoField.ALIGNED_WEEK_OF_YEAR)
-            val year = day.date.year
+            val weekOfYear = day.date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
+            val year = day.date.get(IsoFields.WEEK_BASED_YEAR)
             year to weekOfYear
         }
 
@@ -194,43 +220,45 @@ class CalculateAnalyticsUseCase @Inject constructor(
         }.sortedWith(compareBy({ it.year }, { it.weekOfYear }))
     }
 
-    private fun calculateMonthlyHours(workDays: List<WorkDay>): List<TimeSeriesPoint> {
-        val monthlyGroups = workDays
-            .groupBy { YearMonth.from(it.date) }
-            .toSortedMap()
-
-        return monthlyGroups.map { (yearMonth, daysInMonth) ->
-            val totalMinutes = daysInMonth.sumOf { day ->
-                dayWorkTime(day).netMinutes
+    private fun calculateMonthlyHours(workDays: List<WorkDay>, timeRange: TimeRange): List<TimeSeriesPoint> {
+        val monthlyGroups = workDays.groupBy { YearMonth.from(it.date) }
+        return when (timeRange) {
+            is TimeRange.Year -> {
+                (1..12).map { month ->
+                    val yearMonth = YearMonth.of(timeRange.year, month)
+                    val daysInMonth = monthlyGroups[yearMonth] ?: emptyList()
+                    val totalMinutes = daysInMonth.sumOf { day ->
+                        dayWorkTime(day).netMinutes
+                    }
+                    TimeSeriesPoint(yearMonth.atDay(1), totalMinutes)
+                }
             }
-            TimeSeriesPoint(yearMonth.atDay(1), totalMinutes)
+            is TimeRange.Custom -> {
+                val startYm = YearMonth.from(timeRange.start)
+                val endYm = YearMonth.from(timeRange.end)
+                val months = mutableListOf<YearMonth>()
+                var curr = startYm
+                while (!curr.isAfter(endYm)) {
+                    months.add(curr)
+                    curr = curr.plusMonths(1)
+                }
+                months.map { yearMonth ->
+                    val daysInMonth = monthlyGroups[yearMonth] ?: emptyList()
+                    val totalMinutes = daysInMonth.sumOf { day ->
+                        dayWorkTime(day).netMinutes
+                    }
+                    TimeSeriesPoint(yearMonth.atDay(1), totalMinutes)
+                }
+            }
+            is TimeRange.Month -> {
+                val yearMonth = timeRange.yearMonth
+                val daysInMonth = monthlyGroups[yearMonth] ?: emptyList()
+                val totalMinutes = daysInMonth.sumOf { day ->
+                    dayWorkTime(day).netMinutes
+                }
+                listOf(TimeSeriesPoint(yearMonth.atDay(1), totalMinutes))
+            }
         }
-    }
-
-    private fun calculateWeekComparison(workDays: List<WorkDay>): WeekComparison? {
-        if (workDays.isEmpty()) return null
-        val today = LocalDate.now()
-        val currentIsoWeek = today.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
-        val currentIsoYear = today.get(IsoFields.WEEK_BASED_YEAR)
-        val prevDate = today.minusWeeks(1)
-        val prevIsoWeek = prevDate.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
-        val prevIsoYear = prevDate.get(IsoFields.WEEK_BASED_YEAR)
-
-        val currentMinutes = workDays
-            .filter {
-                it.date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR) == currentIsoWeek &&
-                it.date.get(IsoFields.WEEK_BASED_YEAR) == currentIsoYear
-            }
-            .sumOf { dayWorkTime(it).netMinutes }
-        val prevMinutes = workDays
-            .filter {
-                it.date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR) == prevIsoWeek &&
-                it.date.get(IsoFields.WEEK_BASED_YEAR) == prevIsoYear
-            }
-            .sumOf { dayWorkTime(it).netMinutes }
-
-        return if (currentMinutes == 0L && prevMinutes == 0L) null
-        else WeekComparison(currentMinutes, prevMinutes)
     }
 
     private fun calculateLocationDistribution(workDays: List<WorkDay>): LocationDistribution {
