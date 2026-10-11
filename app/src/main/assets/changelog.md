@@ -4,7 +4,13 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/de/).
 
-## [1.8.1] - 2026-10-08
+## [1.8.2] - 2026-10-08
+
+### Features
+
+- Invert click and long-press behavior on time blocks
+
+## [1.8.1] - 2026-10-03
 
 ### Features
 
@@ -12,7 +18,6 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Export individual time blocks for split-location days in reports
 - Display daily flextime difference in month view
 - Support off-day flextime credit and add work time model BDD test suite
-- Invert click and long-press behavior on time blocks
 
 ### Bugfixes
 
@@ -146,6 +151,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - FleX time tracking app v1.5.0
 - Add in-app update checker with automatic APK download
 
+[1.8.2]: https://github.com/alxndrbauer/FleX/compare/v1.8.1...v1.8.2
 [1.8.1]: https://github.com/alxndrbauer/FleX/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/alxndrbauer/FleX/compare/v1.7.5...v1.8.0
 [1.7.5]: https://github.com/alxndrbauer/FleX/compare/v1.7.4...v1.7.5
