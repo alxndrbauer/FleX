@@ -179,6 +179,13 @@ private data class PlanningConfig(
                     val flextimeDays = previousMonthsDays + prognosisDays
                     val flextime = calculateFlextime(flextimeDays, settings, month, workTimeRules)
                     val officeHours = calculateOfficeHours(prognosisDays, qPercent, settings, workTimeRules, month)
+                    val isSpecialVacationBlocked = settings.specialVacationPaidOut && settings.settingsYear == month.year
+                    val currentSelectedType = _uiState.value.selectedPlanType
+                    val selectedType = if (isSpecialVacationBlocked && currentSelectedType == PlanType.SPECIAL_VACATION) {
+                        PlanType.OFFICE
+                    } else {
+                        currentSelectedType
+                    }
                     _uiState.value = _uiState.value.copy(
                         yearMonth = month,
                         workDays = days,
@@ -186,7 +193,8 @@ private data class PlanningConfig(
                         workTimeRules = workTimeRules,
                         quotaStatus = quota,
                         flextimeBalance = flextime,
-                        officeHours = officeHours
+                        officeHours = officeHours,
+                        selectedPlanType = selectedType
                     )
                     refreshMonthSummaries(settings, rules, workTimeRules)
                 }
@@ -305,6 +313,10 @@ private data class PlanningConfig(
     }
 
     fun setSelectedPlanType(type: PlanType) {
+        val state = _uiState.value
+        if (type == PlanType.SPECIAL_VACATION && state.settings.specialVacationPaidOut && state.settings.settingsYear == state.yearMonth.year) {
+            return
+        }
         _uiState.value = _uiState.value.copy(selectedPlanType = type)
     }
 
@@ -313,6 +325,9 @@ private data class PlanningConfig(
         viewModelScope.launch {
             val state = _uiState.value
             val planType = state.selectedPlanType
+            if (planType == PlanType.SPECIAL_VACATION && state.settings.specialVacationPaidOut && state.settings.settingsYear == date.year) {
+                return@launch
+            }
 
             val (location, dayType) = when (planType) {
                 PlanType.OFFICE -> WorkLocation.OFFICE to DayType.WORK

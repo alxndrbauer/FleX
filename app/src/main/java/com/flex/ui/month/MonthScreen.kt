@@ -97,6 +97,7 @@ import com.flex.ui.components.TOOLTIP_PROGNOSIS
 import com.flex.ui.components.TOOLTIP_PROGNOSIS_TITLE
 import com.flex.ui.components.diagonalHatch
 import com.flex.ui.components.formatTimeInput
+import com.flex.ui.components.getDayCellBackgroundColor
 import com.flex.ui.theme.BusinessTripColor
 import com.flex.ui.theme.FlexDayColor
 import com.flex.ui.theme.HomeOfficeColor
@@ -607,6 +608,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             workDay = editDay,
             dailyWorkMinutes = activeDailyTarget,
             defaultStartTime = state.settings.defaultStartTime,
+            isSpecialVacationBlocked = state.settings.specialVacationPaidOut && state.settings.settingsYear == editDay.date.year,
             onDismiss = { viewModel.clearEditing() },
             onSave = { dayType, note, timeBlocks ->
                 viewModel.saveDay(editDay.date, dayType, note, timeBlocks)
@@ -624,6 +626,11 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
 }
 
 
+internal fun getMonthDayCellColor(
+    date: LocalDate,
+    workDay: WorkDay?
+): Color = getDayCellBackgroundColor(date, workDay, isWeekend = false)
+
 @Composable
 fun DayCell(
     date: LocalDate,
@@ -635,30 +642,7 @@ fun DayCell(
     onClick: () -> Unit
 ) {
     val holidayName = PublicHolidays.getHolidayName(date)
-    val bgColor = when {
-        holidayName != null -> PublicHolidayColor.copy(alpha = 0.3f)
-        workDay == null -> Color.Transparent
-        workDay.dayType == DayType.BUSINESS_TRIP -> BusinessTripColor.copy(alpha = 0.3f)
-        workDay.dayType == DayType.VACATION -> VacationColor.copy(alpha = 0.3f)
-        workDay.dayType == DayType.SPECIAL_VACATION -> SpecialVacationColor.copy(alpha = 0.3f)
-        workDay.dayType == DayType.FLEX_DAY -> FlexDayColor.copy(alpha = 0.3f)
-        workDay.dayType == DayType.SATURDAY_BONUS -> SaturdayBonusColor.copy(alpha = 0.3f)
-        workDay.dayType == DayType.SICK_DAY -> SickDayColor.copy(alpha = 0.3f)
-        else -> {
-            val blocks = workDay.timeBlocks.filter { it.endTime != null }
-            if (blocks.isEmpty()) {
-                if (workDay.location == WorkLocation.OFFICE) OfficeColor.copy(alpha = 0.3f)
-                else HomeOfficeColor.copy(alpha = 0.3f)
-            } else {
-                var officeMin = 0L; var hoMin = 0L
-                for (b in blocks) {
-                    val min = java.time.Duration.between(b.startTime, b.endTime!!).toMinutes()
-                    if (b.location == WorkLocation.OFFICE) officeMin += min else hoMin += min
-                }
-                if (officeMin >= hoMin) OfficeColor.copy(alpha = 0.3f) else HomeOfficeColor.copy(alpha = 0.3f)
-            }
-        }
-    }
+    val bgColor = getMonthDayCellColor(date, workDay)
 
     val hatchColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
     val borderMod = if (workDay?.isPlanned == true) {
@@ -956,6 +940,7 @@ fun EditDayDialog(
     workDay: WorkDay,
     dailyWorkMinutes: Int = 426,
     defaultStartTime: java.time.LocalTime = java.time.LocalTime.of(8, 0),
+    isSpecialVacationBlocked: Boolean = false,
     onDismiss: () -> Unit,
     onSave: (DayType, String?, List<TimeBlockInput>) -> Unit,
     onDelete: (() -> Unit)? = null
@@ -1035,6 +1020,7 @@ fun EditDayDialog(
                     FilterChip(
                         selected = dayType == DayType.SPECIAL_VACATION,
                         onClick = { dayType = DayType.SPECIAL_VACATION },
+                        enabled = !isSpecialVacationBlocked,
                         label = { Text("Sonderurlaub") })
                     FilterChip(
                         selected = dayType == DayType.FLEX_DAY,

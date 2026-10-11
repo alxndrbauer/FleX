@@ -11,6 +11,7 @@ data class Settings(
     val annualVacationDays: Int = 30,
     val carryOverVacationDays: Int = 0,
     val specialVacationDays: Int = 5,
+    val specialVacationPaidOut: Boolean = false,
     val settingsYear: Int = java.time.Year.now().value,
     val geofenceEnabled: Boolean = false,
     val geofenceLat: Double = 0.0,

@@ -101,6 +101,7 @@ class YearChangeViewModel @Inject constructor(
                     carryOverVacationDays = carryOverDays,
                     annualVacationDays = annualDays,
                     specialVacationDays = 0,
+                    specialVacationPaidOut = false,
                     initialFlextimeMinutes = state.flextimeMinutes.toInt(),
                     initialOvertimeMinutes = state.overtimeMinutes.toInt()
                 )

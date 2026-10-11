@@ -34,6 +34,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -450,6 +451,165 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
 
             Then("wird der WorkDay gelöscht") {
                 coVerify { workDayRepository.deleteWorkDay(workDay) }
+            }
+        }
+    }
+
+    Given("das Eintragen von Sonderurlaub über den Home-Screen (HomeViewModel)") {
+        val dateBeforeDeadline = LocalDate.of(2026, 6, 15)
+        val dateAfterDeadline = LocalDate.of(2026, 11, 1)
+
+        When("alle Sonderurlaubstage für das Jahr ausgezahlt wurden") {
+            val paidOutSettings = Settings(settingsYear = 2026, specialVacationPaidOut = true)
+            val (workDayRepository, viewModel) = setupDependencies()
+            // We configure settings with specialVacationPaidOut = true
+            val context = mockk<Context>(relaxed = true)
+            val settingsRepo = mockk<SettingsRepository>(relaxed = true)
+            val getMonthWorkDays = mockk<GetMonthWorkDaysUseCase>(relaxed = true)
+            val getSettings = mockk<GetSettingsUseCase>(relaxed = true)
+            val calculateDayWorkTime = mockk<CalculateDayWorkTimeUseCase>(relaxed = true)
+            val calculateFlextime = mockk<CalculateFlextimeUseCase>(relaxed = true)
+            val calculateQuota = mockk<CalculateQuotaUseCase>(relaxed = true)
+            val dataChangeEventBus = mockk<DataChangeEventBus>(relaxed = true)
+            val checkBreakViolation = mockk<CheckBreakViolationUseCase>(relaxed = true)
+            val breakWarningScheduler = mockk<BreakWarningScheduler>(relaxed = true)
+            val whatsNewPreferences = mockk<WhatsNewPreferences>(relaxed = true)
+            val backupPreferences = mockk<BackupPreferences>(relaxed = true)
+            val autoBookPlannedDays = mockk<AutoBookPlannedDaysUseCase>(relaxed = true)
+            val customRepo = mockk<WorkDayRepository>(relaxed = true)
+
+            every { getSettings() } returns flowOf(paidOutSettings)
+            every { getMonthWorkDays(any()) } returns flowOf(emptyList())
+            every { settingsRepo.getQuotaRules() } returns flowOf(emptyList())
+            every { settingsRepo.getWorkTimeRules() } returns flowOf(emptyList())
+            every { customRepo.getWorkDaysForYear(any()) } returns flowOf(emptyList())
+            coEvery { customRepo.getWorkDay(any()) } returns flowOf(null)
+            every { calculateDayWorkTime(any()) } returns DayWorkTimeResult(0, 0, 0, false)
+            every { calculateDayWorkTime(any(), any()) } returns DayWorkTimeResult(0, 0, 0, false)
+            every { calculateFlextime(any(), any(), any(), any()) } returns FlextimeBalance()
+            every { calculateQuota(any(), any(), any(), any(), any(), any()) } returns QuotaStatus()
+            every { dataChangeEventBus.events } returns MutableSharedFlow()
+            every { checkBreakViolation(any(), any()) } returns BreakCheckResult(emptyList(), skipped = false)
+            every { whatsNewPreferences.getLastSeenVersionCode() } returns 0
+            every { backupPreferences.isAutoBackupEnabled } returns false
+
+            val customVm = HomeViewModel(
+                context, customRepo, settingsRepo, getMonthWorkDays,
+                getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
+                dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
+                whatsNewPreferences, backupPreferences, autoBookPlannedDays,
+                CheckTimeBlockOverlapUseCase()
+            )
+            customVm.navigateToDate(dateBeforeDeadline)
+            customVm.setDayType(DayType.SPECIAL_VACATION)
+            customVm.saveDayType(DayType.SPECIAL_VACATION)
+
+            Then("wird kein Sonderurlaub im Repository gespeichert") {
+                coVerify(exactly = 0) { customRepo.saveWorkDay(match { it.dayType == DayType.SPECIAL_VACATION }) }
+            }
+
+            Then("wird der ausgewählte Tagestyp nicht auf SPECIAL_VACATION gesetzt") {
+                customVm.uiState.value.selectedDayType shouldNotBe DayType.SPECIAL_VACATION
+            }
+        }
+
+        When("der ausgewählte Tag nach dem 31. Oktober liegt") {
+            val normalSettings = Settings(settingsYear = 2026, specialVacationPaidOut = false)
+            val context = mockk<Context>(relaxed = true)
+            val settingsRepo = mockk<SettingsRepository>(relaxed = true)
+            val getMonthWorkDays = mockk<GetMonthWorkDaysUseCase>(relaxed = true)
+            val getSettings = mockk<GetSettingsUseCase>(relaxed = true)
+            val calculateDayWorkTime = mockk<CalculateDayWorkTimeUseCase>(relaxed = true)
+            val calculateFlextime = mockk<CalculateFlextimeUseCase>(relaxed = true)
+            val calculateQuota = mockk<CalculateQuotaUseCase>(relaxed = true)
+            val dataChangeEventBus = mockk<DataChangeEventBus>(relaxed = true)
+            val checkBreakViolation = mockk<CheckBreakViolationUseCase>(relaxed = true)
+            val breakWarningScheduler = mockk<BreakWarningScheduler>(relaxed = true)
+            val whatsNewPreferences = mockk<WhatsNewPreferences>(relaxed = true)
+            val backupPreferences = mockk<BackupPreferences>(relaxed = true)
+            val autoBookPlannedDays = mockk<AutoBookPlannedDaysUseCase>(relaxed = true)
+            val customRepo = mockk<WorkDayRepository>(relaxed = true)
+
+            every { getSettings() } returns flowOf(normalSettings)
+            every { getMonthWorkDays(any()) } returns flowOf(emptyList())
+            every { settingsRepo.getQuotaRules() } returns flowOf(emptyList())
+            every { settingsRepo.getWorkTimeRules() } returns flowOf(emptyList())
+            every { customRepo.getWorkDaysForYear(any()) } returns flowOf(emptyList())
+            coEvery { customRepo.getWorkDay(any()) } returns flowOf(null)
+            every { calculateDayWorkTime(any()) } returns DayWorkTimeResult(0, 0, 0, false)
+            every { calculateDayWorkTime(any(), any()) } returns DayWorkTimeResult(0, 0, 0, false)
+            every { calculateFlextime(any(), any(), any(), any()) } returns FlextimeBalance()
+            every { calculateQuota(any(), any(), any(), any(), any(), any()) } returns QuotaStatus()
+            every { dataChangeEventBus.events } returns MutableSharedFlow()
+            every { checkBreakViolation(any(), any()) } returns BreakCheckResult(emptyList(), skipped = false)
+            every { whatsNewPreferences.getLastSeenVersionCode() } returns 0
+            every { backupPreferences.isAutoBackupEnabled } returns false
+
+            val customVm = HomeViewModel(
+                context, customRepo, settingsRepo, getMonthWorkDays,
+                getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
+                dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
+                whatsNewPreferences, backupPreferences, autoBookPlannedDays,
+                CheckTimeBlockOverlapUseCase()
+            )
+            customVm.navigateToDate(dateAfterDeadline)
+            customVm.setDayType(DayType.SPECIAL_VACATION)
+            customVm.saveDayType(DayType.SPECIAL_VACATION)
+
+            Then("wird nach dem 31. Oktober kein Sonderurlaub gespeichert") {
+                coVerify(exactly = 0) { customRepo.saveWorkDay(match { it.dayType == DayType.SPECIAL_VACATION }) }
+            }
+
+            Then("wird der Tagestyp nach dem 31. Oktober nicht auf SPECIAL_VACATION gesetzt") {
+                customVm.uiState.value.selectedDayType shouldNotBe DayType.SPECIAL_VACATION
+            }
+        }
+
+        When("Sonderurlaub nicht ausgezahlt ist und der Tag vor dem 31. Oktober liegt") {
+            val normalSettings = Settings(settingsYear = 2026, specialVacationPaidOut = false)
+            val context = mockk<Context>(relaxed = true)
+            val settingsRepo = mockk<SettingsRepository>(relaxed = true)
+            val getMonthWorkDays = mockk<GetMonthWorkDaysUseCase>(relaxed = true)
+            val getSettings = mockk<GetSettingsUseCase>(relaxed = true)
+            val calculateDayWorkTime = mockk<CalculateDayWorkTimeUseCase>(relaxed = true)
+            val calculateFlextime = mockk<CalculateFlextimeUseCase>(relaxed = true)
+            val calculateQuota = mockk<CalculateQuotaUseCase>(relaxed = true)
+            val dataChangeEventBus = mockk<DataChangeEventBus>(relaxed = true)
+            val checkBreakViolation = mockk<CheckBreakViolationUseCase>(relaxed = true)
+            val breakWarningScheduler = mockk<BreakWarningScheduler>(relaxed = true)
+            val whatsNewPreferences = mockk<WhatsNewPreferences>(relaxed = true)
+            val backupPreferences = mockk<BackupPreferences>(relaxed = true)
+            val autoBookPlannedDays = mockk<AutoBookPlannedDaysUseCase>(relaxed = true)
+            val customRepo = mockk<WorkDayRepository>(relaxed = true)
+
+            every { getSettings() } returns flowOf(normalSettings)
+            every { getMonthWorkDays(any()) } returns flowOf(emptyList())
+            every { settingsRepo.getQuotaRules() } returns flowOf(emptyList())
+            every { settingsRepo.getWorkTimeRules() } returns flowOf(emptyList())
+            every { customRepo.getWorkDaysForYear(any()) } returns flowOf(emptyList())
+            coEvery { customRepo.getWorkDay(any()) } returns flowOf(null)
+            every { calculateDayWorkTime(any()) } returns DayWorkTimeResult(0, 0, 0, false)
+            every { calculateDayWorkTime(any(), any()) } returns DayWorkTimeResult(0, 0, 0, false)
+            every { calculateFlextime(any(), any(), any(), any()) } returns FlextimeBalance()
+            every { calculateQuota(any(), any(), any(), any(), any(), any()) } returns QuotaStatus()
+            every { dataChangeEventBus.events } returns MutableSharedFlow()
+            every { checkBreakViolation(any(), any()) } returns BreakCheckResult(emptyList(), skipped = false)
+            every { whatsNewPreferences.getLastSeenVersionCode() } returns 0
+            every { backupPreferences.isAutoBackupEnabled } returns false
+
+            val customVm = HomeViewModel(
+                context, customRepo, settingsRepo, getMonthWorkDays,
+                getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
+                dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
+                whatsNewPreferences, backupPreferences, autoBookPlannedDays,
+                CheckTimeBlockOverlapUseCase()
+            )
+            customVm.navigateToDate(dateBeforeDeadline)
+            customVm.setDayType(DayType.SPECIAL_VACATION)
+            customVm.saveDayType(DayType.SPECIAL_VACATION)
+
+            Then("wird der Sonderurlaub wie gewohnt im Repository gespeichert") {
+                coVerify { customRepo.saveWorkDay(match { it.dayType == DayType.SPECIAL_VACATION && it.date == dateBeforeDeadline }) }
             }
         }
     }

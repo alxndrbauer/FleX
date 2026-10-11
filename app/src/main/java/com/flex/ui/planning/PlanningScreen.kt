@@ -73,13 +73,16 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.flex.domain.model.DayType
 import com.flex.domain.model.PublicHolidays
+import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import java.time.LocalDate
 import com.flex.ui.components.InfoTooltip
 import com.flex.ui.components.TOOLTIP_FLEXTIME_PROGNOSIS
 import com.flex.ui.components.TOOLTIP_FLEXTIME_PROGNOSIS_TITLE
 import com.flex.ui.components.TOOLTIP_QUOTA_PREVIEW
 import com.flex.ui.components.TOOLTIP_QUOTA_PREVIEW_TITLE
 import com.flex.ui.components.diagonalHatch
+import com.flex.ui.components.getDayCellBackgroundColor
 import com.flex.ui.theme.BusinessTripColor
 import com.flex.ui.theme.FlexDayColor
 import com.flex.ui.theme.HomeOfficeColor
@@ -176,6 +179,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
+                val isSpecialVacationBlocked = state.settings.specialVacationPaidOut && state.settings.settingsYear == state.yearMonth.year
                 PlanType.entries.forEach { type ->
                     val chipColor = when (type) {
                         PlanType.OFFICE -> OfficeColor
@@ -186,9 +190,11 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                         PlanType.SATURDAY_BONUS -> SaturdayBonusColor
                         PlanType.BUSINESS_TRIP -> BusinessTripColor
                     }
+                    val isEnabled = if (type == PlanType.SPECIAL_VACATION) !isSpecialVacationBlocked else true
                     FilterChip(
                         selected = state.selectedPlanType == type,
                         onClick = { viewModel.setSelectedPlanType(type) },
+                        enabled = isEnabled,
                         label = { Text(type.label) },
                         leadingIcon = {
                             Box(
@@ -245,18 +251,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                                     val isWeekend = date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
                                     val isHoliday = PublicHolidays.isHoliday(date)
 
-                                    val bgColor = when {
-                                        isHoliday -> PublicHolidayColor.copy(alpha = 0.3f)
-                                        workDay == null -> if (isWeekend) Color.LightGray.copy(alpha = 0.2f) else Color.Transparent
-                                        workDay.dayType == DayType.BUSINESS_TRIP -> BusinessTripColor.copy(alpha = 0.3f)
-                                        workDay.dayType == DayType.VACATION -> VacationColor.copy(alpha = 0.3f)
-                                        workDay.dayType == DayType.SPECIAL_VACATION -> SpecialVacationColor.copy(alpha = 0.3f)
-                                        workDay.dayType == DayType.FLEX_DAY -> FlexDayColor.copy(alpha = 0.3f)
-                                        workDay.dayType == DayType.SATURDAY_BONUS -> SaturdayBonusColor.copy(alpha = 0.3f)
-                                        workDay.location == WorkLocation.OFFICE -> OfficeColor.copy(alpha = 0.3f)
-                                        workDay.location == WorkLocation.HOME_OFFICE -> HomeOfficeColor.copy(alpha = 0.3f)
-                                        else -> Color.Transparent
-                                    }
+                                    val bgColor = getPlanningDayCellColor(date, workDay, isWeekend, isHoliday)
 
                                     Box(
                                         modifier = Modifier
@@ -738,3 +733,11 @@ fun PlanHoursDialog(
         }
     )
 }
+
+internal fun getPlanningDayCellColor(
+    date: LocalDate,
+    workDay: WorkDay?,
+    isWeekend: Boolean,
+    isHoliday: Boolean = PublicHolidays.isHoliday(date)
+): Color = getDayCellBackgroundColor(date, workDay, isWeekend)
+

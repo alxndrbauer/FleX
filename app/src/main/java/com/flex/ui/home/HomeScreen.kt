@@ -377,6 +377,10 @@ fun HomeScreen(
 
                         var dayTypeExpanded by remember { mutableStateOf(false) }
 
+                        val isPaidOut = state.settings.specialVacationPaidOut && state.settings.settingsYear == state.selectedDate.year
+                        val isAfterOct31 = state.selectedDate.isAfter(LocalDate.of(state.selectedDate.year, 10, 31))
+                        val isSpecialVacationBlocked = isPaidOut || isAfterOct31
+
                         ExposedDropdownMenuBox(
                             expanded = dayTypeExpanded,
                             onExpandedChange = { dayTypeExpanded = it },
@@ -411,16 +415,38 @@ fun HomeScreen(
                             ) {
                                 dayTypes.forEach { (type, info) ->
                                     val (label, icon, color) = info
+                                    val isSpecial = type == DayType.SPECIAL_VACATION
+                                    val isEnabled = !(isSpecial && isSpecialVacationBlocked)
+                                    val disabledHint = if (isSpecial && isSpecialVacationBlocked) {
+                                        if (isPaidOut) "Ausgezahlt" else "Verfallen"
+                                    } else null
+
                                     DropdownMenuItem(
-                                        text = { Text(label) },
+                                        text = {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(label)
+                                                if (disabledHint != null) {
+                                                    Text(
+                                                        text = disabledHint,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                    )
+                                                }
+                                            }
+                                        },
                                         leadingIcon = {
                                             Icon(
                                                 icon,
                                                 contentDescription = null,
-                                                tint = color,
+                                                tint = if (isEnabled) color else color.copy(alpha = 0.38f),
                                                 modifier = Modifier.size(20.dp)
                                             )
                                         },
+                                        enabled = isEnabled,
                                         onClick = {
                                             viewModel.setDayType(type)
                                             dayTypeExpanded = false
@@ -437,7 +463,8 @@ fun HomeScreen(
                         )
                         val savedDayType = state.workDay?.dayType
                         val showSaveButton = state.selectedDayType in nonWorkSaveTypes &&
-                            state.selectedDayType != savedDayType
+                            state.selectedDayType != savedDayType &&
+                            !(state.selectedDayType == DayType.SPECIAL_VACATION && isSpecialVacationBlocked)
                         val showDeleteButton = savedDayType in nonWorkSaveTypes &&
                             state.selectedDayType == savedDayType
                         if (showSaveButton) {

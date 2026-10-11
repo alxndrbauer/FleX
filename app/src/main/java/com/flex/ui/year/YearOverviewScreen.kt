@@ -402,6 +402,58 @@ private fun YearSummaryCard(summary: YearSummary) {
                 )
             }
 
+            if (summary.specialVacationPaidOut) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = SpecialVacationColor.copy(alpha = 0.15f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(SpecialVacationColor)
+                        )
+                        Text(
+                            text = "Sonderurlaub: 5 Tage ausgezahlt",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            } else if (summary.specialVacationDays > 0) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = SpecialVacationColor.copy(alpha = 0.15f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(SpecialVacationColor)
+                        )
+                        Text(
+                            text = "Sonderurlaub: ${summary.specialVacationDays} Tage genommen",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+
             HorizontalDivider()
 
             // Group 2: Work breakdown

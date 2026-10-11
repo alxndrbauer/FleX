@@ -16,6 +16,7 @@ data class SettingsEntity(
     val annualVacationDays: Int = 30,
     val carryOverVacationDays: Int = 0,
     val specialVacationDays: Int = 5,
+    val specialVacationPaidOut: Boolean = false,
     val settingsYear: Int = 0,
     val geofenceEnabled: Boolean = false,
     val geofenceLat: Double = 0.0,

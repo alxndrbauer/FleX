@@ -255,7 +255,12 @@ class HomeViewModel @Inject constructor(
                         val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
                         val qDays = rule?.officeQuotaMinDays ?: settings.officeQuotaMinDays
 
-                        val selectedDayType = override ?: workDay?.dayType ?: DayType.WORK
+                        val rawDayType = override ?: workDay?.dayType ?: DayType.WORK
+                        val selectedDayType = if (rawDayType == DayType.SPECIAL_VACATION && isSpecialVacationBlocked(date, settings)) {
+                            DayType.WORK
+                        } else {
+                            rawDayType
+                        }
                         val isBusinessTrip = selectedDayType == DayType.BUSINESS_TRIP
 
                         val timeBlocks = workDay?.timeBlocks ?: emptyList()
@@ -547,14 +552,29 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private fun isSpecialVacationBlocked(date: LocalDate, settings: Settings): Boolean {
+        val isPaidOut = settings.specialVacationPaidOut && settings.settingsYear == date.year
+        val isAfterOct31 = date.isAfter(LocalDate.of(date.year, 10, 31))
+        return isPaidOut || isAfterOct31
+    }
+
     fun setDayType(dayType: DayType) {
+        val state = _uiState.value
+        if (dayType == DayType.SPECIAL_VACATION && isSpecialVacationBlocked(state.selectedDate, state.settings)) {
+            return
+        }
         _localDayTypeOverride.value = dayType
     }
 
     fun saveManualEntry(startTime: LocalTime, endTime: LocalTime, location: WorkLocation) {
         viewModelScope.launch {
             val state = _uiState.value
-            val isBT = state.selectedDayType == DayType.BUSINESS_TRIP
+            val targetDayType = if (state.selectedDayType == DayType.SPECIAL_VACATION && isSpecialVacationBlocked(state.selectedDate, state.settings)) {
+                DayType.WORK
+            } else {
+                state.selectedDayType
+            }
+            val isBT = targetDayType == DayType.BUSINESS_TRIP
             val effectiveLocation = if (isBT) WorkLocation.OFFICE else location
             val effectiveDayLocation = if (isBT) WorkLocation.OFFICE else state.selectedLocation
 
@@ -563,18 +583,18 @@ class HomeViewModel @Inject constructor(
                     WorkDay(
                         date = state.selectedDate,
                         location = effectiveDayLocation,
-                        dayType = state.selectedDayType
+                        dayType = targetDayType
                     )
                 )
             } else {
                 val needsUpdate = state.workDay.isPlanned ||
-                    state.workDay.dayType != state.selectedDayType ||
+                    state.workDay.dayType != targetDayType ||
                     state.workDay.location != effectiveDayLocation
                 if (needsUpdate) {
                     workDayRepository.saveWorkDay(
                         state.workDay.copy(
                             isPlanned = false,
-                            dayType = state.selectedDayType,
+                            dayType = targetDayType,
                             location = effectiveDayLocation
                         )
                     )
@@ -595,9 +615,14 @@ class HomeViewModel @Inject constructor(
     fun saveDurationEntry(totalMinutes: Int, location: WorkLocation) {
         viewModelScope.launch {
             val state = _uiState.value
+            val targetDayType = if (state.selectedDayType == DayType.SPECIAL_VACATION && isSpecialVacationBlocked(state.selectedDate, state.settings)) {
+                DayType.WORK
+            } else {
+                state.selectedDayType
+            }
             val start = state.settings.defaultStartTime
             val end = start.plusMinutes(totalMinutes.toLong())
-            val isBT = state.selectedDayType == DayType.BUSINESS_TRIP
+            val isBT = targetDayType == DayType.BUSINESS_TRIP
             val effectiveLocation = if (isBT) WorkLocation.OFFICE else location
             val effectiveDayLocation = if (isBT) WorkLocation.OFFICE else state.selectedLocation
 
@@ -606,18 +631,18 @@ class HomeViewModel @Inject constructor(
                     WorkDay(
                         date = state.selectedDate,
                         location = effectiveDayLocation,
-                        dayType = state.selectedDayType
+                        dayType = targetDayType
                     )
                 )
             } else {
                 val needsUpdate = state.workDay.isPlanned ||
-                    state.workDay.dayType != state.selectedDayType ||
+                    state.workDay.dayType != targetDayType ||
                     state.workDay.location != effectiveDayLocation
                 if (needsUpdate) {
                     workDayRepository.saveWorkDay(
                         state.workDay.copy(
                             isPlanned = false,
-                            dayType = state.selectedDayType,
+                            dayType = targetDayType,
                             location = effectiveDayLocation
                         )
                     )
@@ -783,8 +808,11 @@ class HomeViewModel @Inject constructor(
     }
 
     fun saveDayType(dayType: DayType) {
+        val state = _uiState.value
+        if (dayType == DayType.SPECIAL_VACATION && isSpecialVacationBlocked(state.selectedDate, state.settings)) {
+            return
+        }
         viewModelScope.launch {
-            val state = _uiState.value
             workDayRepository.saveWorkDay(
                 WorkDay(
                     id = state.workDay?.id ?: 0,

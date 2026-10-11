@@ -373,7 +373,11 @@ private data class MonthConfig(
         timeBlocks: List<TimeBlockInput>
     ) {
         viewModelScope.launch {
-            val existingDay = _uiState.value.editingDay
+            val state = _uiState.value
+            if (dayType == DayType.SPECIAL_VACATION && state.settings.specialVacationPaidOut && state.settings.settingsYear == date.year) {
+                return@launch
+            }
+            val existingDay = state.editingDay
 
             // Derive day-level location: if all blocks agree → use that; otherwise first block
             val dayLocation = if (timeBlocks.isEmpty()) {

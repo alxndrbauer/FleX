@@ -10,21 +10,31 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +69,8 @@ import java.util.Locale
 @Composable
 fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
+    var showPayoutConfirmationDialog by remember { mutableStateOf(false) }
+    var showRevertConfirmationDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -480,46 +492,120 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
                         fontWeight = FontWeight.Bold,
                         color = SpecialVacationColor
                     )
-                    Text(
-                        text = "von ${v.specialDays} Tagen übrig",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (v.isSpecialPaidOut) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                        ) {
+                            Text(
+                                text = "5 Tage ausgezahlt",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                maxLines = 1
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "von ${v.specialDays} Tagen übrig",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
 
-        // Special vacation expiry warning (full width, below cards)
+        // Special vacation expiry or payout card (full width, below cards)
         val today = LocalDate.now()
-        if (v.remainingSpecialDays > 0) {
+        if (v.isSpecialPaidOut) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (today.month >= Month.SEPTEMBER)
-                        MaterialTheme.colorScheme.errorContainer
-                    else MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(
-                        text = if (today.month >= Month.SEPTEMBER)
-                            "Achtung: Sonderurlaub verfällt bald!"
-                        else
-                            "Sonderurlaub verfällt am 31. Oktober ${state.yearMonth.year}",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = if (today.month >= Month.SEPTEMBER) FontWeight.Bold else FontWeight.Normal,
-                        color = if (today.month >= Month.SEPTEMBER)
-                            MaterialTheme.colorScheme.onErrorContainer
-                        else MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Sonderurlaub ausgezahlt",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Die 5 Sonderurlaubstage für ${state.yearMonth.year} wurden vollständig zur Auszahlung markiert.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    val canRevert = !today.isAfter(LocalDate.of(state.yearMonth.year, 10, 31))
+                    if (canRevert) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { showRevertConfirmationDialog = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Auszahlung widerrufen", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+        } else if (v.remainingSpecialDays > 0) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    val isUrgent = today.month >= Month.SEPTEMBER
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (isUrgent) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Text(
+                            text = if (isUrgent)
+                                "Achtung: Sonderurlaub verfällt bald!"
+                            else
+                                "Sonderurlaub verfällt am 31. Oktober ${state.yearMonth.year}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isUrgent)
+                                MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     if (v.plannedSpecialDays > 0) {
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Davon ${v.plannedSpecialDays} Tage geplant, ${v.usedSpecialDays} genommen",
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (today.month >= Month.SEPTEMBER)
-                                MaterialTheme.colorScheme.onErrorContainer
-                            else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (v.canPayoutSpecialDays) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Button(
+                            onClick = { showPayoutConfirmationDialog = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Sonderurlaub auszahlen (5 Tage)", fontWeight = FontWeight.SemiBold)
+                        }
+                    } else if (v.usedSpecialDays > 0) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Keine Auszahlung möglich, da bereits Sonderurlaub genommen wurde.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -527,6 +613,57 @@ fun QuotaScreen(viewModel: QuotaViewModel = hiltViewModel()) {
         }
 
         Spacer(modifier = Modifier.height(8.dp))
+    }
+
+    if (showPayoutConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { showPayoutConfirmationDialog = false },
+            title = { Text("Sonderurlaub auszahlen") },
+            text = {
+                val v = state.vacationInfo
+                if (v.plannedSpecialDays > 0) {
+                    Text("Du hast noch ${v.plannedSpecialDays} Sonderurlaubstage im Kalender geplant. Beim Auszahlen werden diese gelöscht und alle 5 Tage als ausgezahlt markiert. Möchtest du fortfahren?")
+                } else {
+                    Text("Möchtest du alle 5 Tage Sonderurlaub für ${state.yearMonth.year} auszahlen lassen? Sie stehen danach nicht mehr im Kalender zur Verfügung.")
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showPayoutConfirmationDialog = false
+                    viewModel.payoutSpecialVacation()
+                }) {
+                    Text("Auszahlen")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPayoutConfirmationDialog = false }) {
+                    Text("Abbrechen")
+                }
+            }
+        )
+    }
+
+    if (showRevertConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { showRevertConfirmationDialog = false },
+            title = { Text("Auszahlung widerrufen") },
+            text = {
+                Text("Möchtest du die Auszahlung des Sonderurlaubs für ${state.yearMonth.year} widerrufen? Die 5 Tage stehen dir anschließend wieder im Kalender zur Verfügung.")
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showRevertConfirmationDialog = false
+                    viewModel.revertSpecialVacationPayout()
+                }) {
+                    Text("Widerrufen")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRevertConfirmationDialog = false }) {
+                    Text("Abbrechen")
+                }
+            }
+        )
     }
 }
 

@@ -49,7 +49,7 @@ class FlexDatabaseIntegrationTest {
     @Test
     fun database_creation_and_version() {
         assertThat(database).isNotNull()
-        assertThat(database.openHelper.readableDatabase.version).isEqualTo(18)
+        assertThat(database.openHelper.readableDatabase.version).isEqualTo(20)
     }
 
     @Test

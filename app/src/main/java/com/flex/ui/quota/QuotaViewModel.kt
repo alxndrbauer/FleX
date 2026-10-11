@@ -16,6 +16,7 @@ import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,10 +32,12 @@ data class VacationInfo(
     val specialDays: Int = 5,
     val usedSpecialDays: Int = 0,
     val plannedVacationDays: Int = 0,
-    val plannedSpecialDays: Int = 0
+    val plannedSpecialDays: Int = 0,
+    val isSpecialPaidOut: Boolean = false
 ) {
     val remainingVacationDays: Int get() = annualDays + carryOverDays - usedVacationDays
-    val remainingSpecialDays: Int get() = specialDays - usedSpecialDays
+    val remainingSpecialDays: Int get() = if (isSpecialPaidOut) 0 else (specialDays - usedSpecialDays).coerceAtLeast(0)
+    val canPayoutSpecialDays: Boolean get() = !isSpecialPaidOut && usedSpecialDays == 0 && specialDays > 0
 }
 
 data class QuotaUiState(
@@ -137,7 +140,8 @@ class QuotaViewModel @Inject constructor(
                         specialDays = settings.specialVacationDays,
                         usedSpecialDays = usedSpecial,
                         plannedVacationDays = plannedVacation,
-                        plannedSpecialDays = plannedSpecial
+                        plannedSpecialDays = plannedSpecial,
+                        isSpecialPaidOut = settings.specialVacationPaidOut
                     ),
                     settings = settings,
                     yearMonth = yearMonth,
@@ -150,6 +154,28 @@ class QuotaViewModel @Inject constructor(
             }.collect { state ->
                 _uiState.value = state
             }
+        }
+    }
+
+    fun payoutSpecialVacation() {
+        viewModelScope.launch {
+            val currentSettings = getSettings().first()
+            val year = _uiState.value.yearMonth.year
+            val yearDays = workDayRepository.getWorkDaysForYear(year).first()
+            val usedSpecial = yearDays.count { it.dayType == DayType.SPECIAL_VACATION && !it.isPlanned }
+            if (usedSpecial > 0) return@launch
+
+            val plannedSpecialDays = yearDays.filter { it.dayType == DayType.SPECIAL_VACATION && it.isPlanned }
+            plannedSpecialDays.forEach { workDayRepository.deleteWorkDay(it) }
+
+            settingsRepository.saveSettings(currentSettings.copy(specialVacationPaidOut = true))
+        }
+    }
+
+    fun revertSpecialVacationPayout() {
+        viewModelScope.launch {
+            val currentSettings = getSettings().first()
+            settingsRepository.saveSettings(currentSettings.copy(specialVacationPaidOut = false))
         }
     }
 }

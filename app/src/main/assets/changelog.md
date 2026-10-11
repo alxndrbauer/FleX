@@ -4,6 +4,12 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unreleased]
+
+### Features
+
+- Add special vacation payout support and unify mixed day cell colors
+
 ## [1.8.2] - 2026-10-08
 
 ### Features
@@ -151,6 +157,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - FleX time tracking app v1.5.0
 - Add in-app update checker with automatic APK download
 
+[Unreleased]: https://github.com/alxndrbauer/FleX/compare/v1.8.2...HEAD
 [1.8.2]: https://github.com/alxndrbauer/FleX/compare/v1.8.1...v1.8.2
 [1.8.1]: https://github.com/alxndrbauer/FleX/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/alxndrbauer/FleX/compare/v1.7.5...v1.8.0
