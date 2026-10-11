@@ -23,6 +23,7 @@ import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.domain.usecase.SyncPlannedDaysWithWorkTimeRuleUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -91,7 +92,8 @@ data class PlanningUiState(
     val officeHours: OfficeHoursDetail = OfficeHoursDetail(),
     val selectedPlanType: PlanType = PlanType.OFFICE,
     val editingDate: LocalDate? = null,
-    val monthSummaries: List<MonthSummary> = emptyList()
+    val monthSummaries: List<MonthSummary> = emptyList(),
+    val canSyncPlannedDays: Boolean = false
 )
 
 enum class PlanType(val label: String) {
@@ -113,7 +115,8 @@ class PlanningViewModel @Inject constructor(
     private val calculateDayWorkTime: CalculateDayWorkTimeUseCase,
     private val calculateQuota: CalculateQuotaUseCase,
     private val calculateFlextime: CalculateFlextimeUseCase,
-    private val buildPrognosisDays: BuildPrognosisDaysUseCase
+    private val buildPrognosisDays: BuildPrognosisDaysUseCase,
+    private val syncPlannedDaysWithWorkTimeRuleUseCase: SyncPlannedDaysWithWorkTimeRuleUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlanningUiState())
@@ -186,6 +189,7 @@ private data class PlanningConfig(
                     } else {
                         currentSelectedType
                     }
+                    val canSync = checkCanSyncPlannedDays(days, month, workTimeRules, settings)
                     _uiState.value = _uiState.value.copy(
                         yearMonth = month,
                         workDays = days,
@@ -194,7 +198,8 @@ private data class PlanningConfig(
                         quotaStatus = quota,
                         flextimeBalance = flextime,
                         officeHours = officeHours,
-                        selectedPlanType = selectedType
+                        selectedPlanType = selectedType,
+                        canSyncPlannedDays = canSync
                     )
                     refreshMonthSummaries(settings, rules, workTimeRules)
                 }
@@ -472,6 +477,76 @@ private data class PlanningConfig(
                     TimeBlock(workDayId = workDayId, startTime = start, endTime = end, isDuration = true, location = location)
                 )
             }
+        }
+    }
+
+    suspend fun getAffectedPlannedDaysCount(): Int {
+        return syncPlannedDaysWithWorkTimeRuleUseCase.countAffectedPlannedDays(_selectedMonth.value, _selectedMonth.value)
+    }
+
+    private fun checkCanSyncPlannedDays(
+        days: List<WorkDay>,
+        month: YearMonth,
+        workTimeRules: List<com.flex.domain.model.WorkTimeRule>,
+        settings: Settings
+    ): Boolean {
+        val plannedWorkDays = days.filter {
+            it.isPlanned && it.dayType in SyncPlannedDaysWithWorkTimeRuleUseCase.PLANNED_WORK_DAY_TYPES
+        }
+        if (plannedWorkDays.isEmpty()) return false
+
+        val rule = workTimeRules.getRuleForMonth(month)
+        val activeWorkDays = rule?.workDays ?: DEFAULT_WORK_DAYS
+        val targetDailyMinutes = rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes
+
+        if (plannedWorkDays.any { it.date.dayOfWeek !in activeWorkDays }) return true
+
+        val knownStandardDurations = (workTimeRules.map { it.dailyWorkMinutes } + settings.dailyWorkMinutes).toSet()
+        val nonTargetDurations = plannedWorkDays
+            .map { calculateDayWorkTime(it.timeBlocks).netMinutes.toInt() }
+            .filter { it != targetDailyMinutes }
+
+        if (nonTargetDurations.isEmpty()) return false
+
+        val candidateGroups = nonTargetDurations.groupingBy { it }.eachCount()
+        return candidateGroups.any { (duration, count) ->
+            duration in knownStandardDurations || count > 1
+        }
+    }
+
+    fun syncPlannedDays(removeNonWorkDays: Boolean = false) {
+        viewModelScope.launch {
+            val month = _selectedMonth.value
+            val state = _uiState.value
+            val rule = state.workTimeRules.getRuleForMonth(month)
+            val targetDailyMinutes = rule?.dailyWorkMinutes ?: state.settings.dailyWorkMinutes
+
+            val plannedWorkDays = state.workDays.filter {
+                it.isPlanned && it.dayType in SyncPlannedDaysWithWorkTimeRuleUseCase.PLANNED_WORK_DAY_TYPES
+            }
+            val knownStandardDurations = (state.workTimeRules.map { it.dailyWorkMinutes } + state.settings.dailyWorkMinutes).toSet()
+
+            val nonTargetDurations = plannedWorkDays
+                .map { calculateDayWorkTime(it.timeBlocks).netMinutes.toInt() }
+                .filter { it != targetDailyMinutes }
+
+            val candidateGroups = nonTargetDurations
+                .groupingBy { it }
+                .eachCount()
+
+            val previousDailyMinutes = candidateGroups
+                .filter { (duration, count) -> duration in knownStandardDurations || count > 1 }
+                .maxByOrNull { it.value }
+                ?.key
+
+            val result = syncPlannedDaysWithWorkTimeRuleUseCase.syncMonth(
+                month = month,
+                removeNonWorkDays = removeNonWorkDays,
+                previousDailyMinutes = previousDailyMinutes
+            )
+
+            val message = result.formatFeedbackMessage()
+            _undoEvent.emit(UndoEvent(message))
         }
     }
 }

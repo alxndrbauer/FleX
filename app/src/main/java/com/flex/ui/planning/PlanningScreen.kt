@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,10 +29,12 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
@@ -109,6 +112,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
     val pagerState = rememberPagerState { 2 }
     val scope = rememberCoroutineScope()
     var showClearAllDialog by remember { mutableStateOf(false) }
+    var showSyncRuleDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(viewModel) {
@@ -325,6 +329,15 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                     }
                 }
                 FilledTonalButton(
+                    onClick = { showSyncRuleDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = state.canSyncPlannedDays
+                ) {
+                    Icon(Icons.Default.Sync, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Zeiten an Regel anpassen")
+                }
+                FilledTonalButton(
                     onClick = { showClearAllDialog = true },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.filledTonalButtonColors(
@@ -518,6 +531,57 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             },
             dismissButton = {
                 TextButton(onClick = { showClearAllDialog = false }) { Text("Abbrechen") }
+            }
+        )
+    }
+
+    // Confirm sync planned days with work time rule
+    if (showSyncRuleDialog) {
+        var removeNonWorkDays by remember { mutableStateOf(false) }
+        val plannedCount = state.workDays.count { it.isPlanned }
+        val monthName = state.yearMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN))
+        AlertDialog(
+            onDismissRequest = { showSyncRuleDialog = false },
+            title = { Text("Geplante Zeiten anpassen?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Soll-Zeiten von $plannedCount geplanten Tagen für $monthName an die aktuelle Arbeitszeit-Regel anpassen?",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Checkbox(
+                            checked = removeNonWorkDays,
+                            onCheckedChange = { removeNonWorkDays = it }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Tage auf Nicht-Arbeitstagen entfernen",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    Text(
+                        "Hinweis: Manuell angepasste Tage mit individuellen Zeiten bleiben unverändert.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.syncPlannedDays(removeNonWorkDays = removeNonWorkDays)
+                    showSyncRuleDialog = false
+                }) {
+                    Text("Anpassen")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSyncRuleDialog = false }) {
+                    Text("Abbrechen")
+                }
             }
         )
     }

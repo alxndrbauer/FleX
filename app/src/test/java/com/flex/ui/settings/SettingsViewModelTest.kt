@@ -17,16 +17,24 @@ import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.calendar.CalendarSyncService
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.data.export.IcsExportService
+import com.flex.domain.model.SyncPlannedDaysResult
+import com.flex.domain.model.WorkTimeRule
+import com.flex.domain.usecase.SyncPlannedDaysWithWorkTimeRuleUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
+import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.YearMonth
@@ -69,7 +77,16 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Mock
     private lateinit var icsExportService: IcsExportService
 
+    @Mock
+    private lateinit var syncPlannedDaysWithWorkTimeRuleUseCase: SyncPlannedDaysWithWorkTimeRuleUseCase
+
     private lateinit var viewModel: SettingsViewModel
+
+    private fun createViewModel(): SettingsViewModel = SettingsViewModel(
+        context, getSettings, settingsRepository, themePreferences,
+        appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService,
+        workDayRepository, icsExportService, syncPlannedDaysWithWorkTimeRuleUseCase
+    )
 
     @BeforeEach
     override fun setUp() {
@@ -98,7 +115,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: Settings state should be loaded
@@ -112,7 +129,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: QuotaRules state should be empty
@@ -130,7 +147,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(expectedRules))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: QuotaRules state should be loaded
@@ -143,7 +160,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `updateSettings persists settings to repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         val updatedSettings = Settings(
@@ -164,7 +181,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `updateSettings with different values persists correctly`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         val newSettings = Settings(
@@ -192,7 +209,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `addQuotaRule persists rule to repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         val newRule = QuotaRule(
@@ -213,7 +230,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `addQuotaRule with different month persists correctly`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         val rule = QuotaRule(
@@ -236,7 +253,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `deleteQuotaRule removes rule from repository`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         val ruleToDelete = QuotaRule(
@@ -266,7 +283,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: State should reflect the latest settings
@@ -286,7 +303,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(initialRules, updatedRules))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: State should reflect the rules
@@ -303,7 +320,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: Settings should have default value
@@ -318,7 +335,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // Then: QuotaRules should be empty list
@@ -330,7 +347,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `saveCalendarSettings persists noAlarm flag to repository`() = runTest {
         // Given
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Saving with noAlarm = true
@@ -349,7 +366,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `saveCalendarSettings persists noAlarm false to repository`() = runTest {
         // Given
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         // When: Saving with noAlarm = false
@@ -370,7 +387,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `cleanupOrphanedMappings calls calendarSyncService`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         whenever(calendarSyncService.cleanupOrphanedMappings()).thenReturn(Pair(0, 0))
@@ -386,7 +403,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `cleanupOrphanedMappings calls onResult with removed and total count`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         whenever(calendarSyncService.cleanupOrphanedMappings()).thenReturn(Pair(3, 7))
@@ -405,7 +422,7 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Test
     fun `cleanupOrphanedMappings with no mappings calls onResult with 0 and 0`() = runTest {
         // Given: Initialized ViewModel
-        viewModel = SettingsViewModel(context, getSettings, settingsRepository, themePreferences, appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService, workDayRepository, icsExportService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         whenever(calendarSyncService.cleanupOrphanedMappings()).thenReturn(Pair(0, 0))
@@ -419,5 +436,186 @@ class SettingsViewModelTest : BaseUnitTest() {
         // Then: onResult should be called with 0, 0
         assertThat(resultRemoved).isEqualTo(0)
         assertThat(resultTotal).isEqualTo(0)
+    }
+
+    // ========== WorkTimeRule Sync Tests ==========
+
+    @Test
+    fun `addWorkTimeRule without sync only saves rule to repository`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val rule = WorkTimeRule(
+            id = 1L,
+            validFrom = YearMonth.of(2026, 3),
+            dailyWorkMinutes = 480,
+            monthlyWorkMinutes = 9600
+        )
+
+        viewModel.addWorkTimeRule(rule, syncPlannedDays = false)
+        advanceUntilIdle()
+
+        verify(settingsRepository).saveWorkTimeRule(rule)
+        verify(syncPlannedDaysWithWorkTimeRuleUseCase, never()).syncRange(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `addWorkTimeRule with sync calls syncRange on use case`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val rule = WorkTimeRule(
+            id = 1L,
+            validFrom = YearMonth.of(2026, 3),
+            dailyWorkMinutes = 480,
+            monthlyWorkMinutes = 9600
+        )
+
+        viewModel.addWorkTimeRule(
+            rule = rule,
+            syncPlannedDays = true,
+            removeNonWorkDays = true,
+            previousDailyMinutes = 420
+        )
+        advanceUntilIdle()
+
+        verify(settingsRepository).saveWorkTimeRule(rule)
+        verify(syncPlannedDaysWithWorkTimeRuleUseCase).syncRange(
+            fromMonth = YearMonth.of(2026, 3),
+            toMonth = null,
+            removeNonWorkDays = true,
+            previousDailyMinutes = 420
+        )
+    }
+
+    @Test
+    fun `updateWorkTimeRule without sync only saves rule to repository`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val rule = WorkTimeRule(
+            id = 2L,
+            validFrom = YearMonth.of(2026, 4),
+            dailyWorkMinutes = 450,
+            monthlyWorkMinutes = 9000
+        )
+
+        viewModel.updateWorkTimeRule(rule, syncPlannedDays = false)
+        advanceUntilIdle()
+
+        verify(settingsRepository).saveWorkTimeRule(rule)
+        verify(syncPlannedDaysWithWorkTimeRuleUseCase, never()).syncRange(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `updateWorkTimeRule with sync calls syncRange on use case`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val rule = WorkTimeRule(
+            id = 2L,
+            validFrom = YearMonth.of(2026, 4),
+            dailyWorkMinutes = 450,
+            monthlyWorkMinutes = 9000
+        )
+
+        viewModel.updateWorkTimeRule(
+            rule = rule,
+            syncPlannedDays = true,
+            removeNonWorkDays = false,
+            previousDailyMinutes = 480
+        )
+        advanceUntilIdle()
+
+        verify(settingsRepository).saveWorkTimeRule(rule)
+        verify(syncPlannedDaysWithWorkTimeRuleUseCase).syncRange(
+            fromMonth = YearMonth.of(2026, 4),
+            toMonth = null,
+            removeNonWorkDays = false,
+            previousDailyMinutes = 480
+        )
+    }
+
+    @Test
+    fun `deleteWorkTimeRule without sync only deletes rule from repository`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val rule = WorkTimeRule(
+            id = 3L,
+            validFrom = YearMonth.of(2026, 5),
+            dailyWorkMinutes = 480,
+            monthlyWorkMinutes = 9600
+        )
+
+        viewModel.deleteWorkTimeRule(rule, syncPlannedDays = false)
+        advanceUntilIdle()
+
+        verify(settingsRepository).deleteWorkTimeRule(rule)
+        verify(syncPlannedDaysWithWorkTimeRuleUseCase, never()).syncRange(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `deleteWorkTimeRule with sync calls syncRange with rule dailyWorkMinutes`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val rule = WorkTimeRule(
+            id = 3L,
+            validFrom = YearMonth.of(2026, 5),
+            dailyWorkMinutes = 480,
+            monthlyWorkMinutes = 9600
+        )
+
+        viewModel.deleteWorkTimeRule(rule, syncPlannedDays = true, removeNonWorkDays = true)
+        advanceUntilIdle()
+
+        verify(settingsRepository).deleteWorkTimeRule(rule)
+        verify(syncPlannedDaysWithWorkTimeRuleUseCase).syncRange(
+            fromMonth = YearMonth.of(2026, 5),
+            toMonth = null,
+            removeNonWorkDays = true,
+            previousDailyMinutes = 480
+        )
+    }
+
+    @Test
+    fun `getAffectedPlannedDaysCount delegates to use case countAffectedPlannedDays`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val fromMonth = YearMonth.of(2026, 6)
+        whenever(syncPlannedDaysWithWorkTimeRuleUseCase.countAffectedPlannedDays(fromMonth)).thenReturn(7)
+
+        val count = viewModel.getAffectedPlannedDaysCount(fromMonth)
+
+        assertThat(count).isEqualTo(7)
+        verify(syncPlannedDaysWithWorkTimeRuleUseCase).countAffectedPlannedDays(fromMonth)
+    }
+
+    @Test
+    fun `updateWorkTimeRule with sync emits syncResultEvent`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val rule = WorkTimeRule(
+            id = 2L,
+            validFrom = YearMonth.of(2026, 4),
+            dailyWorkMinutes = 450,
+            monthlyWorkMinutes = 9000
+        )
+        val expectedResult = SyncPlannedDaysResult(updatedDaysCount = 5, removedDaysCount = 1, untouchedCustomDaysCount = 2)
+        whenever(syncPlannedDaysWithWorkTimeRuleUseCase.syncRange(any(), anyOrNull(), any(), anyOrNull())).thenReturn(expectedResult)
+
+        var emittedResult: SyncPlannedDaysResult? = null
+        val job = launch(kotlinx.coroutines.test.UnconfinedTestDispatcher()) {
+            viewModel.syncResultEvent.collect { emittedResult = it }
+        }
+
+        viewModel.updateWorkTimeRule(rule, syncPlannedDays = true)
+        advanceUntilIdle()
+
+        assertThat(emittedResult).isEqualTo(expectedResult)
+        job.cancel()
     }
 }

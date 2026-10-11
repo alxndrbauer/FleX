@@ -15,6 +15,7 @@ import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.domain.usecase.SyncPlannedDaysWithWorkTimeRuleUseCase
 import com.flex.geofence.GeofenceManager
 import com.flex.ui.settings.GeofenceStatus
 import com.flex.ui.settings.SettingsViewModel
@@ -64,6 +65,7 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
         calendarSyncService: CalendarSyncService = mockk(relaxed = true),
         workDayRepository: WorkDayRepository = mockk(relaxed = true),
         icsExportService: IcsExportService = mockk(relaxed = true),
+        syncPlannedDaysWithWorkTimeRuleUseCase: SyncPlannedDaysWithWorkTimeRuleUseCase = mockk(relaxed = true),
         initialSettings: Settings = Settings(),
         initialQuotaRules: List<QuotaRule> = emptyList(),
         initialWorkTimeRules: List<WorkTimeRule> = emptyList()
@@ -84,7 +86,8 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
             wifiMonitor = wifiMonitor,
             calendarSyncService = calendarSyncService,
             workDayRepository = workDayRepository,
-            icsExportService = icsExportService
+            icsExportService = icsExportService,
+            syncPlannedDaysWithWorkTimeRuleUseCase = syncPlannedDaysWithWorkTimeRuleUseCase
         )
     }
 
@@ -257,7 +260,11 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
 
     Given("die Verwaltung von Arbeitszeitregeln") {
         val settingsRepository = mockk<SettingsRepository>(relaxed = true)
-        val viewModel = createViewModel(settingsRepository = settingsRepository)
+        val syncUseCase = mockk<SyncPlannedDaysWithWorkTimeRuleUseCase>(relaxed = true)
+        val viewModel = createViewModel(
+            settingsRepository = settingsRepository,
+            syncPlannedDaysWithWorkTimeRuleUseCase = syncUseCase
+        )
 
         val workRule = WorkTimeRule(
             id = 5L,
@@ -266,19 +273,84 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
             monthlyWorkMinutes = 8000
         )
 
-        When("eine neue Arbeitszeitregel hinzugefügt wird (addWorkTimeRule)") {
+        When("eine neue Arbeitszeitregel ohne Sync hinzugefügt wird (addWorkTimeRule)") {
             viewModel.addWorkTimeRule(workRule)
 
-            Then("wird saveWorkTimeRule im Repository aufgerufen") {
+            Then("wird saveWorkTimeRule im Repository aufgerufen und kein Sync ausgeführt") {
                 coVerify(exactly = 1) { settingsRepository.saveWorkTimeRule(workRule) }
+                coVerify(exactly = 0) { syncUseCase.syncRange(any(), any(), any(), any()) }
             }
         }
 
-        When("eine bestehende Arbeitszeitregel gelöscht wird (deleteWorkTimeRule)") {
-            viewModel.deleteWorkTimeRule(workRule)
+        When("eine neue Arbeitszeitregel mit Sync hinzugefügt wird (addWorkTimeRule)") {
+            viewModel.addWorkTimeRule(
+                rule = workRule,
+                syncPlannedDays = true,
+                removeNonWorkDays = true,
+                previousDailyMinutes = 480
+            )
 
-            Then("wird deleteWorkTimeRule im Repository aufgerufen") {
+            Then("wird saveWorkTimeRule aufgerufen und syncRange mit den Parametern ausgeführt") {
+                coVerify { settingsRepository.saveWorkTimeRule(workRule) }
+                coVerify {
+                    syncUseCase.syncRange(
+                        fromMonth = YearMonth.of(2026, 4),
+                        removeNonWorkDays = true,
+                        previousDailyMinutes = 480
+                    )
+                }
+            }
+        }
+
+        When("eine Arbeitszeitregel aktualisiert wird (updateWorkTimeRule) mit Sync") {
+            viewModel.updateWorkTimeRule(
+                rule = workRule,
+                syncPlannedDays = true,
+                removeNonWorkDays = false,
+                previousDailyMinutes = 420
+            )
+
+            Then("wird saveWorkTimeRule aufgerufen und syncRange ausgeführt") {
+                coVerify { settingsRepository.saveWorkTimeRule(workRule) }
+                coVerify {
+                    syncUseCase.syncRange(
+                        fromMonth = YearMonth.of(2026, 4),
+                        removeNonWorkDays = false,
+                        previousDailyMinutes = 420
+                    )
+                }
+            }
+        }
+
+        When("eine bestehende Arbeitszeitregel gelöscht wird (deleteWorkTimeRule) ohne Sync") {
+            viewModel.deleteWorkTimeRule(workRule, syncPlannedDays = false)
+
+            Then("wird deleteWorkTimeRule im Repository aufgerufen und kein Sync ausgeführt") {
                 coVerify(exactly = 1) { settingsRepository.deleteWorkTimeRule(workRule) }
+            }
+        }
+
+        When("eine bestehende Arbeitszeitregel gelöscht wird (deleteWorkTimeRule) mit Sync") {
+            viewModel.deleteWorkTimeRule(workRule, syncPlannedDays = true, removeNonWorkDays = true)
+
+            Then("wird deleteWorkTimeRule aufgerufen und syncRange mit previousDailyMinutes = rule.dailyWorkMinutes ausgeführt") {
+                coVerify { settingsRepository.deleteWorkTimeRule(workRule) }
+                coVerify {
+                    syncUseCase.syncRange(
+                        fromMonth = YearMonth.of(2026, 4),
+                        removeNonWorkDays = true,
+                        previousDailyMinutes = 400
+                    )
+                }
+            }
+        }
+
+        When("die Anzahl betroffener geplanter Tage abgefragt wird (getAffectedPlannedDaysCount)") {
+            coEvery { syncUseCase.countAffectedPlannedDays(YearMonth.of(2026, 4)) } returns 5
+
+            Then("wird das Ergebnis des UseCase zurückgegeben") {
+                val count = viewModel.getAffectedPlannedDaysCount(YearMonth.of(2026, 4))
+                count shouldBe 5
             }
         }
     }

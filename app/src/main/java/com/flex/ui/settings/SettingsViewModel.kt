@@ -19,21 +19,28 @@ import com.flex.domain.model.FederalState
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.Settings
 import com.flex.domain.model.ThemeMode
+import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.domain.usecase.SyncPlannedDaysWithWorkTimeRuleUseCase
 import com.flex.geofence.GeofenceManager
 import com.flex.wifi.WifiMonitor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import java.time.LocalDate
+import java.time.YearMonth
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import com.flex.domain.model.SyncPlannedDaysResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -52,7 +59,8 @@ class SettingsViewModel @Inject constructor(
     private val wifiMonitor: WifiMonitor,
     private val calendarSyncService: CalendarSyncService,
     private val workDayRepository: WorkDayRepository,
-    private val icsExportService: IcsExportService
+    private val icsExportService: IcsExportService,
+    private val syncPlannedDaysWithWorkTimeRuleUseCase: SyncPlannedDaysWithWorkTimeRuleUseCase
 ) : ViewModel() {
 
     private val _settings = MutableStateFlow(Settings())
@@ -61,8 +69,11 @@ class SettingsViewModel @Inject constructor(
     private val _quotaRules = MutableStateFlow<List<QuotaRule>>(emptyList())
     val quotaRules: StateFlow<List<QuotaRule>> = _quotaRules.asStateFlow()
 
-    private val _workTimeRules = MutableStateFlow<List<com.flex.domain.model.WorkTimeRule>>(emptyList())
-    val workTimeRules: StateFlow<List<com.flex.domain.model.WorkTimeRule>> = _workTimeRules.asStateFlow()
+    private val _workTimeRules = MutableStateFlow<List<WorkTimeRule>>(emptyList())
+    val workTimeRules: StateFlow<List<WorkTimeRule>> = _workTimeRules.asStateFlow()
+
+    private val _syncResultEvent = MutableSharedFlow<SyncPlannedDaysResult>()
+    val syncResultEvent: SharedFlow<SyncPlannedDaysResult> = _syncResultEvent.asSharedFlow()
 
     private val _geofenceStatus = MutableStateFlow(GeofenceStatus.UNKNOWN)
     val geofenceStatus: StateFlow<GeofenceStatus> = _geofenceStatus.asStateFlow()
@@ -115,15 +126,63 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun addWorkTimeRule(rule: com.flex.domain.model.WorkTimeRule) {
+    suspend fun getAffectedPlannedDaysCount(fromMonth: YearMonth): Int {
+        return syncPlannedDaysWithWorkTimeRuleUseCase.countAffectedPlannedDays(fromMonth)
+    }
+
+    fun addWorkTimeRule(
+        rule: WorkTimeRule,
+        syncPlannedDays: Boolean = false,
+        removeNonWorkDays: Boolean = false,
+        previousDailyMinutes: Int? = null
+    ) {
         viewModelScope.launch {
             settingsRepository.saveWorkTimeRule(rule)
+            if (syncPlannedDays) {
+                val result = syncPlannedDaysWithWorkTimeRuleUseCase.syncRange(
+                    fromMonth = rule.validFrom,
+                    removeNonWorkDays = removeNonWorkDays,
+                    previousDailyMinutes = previousDailyMinutes
+                )
+                _syncResultEvent.emit(result)
+            }
         }
     }
 
-    fun deleteWorkTimeRule(rule: com.flex.domain.model.WorkTimeRule) {
+    fun updateWorkTimeRule(
+        rule: WorkTimeRule,
+        syncPlannedDays: Boolean = false,
+        removeNonWorkDays: Boolean = false,
+        previousDailyMinutes: Int? = null
+    ) {
+        viewModelScope.launch {
+            settingsRepository.saveWorkTimeRule(rule)
+            if (syncPlannedDays) {
+                val result = syncPlannedDaysWithWorkTimeRuleUseCase.syncRange(
+                    fromMonth = rule.validFrom,
+                    removeNonWorkDays = removeNonWorkDays,
+                    previousDailyMinutes = previousDailyMinutes
+                )
+                _syncResultEvent.emit(result)
+            }
+        }
+    }
+
+    fun deleteWorkTimeRule(
+        rule: WorkTimeRule,
+        syncPlannedDays: Boolean = false,
+        removeNonWorkDays: Boolean = false
+    ) {
         viewModelScope.launch {
             settingsRepository.deleteWorkTimeRule(rule)
+            if (syncPlannedDays) {
+                val result = syncPlannedDaysWithWorkTimeRuleUseCase.syncRange(
+                    fromMonth = rule.validFrom,
+                    removeNonWorkDays = removeNonWorkDays,
+                    previousDailyMinutes = rule.dailyWorkMinutes
+                )
+                _syncResultEvent.emit(result)
+            }
         }
     }
 

@@ -20,6 +20,7 @@ import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.DayWorkTimeResult
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.domain.usecase.SyncPlannedDaysWithWorkTimeRuleUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -55,6 +56,7 @@ class PlanningViewModelWorkTimeRuleTest : BaseUnitTest() {
     @Mock private lateinit var calculateQuota: CalculateQuotaUseCase
     @Mock private lateinit var calculateFlextime: CalculateFlextimeUseCase
     @Mock private lateinit var buildPrognosisDays: BuildPrognosisDaysUseCase
+    @Mock private lateinit var syncPlannedDaysWithWorkTimeRuleUseCase: SyncPlannedDaysWithWorkTimeRuleUseCase
 
     private lateinit var viewModel: PlanningViewModel
 
@@ -77,7 +79,8 @@ class PlanningViewModelWorkTimeRuleTest : BaseUnitTest() {
 
     private fun createViewModel() = PlanningViewModel(
         getMonthWorkDays, getSettings, workDayRepository, settingsRepository,
-        calculateDayWorkTime, calculateQuota, calculateFlextime, buildPrognosisDays
+        calculateDayWorkTime, calculateQuota, calculateFlextime, buildPrognosisDays,
+        syncPlannedDaysWithWorkTimeRuleUseCase
     )
 
     // ========== QuotaRule Priority Tests ==========
