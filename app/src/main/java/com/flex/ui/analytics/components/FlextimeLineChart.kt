@@ -6,9 +6,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
@@ -26,7 +28,8 @@ import java.util.Locale
 @Composable
 fun FlextimeLineChart(
     data: List<TimeSeriesPoint>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    chartHeight: Dp = 220.dp
 ) {
     if (data.isEmpty()) {
         Text(
@@ -43,14 +46,18 @@ fun FlextimeLineChart(
     val xLabels = if (isDaily) {
         data.map { it.date.dayOfMonth.toString() }
     } else {
-        data.map { it.date.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
+        data.map { it.date.month.getDisplayName(TextStyle.SHORT, Locale.GERMAN) }
     }
 
-    val bottomFormatter = CartesianValueFormatter { _, x, _ ->
-        xLabels.getOrElse(x.toInt()) { x.toInt().toString() }
+    val bottomFormatter = remember(xLabels) {
+        CartesianValueFormatter { _, x, _ ->
+            xLabels.getOrElse(x.toInt()) { x.toInt().toString() }
+        }
     }
-    val startFormatter = CartesianValueFormatter { _, y, _ ->
-        "${String.format("%.1f", y)}h"
+    val startFormatter = remember {
+        CartesianValueFormatter { _, y, _ ->
+            "${String.format(Locale.GERMAN, "%.1f", y)}h"
+        }
     }
 
     val modelProducer = remember { CartesianChartModelProducer() }
@@ -63,15 +70,17 @@ fun FlextimeLineChart(
         }
     }
 
-    CartesianChartHost(
-        chart = rememberCartesianChart(
-            rememberLineCartesianLayer(),
-            startAxis = VerticalAxis.rememberStart(valueFormatter = startFormatter),
-            bottomAxis = HorizontalAxis.rememberBottom(valueFormatter = bottomFormatter),
-        ),
-        modelProducer = modelProducer,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(300.dp)
-    )
+    key(isDaily) {
+        CartesianChartHost(
+            chart = rememberCartesianChart(
+                rememberLineCartesianLayer(),
+                startAxis = VerticalAxis.rememberStart(valueFormatter = startFormatter),
+                bottomAxis = HorizontalAxis.rememberBottom(valueFormatter = bottomFormatter),
+            ),
+            modelProducer = modelProducer,
+            modifier = modifier
+                .fillMaxWidth()
+                .height(chartHeight)
+        )
+    }
 }

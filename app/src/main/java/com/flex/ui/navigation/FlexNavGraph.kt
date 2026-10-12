@@ -53,6 +53,7 @@ import androidx.navigation.compose.rememberNavController
 import com.flex.ui.about.AboutScreen
 import com.flex.ui.analytics.AnalyticsScreen
 import com.flex.ui.backup.BackupScreen
+import com.flex.ui.dashboard.DashboardScreen
 import com.flex.ui.home.HomeScreen
 import com.flex.ui.month.MonthScreen
 import com.flex.ui.onboarding.OnboardingScreen
@@ -71,6 +72,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     data object Home : Screen("home", "Heute", Icons.Default.Home)
     data object Month : Screen("month", "Monat", Icons.Default.CalendarMonth)
     data object Planning : Screen("planning", "Planung", Icons.Default.EditCalendar)
+    data object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Dashboard)
     data object Quota : Screen("quota", "Quote", Icons.Default.Dashboard)
     data object Analytics : Screen("analytics", "Analytics", Icons.Default.BarChart)
     data object Year : Screen("year", "Jahr", Icons.Default.CalendarViewMonth)
@@ -89,11 +91,11 @@ val bottomNavItems = listOf(
     Screen.Home,
     Screen.Month,
     Screen.Planning,
-    Screen.Year
+    Screen.Dashboard
 )
 
 val moreItems = listOf(
-    Screen.Quota,
+    Screen.Year,
     Screen.Analytics,
     Screen.Settings
 )
@@ -173,7 +175,8 @@ fun FlexNavGraph(
             }
             composable(Screen.Month.route) { MonthScreen() }
             composable(Screen.Planning.route) { PlanningScreen() }
-            composable(Screen.Quota.route) { QuotaScreen() }
+            composable(Screen.Dashboard.route) { DashboardScreen() }
+            composable(Screen.Quota.route) { DashboardScreen() }
             composable(Screen.Analytics.route) { AnalyticsScreen() }
             composable(Screen.Year.route) { YearOverviewScreen() }
             composable(Screen.Settings.route) {
