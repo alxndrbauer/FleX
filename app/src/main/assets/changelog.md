@@ -12,6 +12,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Allow editing work time rules and sync planned days
 - Improve analytics charts and remove week comparison
 - Add comprehensive Dashboard screen to bottom navigation
+- Add bounce and morph animation to navigation icons
 
 ## [1.8.2] - 2026-10-08
 

@@ -1,5 +1,10 @@
 package com.flex.ui.navigation
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -22,6 +27,11 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.EditCalendar
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
@@ -33,14 +43,17 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
@@ -68,12 +81,17 @@ import com.flex.ui.settings.WorkTimeRulesScreen
 import com.flex.ui.year.YearOverviewScreen
 import kotlinx.coroutines.launch
 
-sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
-    data object Home : Screen("home", "Heute", Icons.Default.Home)
-    data object Month : Screen("month", "Monat", Icons.Default.CalendarMonth)
-    data object Planning : Screen("planning", "Planung", Icons.Default.EditCalendar)
-    data object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Dashboard)
-    data object Quota : Screen("quota", "Quote", Icons.Default.Dashboard)
+sealed class Screen(
+    val route: String,
+    val title: String,
+    val icon: ImageVector,
+    val outlinedIcon: ImageVector = icon
+) {
+    data object Home : Screen("home", "Heute", Icons.Default.Home, Icons.Outlined.Home)
+    data object Month : Screen("month", "Monat", Icons.Default.CalendarMonth, Icons.Outlined.CalendarMonth)
+    data object Planning : Screen("planning", "Planung", Icons.Default.EditCalendar, Icons.Outlined.EditCalendar)
+    data object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Dashboard, Icons.Outlined.Dashboard)
+    data object Quota : Screen("quota", "Quote", Icons.Default.Dashboard, Icons.Outlined.Dashboard)
     data object Analytics : Screen("analytics", "Analytics", Icons.Default.BarChart)
     data object Year : Screen("year", "Jahr", Icons.Default.CalendarViewMonth)
     data object Settings : Screen("settings", "Einstellungen", Icons.Default.Settings)
@@ -222,10 +240,18 @@ fun FlexNavGraph(
         Row(modifier = Modifier.fillMaxSize()) {
             NavigationRail {
                 bottomNavItems.forEach { screen ->
+                    val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
                     NavigationRailItem(
-                        icon = { Icon(screen.icon, contentDescription = screen.title) },
+                        icon = {
+                            AnimatedNavIcon(
+                                selected = isSelected,
+                                filledIcon = screen.icon,
+                                outlinedIcon = screen.outlinedIcon,
+                                contentDescription = screen.title
+                            )
+                        },
                         label = { Text(screen.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                        selected = isSelected,
                         onClick = {
                             navController.navigate(screen.route) {
                                 popUpTo(navController.graph.findStartDestination().id) {
@@ -238,12 +264,20 @@ fun FlexNavGraph(
                     )
                 }
 
+                val isMoreSelected = currentDestination?.hierarchy?.any { dest ->
+                    moreItems.any { it.route == dest.route }
+                } == true
                 NavigationRailItem(
-                    icon = { Icon(Icons.Default.Menu, contentDescription = "Mehr") },
+                    icon = {
+                        AnimatedNavIcon(
+                            selected = isMoreSelected,
+                            filledIcon = Icons.Default.Menu,
+                            outlinedIcon = Icons.Outlined.Menu,
+                            contentDescription = "Mehr"
+                        )
+                    },
                     label = { Text("Mehr", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
-                    selected = currentDestination?.hierarchy?.any { dest ->
-                        moreItems.any { it.route == dest.route }
-                    } == true,
+                    selected = isMoreSelected,
                     onClick = { showBottomSheet = true }
                 )
             }
@@ -257,10 +291,18 @@ fun FlexNavGraph(
             bottomBar = {
                 NavigationBar {
                     bottomNavItems.forEach { screen ->
+                        val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
                         NavigationBarItem(
-                            icon = { Icon(screen.icon, contentDescription = screen.title) },
+                            icon = {
+                                AnimatedNavIcon(
+                                    selected = isSelected,
+                                    filledIcon = screen.icon,
+                                    outlinedIcon = screen.outlinedIcon,
+                                    contentDescription = screen.title
+                                )
+                            },
                             label = { Text(screen.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
-                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            selected = isSelected,
                             onClick = {
                                 navController.navigate(screen.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
@@ -273,18 +315,80 @@ fun FlexNavGraph(
                         )
                     }
 
+                    val isMoreSelected = currentDestination?.hierarchy?.any { dest ->
+                        moreItems.any { it.route == dest.route }
+                    } == true
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.Menu, contentDescription = "Mehr") },
+                        icon = {
+                            AnimatedNavIcon(
+                                selected = isMoreSelected,
+                                filledIcon = Icons.Default.Menu,
+                                outlinedIcon = Icons.Outlined.Menu,
+                                contentDescription = "Mehr"
+                            )
+                        },
                         label = { Text("Mehr", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
-                        selected = currentDestination?.hierarchy?.any { dest ->
-                            moreItems.any { it.route == dest.route }
-                        } == true,
+                        selected = isMoreSelected,
                         onClick = { showBottomSheet = true }
                     )
                 }
             }
         ) { innerPadding ->
             AppNavHost(modifier = Modifier.padding(innerPadding))
+        }
+    }
+}
+
+@Composable
+private fun AnimatedNavIcon(
+    selected: Boolean,
+    filledIcon: ImageVector,
+    outlinedIcon: ImageVector,
+    contentDescription: String?
+) {
+    val scale = remember { Animatable(1f) }
+
+    LaunchedEffect(selected) {
+        if (selected) {
+            scale.animateTo(
+                targetValue = 0.82f,
+                animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing)
+            )
+            scale.animateTo(
+                targetValue = 1.22f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            )
+            scale.animateTo(
+                targetValue = 1.0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+        } else {
+            scale.snapTo(1f)
+        }
+    }
+
+    Box(
+        modifier = Modifier.graphicsLayer {
+            scaleX = scale.value
+            scaleY = scale.value
+        },
+        contentAlignment = Alignment.Center
+    ) {
+        Crossfade(
+            targetState = selected,
+            animationSpec = tween(durationMillis = 150),
+            label = "nav_icon_crossfade"
+        ) { isSelected ->
+            Icon(
+                imageVector = if (isSelected) filledIcon else outlinedIcon,
+                contentDescription = contentDescription
+            )
         }
     }
 }
