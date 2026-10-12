@@ -3,6 +3,8 @@ package com.flex.ui.month
 import com.flex.domain.model.getRuleForDate
 
 import android.widget.Toast
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -137,6 +139,7 @@ class MutableBlockState(
 fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -183,7 +186,10 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { viewModel.onExportClick() }) {
+            IconButton(onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                viewModel.onExportClick()
+            }) {
                 Icon(Icons.Default.FileDownload, contentDescription = "Exportieren")
             }
             IconButton(onClick = { viewModel.previousMonth() }) {
@@ -397,7 +403,10 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
         if (state.hasPlannedDays) {
             Spacer(modifier = Modifier.height(8.dp))
             Button(
-                onClick = { viewModel.confirmPlannedDays() },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                    viewModel.confirmPlannedDays()
+                },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -573,6 +582,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     OutlinedButton(
                         onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             viewModel.onExportDismiss()
                             csvLauncher.launch("flex_$yearMonthStr.csv")
                         },
@@ -582,6 +592,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                     }
                     OutlinedButton(
                         onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             viewModel.onExportDismiss()
                             pdfLauncher.launch("flex_$yearMonthStr.pdf")
                         },
@@ -945,6 +956,7 @@ fun EditDayDialog(
     onSave: (DayType, String?, List<TimeBlockInput>) -> Unit,
     onDelete: (() -> Unit)? = null
 ) {
+    val haptic = LocalHapticFeedback.current
     var dayType by remember { mutableStateOf(workDay.dayType) }
     var note by remember { mutableStateOf(workDay.note ?: "") }
 
@@ -981,7 +993,10 @@ fun EditDayDialog(
                 Text(workDay.date.format(DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)))
                 if (onDelete != null) {
                     IconButton(
-                        onClick = onDelete,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                            onDelete()
+                        },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
@@ -1008,31 +1023,54 @@ fun EditDayDialog(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     FilterChip(
-                        selected = dayType == DayType.WORK, onClick = { dayType = DayType.WORK },
+                        selected = dayType == DayType.WORK,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            dayType = DayType.WORK
+                        },
                         label = { Text("Arbeitstag") })
                     FilterChip(
-                        selected = dayType == DayType.BUSINESS_TRIP, onClick = { dayType = DayType.BUSINESS_TRIP },
+                        selected = dayType == DayType.BUSINESS_TRIP,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            dayType = DayType.BUSINESS_TRIP
+                        },
                         label = { Text("Dienstgang / Dienstreise") })
                     FilterChip(
                         selected = dayType == DayType.VACATION,
-                        onClick = { dayType = DayType.VACATION },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            dayType = DayType.VACATION
+                        },
                         label = { Text("Urlaub") })
                     FilterChip(
                         selected = dayType == DayType.SPECIAL_VACATION,
-                        onClick = { dayType = DayType.SPECIAL_VACATION },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            dayType = DayType.SPECIAL_VACATION
+                        },
                         enabled = !isSpecialVacationBlocked,
                         label = { Text("Sonderurlaub") })
                     FilterChip(
                         selected = dayType == DayType.FLEX_DAY,
-                        onClick = { dayType = DayType.FLEX_DAY },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            dayType = DayType.FLEX_DAY
+                        },
                         label = { Text("Gleittag") })
                     FilterChip(
                         selected = dayType == DayType.SATURDAY_BONUS,
-                        onClick = { dayType = DayType.SATURDAY_BONUS },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            dayType = DayType.SATURDAY_BONUS
+                        },
                         label = { Text("Samstag+") })
                     FilterChip(
                         selected = dayType == DayType.SICK_DAY,
-                        onClick = { dayType = DayType.SICK_DAY },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            dayType = DayType.SICK_DAY
+                        },
                         label = { Text("Krank") })
                 }
 
@@ -1125,12 +1163,18 @@ fun EditDayDialog(
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 FilterChip(
                                     selected = block.location == WorkLocation.OFFICE,
-                                    onClick = { block.location = WorkLocation.OFFICE },
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        block.location = WorkLocation.OFFICE
+                                    },
                                     label = { Text("Büro") }
                                 )
                                 FilterChip(
                                     selected = block.location == WorkLocation.HOME_OFFICE,
-                                    onClick = { block.location = WorkLocation.HOME_OFFICE },
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        block.location = WorkLocation.HOME_OFFICE
+                                    },
                                     label = { Text("HO") }
                                 )
                             }
@@ -1207,6 +1251,7 @@ fun EditDayDialog(
         },
         confirmButton = {
             TextButton(onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                 val timeBlockInputs = if (dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP)) {
                     blocks.mapNotNull { block ->
                         val effectiveLocation = if (dayType == DayType.BUSINESS_TRIP) WorkLocation.OFFICE else block.location

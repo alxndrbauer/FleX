@@ -2,6 +2,8 @@ package com.flex.ui.planning
 
 import com.flex.domain.model.getRuleForDate
 
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -109,6 +111,7 @@ import java.util.Locale
 @Composable
 fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
+    val haptic = LocalHapticFeedback.current
     val pagerState = rememberPagerState { 2 }
     val scope = rememberCoroutineScope()
     var showClearAllDialog by remember { mutableStateOf(false) }
@@ -197,7 +200,10 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                     val isEnabled = if (type == PlanType.SPECIAL_VACATION) !isSpecialVacationBlocked else true
                     FilterChip(
                         selected = state.selectedPlanType == type,
-                        onClick = { viewModel.setSelectedPlanType(type) },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.setSelectedPlanType(type)
+                        },
                         enabled = isEnabled,
                         label = { Text(type.label) },
                         leadingIcon = {
@@ -271,12 +277,16 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                                                 enabled = !isHoliday,
                                                 onClick = {
                                                     when {
-                                                        workDay?.isPlanned == true ->
+                                                        workDay?.isPlanned == true -> {
+                                                            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                                                             viewModel.removePlan(date)
+                                                        }
                                                         workDay != null ->
                                                             viewModel.openDayEditor(date)
-                                                        else ->
+                                                        else -> {
+                                                            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                                                             viewModel.planDay(date)
+                                                        }
                                                     }
                                                 },
                                                 onLongClick = { viewModel.openDayEditor(date) }
@@ -316,13 +326,19 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     FilledTonalButton(
-                        onClick = { viewModel.planRemainingAs(PlanType.HOME_OFFICE) },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                            viewModel.planRemainingAs(PlanType.HOME_OFFICE)
+                        },
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Rest als HO")
                     }
                     FilledTonalButton(
-                        onClick = { viewModel.planRemainingAs(PlanType.OFFICE) },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                            viewModel.planRemainingAs(PlanType.OFFICE)
+                        },
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Rest als Büro")
@@ -525,7 +541,11 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             },
             confirmButton = {
                 TextButton(
-                    onClick = { viewModel.clearAllPlanned(); showClearAllDialog = false },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                        viewModel.clearAllPlanned()
+                        showClearAllDialog = false
+                    },
                     enabled = plannedCount > 0
                 ) { Text("Löschen", color = MaterialTheme.colorScheme.error) }
             },
@@ -572,6 +592,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             },
             confirmButton = {
                 TextButton(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                     viewModel.syncPlannedDays(removeNonWorkDays = removeNonWorkDays)
                     showSyncRuleDialog = false
                 }) {
@@ -714,6 +735,7 @@ fun PlanHoursDialog(
     onDelete: (() -> Unit)? = null,
     onConfirm: (Int) -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     var hours by remember { mutableStateOf(initialHours.toString()) }
     var minutes by remember { mutableStateOf(initialMinutes.toString()) }
 
@@ -779,7 +801,10 @@ fun PlanHoursDialog(
                     val h = hours.toIntOrNull() ?: 0
                     val m = minutes.toIntOrNull() ?: 0
                     val total = h * 60 + m
-                    if (total > 0) onConfirm(total)
+                    if (total > 0) {
+                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                        onConfirm(total)
+                    }
                 }) {
                     Text("Speichern")
                 }
@@ -788,7 +813,10 @@ fun PlanHoursDialog(
         dismissButton = {
             if (onDelete != null) {
                 TextButton(
-                    onClick = onDelete,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                        onDelete()
+                    },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) { Text("Löschen") }
             } else {

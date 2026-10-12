@@ -37,11 +37,15 @@ class FlexApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var autoBookPlannedDays: com.flex.domain.usecase.AutoBookPlannedDaysUseCase
 
+    @Inject
+    lateinit var dataChangeEventBus: com.flex.domain.events.DataChangeEventBus
+
     override fun onCreate() {
         // Fix PackageManager alias state before Hilt init — prevents stuck launcher icon
         AppIconPreferences.fixOnStartup(this)
         super.onCreate()
         reRegisterGeofenceIfNeeded()
+        observeDataChanges()
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 holidaySyncService.syncForCurrentAndNextYear()
@@ -74,6 +78,14 @@ class FlexApplication : Application(), Configuration.Provider {
                 }
             } catch (e: Exception) {
                 Log.e("FlexApplication", "Failed to re-register geofence/wifi: ${e.message}")
+            }
+        }
+    }
+
+    private fun observeDataChanges() {
+        CoroutineScope(Dispatchers.Default).launch {
+            dataChangeEventBus.events.collect {
+                com.flex.widget.FlexWidgetUpdater.updateAll(this@FlexApplication)
             }
         }
     }

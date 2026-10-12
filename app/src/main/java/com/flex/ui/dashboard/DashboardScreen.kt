@@ -50,6 +50,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -91,6 +93,7 @@ import java.util.Locale
 @Composable
 fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
+    val haptic = LocalHapticFeedback.current
     var showPayoutConfirmationDialog by remember { mutableStateOf(false) }
     var showRevertConfirmationDialog by remember { mutableStateOf(false) }
     val today = LocalDate.now()
@@ -1060,6 +1063,7 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
             },
             confirmButton = {
                 Button(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                     showPayoutConfirmationDialog = false
                     viewModel.payoutSpecialVacation()
                 }) {
@@ -1083,6 +1087,7 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
             },
             confirmButton = {
                 Button(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                     showRevertConfirmationDialog = false
                     viewModel.revertSpecialVacationPayout()
                 }) {

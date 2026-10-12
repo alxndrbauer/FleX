@@ -151,6 +151,7 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsState()
     val remaining by viewModel.remainingMinutes.collectAsState()
     val yearChangeState by yearChangeViewModel.uiState.collectAsState()
+    val haptic = LocalHapticFeedback.current
     var showManualEntry by remember { mutableStateOf(false) }
     var editingBlock by remember { mutableStateOf<TimeBlock?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -202,6 +203,7 @@ fun HomeScreen(
             if (isWorkDay && holidayName == null && isToday) {
                 ExtendedFloatingActionButton(
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                         if (state.isClockRunning) viewModel.clockOut() else viewModel.clockIn()
                     },
                     icon = {
@@ -332,7 +334,10 @@ fun HomeScreen(
                     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                         SegmentedButton(
                             selected = state.selectedLocation == WorkLocation.OFFICE,
-                            onClick = { viewModel.setLocation(WorkLocation.OFFICE) },
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.setLocation(WorkLocation.OFFICE)
+                            },
                             shape = SegmentedButtonDefaults.itemShape(0, 2),
                             icon = {
                                 Icon(Icons.Default.Business, contentDescription = null,
@@ -343,7 +348,10 @@ fun HomeScreen(
                         }
                         SegmentedButton(
                             selected = state.selectedLocation == WorkLocation.HOME_OFFICE,
-                            onClick = { viewModel.setLocation(WorkLocation.HOME_OFFICE) },
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.setLocation(WorkLocation.HOME_OFFICE)
+                            },
                             shape = SegmentedButtonDefaults.itemShape(1, 2),
                             icon = {
                                 Icon(Icons.Default.Home, contentDescription = null,
@@ -448,6 +456,7 @@ fun HomeScreen(
                                         },
                                         enabled = isEnabled,
                                         onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             viewModel.setDayType(type)
                                             dayTypeExpanded = false
                                         },
@@ -478,7 +487,10 @@ fun HomeScreen(
                                 else -> "Samstag+"
                             }
                             Button(
-                                onClick = { viewModel.saveDayType(state.selectedDayType) },
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                    viewModel.saveDayType(state.selectedDayType)
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text("Als $typeLabel eintragen")
@@ -487,7 +499,10 @@ fun HomeScreen(
                         if (showDeleteButton) {
                             Spacer(modifier = Modifier.height(4.dp))
                             OutlinedButton(
-                                onClick = { viewModel.deleteDay() },
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                    viewModel.deleteDay()
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = MaterialTheme.colorScheme.error
@@ -1151,7 +1166,10 @@ internal fun TimelineBlockItem(
                     )
                 }
                 .combinedClickable(
-                    onClick = { onToggleLocation(block) },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onToggleLocation(block)
+                    },
                     onLongClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onEdit(block)
@@ -1311,6 +1329,7 @@ fun ManualTimeEntryDialog(
     onConfirmStartEnd: (LocalTime, LocalTime, WorkLocation) -> Unit,
     onConfirmDuration: (Int, WorkLocation) -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     var selectedTab by remember { mutableIntStateOf(0) }
     val defaultEnd = defaultStartTime.plusMinutes(dailyWorkMinutes.toLong())
     var startText by remember { mutableStateOf(TextFieldValue(defaultStartTime.format(DateTimeFormatter.ofPattern("HH:mm")))) }
@@ -1351,12 +1370,18 @@ fun ManualTimeEntryDialog(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(
                             selected = dialogLocation == WorkLocation.OFFICE,
-                            onClick = { dialogLocation = WorkLocation.OFFICE },
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                dialogLocation = WorkLocation.OFFICE
+                            },
                             label = { Text("Büro") }
                         )
                         FilterChip(
                             selected = dialogLocation == WorkLocation.HOME_OFFICE,
-                            onClick = { dialogLocation = WorkLocation.HOME_OFFICE },
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                dialogLocation = WorkLocation.HOME_OFFICE
+                            },
                             label = { Text("Home-Office") }
                         )
                     }
@@ -1435,13 +1460,17 @@ fun ManualTimeEntryDialog(
                     try {
                         val start = LocalTime.parse(startText.text, DateTimeFormatter.ofPattern("HH:mm"))
                         val end = LocalTime.parse(endText.text, DateTimeFormatter.ofPattern("HH:mm"))
+                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                         onConfirmStartEnd(start, end, dialogLocation)
                     } catch (_: Exception) { }
                 } else {
                     val h = durationHours.toIntOrNull() ?: 0
                     val m = durationMinutes.toIntOrNull() ?: 0
                     val total = h * 60 + m
-                    if (total > 0) onConfirmDuration(total, dialogLocation)
+                    if (total > 0) {
+                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                        onConfirmDuration(total, dialogLocation)
+                    }
                 }
             }) {
                 Text("Speichern")
@@ -1465,6 +1494,7 @@ fun EditTimeBlockDialog(
     onDelete: () -> Unit,
     onBook: ((startTime: LocalTime, endTime: LocalTime?, location: WorkLocation, isDuration: Boolean) -> Unit)? = null
 ) {
+    val haptic = LocalHapticFeedback.current
     val fmt = DateTimeFormatter.ofPattern("HH:mm")
     var startText by remember { mutableStateOf(TextFieldValue(block.startTime.format(fmt))) }
     var endText by remember { mutableStateOf(TextFieldValue(block.endTime?.format(fmt) ?: "")) }
@@ -1519,12 +1549,18 @@ fun EditTimeBlockDialog(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(
                             selected = dialogLocation == WorkLocation.OFFICE,
-                            onClick = { dialogLocation = WorkLocation.OFFICE },
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                dialogLocation = WorkLocation.OFFICE
+                            },
                             label = { Text("Büro") }
                         )
                         FilterChip(
                             selected = dialogLocation == WorkLocation.HOME_OFFICE,
-                            onClick = { dialogLocation = WorkLocation.HOME_OFFICE },
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                dialogLocation = WorkLocation.HOME_OFFICE
+                            },
                             label = { Text("Home-Office") }
                         )
                     }
@@ -1535,6 +1571,7 @@ fun EditTimeBlockDialog(
                     FilterChip(
                         selected = !isDuration,
                         onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             if (isDuration) hasSwitchedFromDuration = true
                             isDuration = false
                         },
@@ -1542,7 +1579,10 @@ fun EditTimeBlockDialog(
                     )
                     FilterChip(
                         selected = isDuration,
-                        onClick = { isDuration = true },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            isDuration = true
+                        },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Timer,
@@ -1639,6 +1679,7 @@ fun EditTimeBlockDialog(
                                 val start = LocalTime.parse(startText.text, DateTimeFormatter.ofPattern("HH:mm"))
                                 val end = if (endText.text.isBlank()) null
                                 else LocalTime.parse(endText.text, DateTimeFormatter.ofPattern("HH:mm"))
+                                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                                 onBook(start, end, dialogLocation, isDuration)
                             } catch (_: Exception) { }
                         },
@@ -1653,7 +1694,10 @@ fun EditTimeBlockDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = onDelete) {
+                    TextButton(onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                        onDelete()
+                    }) {
                         Text("Löschen", color = MaterialTheme.colorScheme.error)
                     }
                     Row {
@@ -1665,6 +1709,7 @@ fun EditTimeBlockDialog(
                                 val start = LocalTime.parse(startText.text, DateTimeFormatter.ofPattern("HH:mm"))
                                 val end = if (endText.text.isBlank()) null
                                 else LocalTime.parse(endText.text, DateTimeFormatter.ofPattern("HH:mm"))
+                                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                                 onSave(start, end, dialogLocation, isDuration)
                             } catch (_: Exception) { }
                         }) {

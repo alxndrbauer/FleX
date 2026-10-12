@@ -12,8 +12,8 @@ import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
-import com.flex.ui.quota.QuotaViewModel
-import com.flex.ui.quota.VacationInfo
+import com.flex.ui.dashboard.DashboardViewModel
+import com.flex.ui.dashboard.VacationInfo
 import com.flex.ui.yearchange.YearChangeViewModel
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.booleans.shouldBeFalse
@@ -48,7 +48,7 @@ class SpecialVacationPayoutBehaviorSpec : BehaviorSpec({
     fun createQuotaFixture(
         settings: Settings = Settings(specialVacationDays = 5, specialVacationPaidOut = false),
         yearDays: List<WorkDay> = emptyList()
-    ): Triple<QuotaViewModel, WorkDayRepository, SettingsRepository> {
+    ): Triple<DashboardViewModel, WorkDayRepository, SettingsRepository> {
         val getMonthWorkDays = mockk<GetMonthWorkDaysUseCase>(relaxed = true)
         val getSettings = mockk<GetSettingsUseCase>(relaxed = true)
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
@@ -64,7 +64,7 @@ class SpecialVacationPayoutBehaviorSpec : BehaviorSpec({
         every { calculateQuota(any(), any(), any(), any(), any(), any()) } returns QuotaStatus()
         every { calculateFlextime(any(), any(), any()) } returns FlextimeBalance()
 
-        val viewModel = QuotaViewModel(
+        val viewModel = DashboardViewModel(
             getMonthWorkDays,
             getSettings,
             workDayRepository,
@@ -117,7 +117,7 @@ class SpecialVacationPayoutBehaviorSpec : BehaviorSpec({
         }
     }
 
-    Given("ein Benutzer lässt sein gesamtes Sonderurlaubskontingent (5 Tage) über QuotaViewModel auszahlen") {
+    Given("ein Benutzer lässt sein gesamtes Sonderurlaubskontingent (5 Tage) über DashboardViewModel auszahlen") {
 
         When("noch keine Sonderurlaubstage genommen oder geplant wurden") {
             val (viewModel, _, settingsRepository) = createQuotaFixture()

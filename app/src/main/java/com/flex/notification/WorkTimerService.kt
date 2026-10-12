@@ -61,8 +61,8 @@ class WorkTimerService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // ALWAYS call startForeground to satisfy Context.startForegroundService() contract
         val isPaused = pausePreferences.isPaused
+        android.util.Log.d("WorkTimerService", "onStartCommand: action=${intent?.action}, isPaused=$isPaused, pauseStartTime=${pausePreferences.pauseStartTime}")
         if (Build.VERSION.SDK_INT >= 36) {
             val title = if (isPaused) "Pause läuft" else "Arbeitszeit läuft"
             val text = if (isPaused) "Pause" else "0m"
@@ -75,7 +75,7 @@ class WorkTimerService : Service() {
                 .setWhen(startTime)
                 .setUsesChronometer(true)
                 .setShowWhen(true)
-                .setOngoing(!isPaused)
+                .setOngoing(true)
                 .addExtras(android.os.Bundle().apply { putBoolean("android.requestPromotedOngoing", true) })
                 .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
                 .build())
@@ -84,6 +84,7 @@ class WorkTimerService : Service() {
         }
 
         if (intent?.action == ACTION_UPDATE && timerJob?.isActive == true) {
+            android.util.Log.d("WorkTimerService", "Handling ACTION_UPDATE: emitting updateTrigger")
             updateTrigger.tryEmit(Unit)
             updateQuickSettingsTile()
             return START_STICKY
@@ -106,17 +107,18 @@ class WorkTimerService : Service() {
                     val now = LocalTime.now()
                     val allBlocks = workDay?.timeBlocks ?: emptyList()
                     val runningBlock = allBlocks.find { it.endTime == null }
+                    val currentPaused = pausePreferences.isPaused
+                    android.util.Log.d("WorkTimerService", "collect: runningBlock=$runningBlock, isPaused=$currentPaused, allBlocksCount=${allBlocks.size}")
 
-                    if (runningBlock == null && (!pausePreferences.isPaused || allBlocks.isEmpty())) {
-                        if (pausePreferences.isPaused) {
-                            pausePreferences.clearPause()
-                        }
+                    if (runningBlock == null && !currentPaused) {
+                        android.util.Log.d("WorkTimerService", "STOPPING foreground service! runningBlock=null, isPaused=false")
                         stopForeground(STOP_FOREGROUND_REMOVE)
                         try {
                             getSystemService(NotificationManager::class.java).cancel(NOTIF_ID)
                         } catch (_: Exception) {}
                         stopSelf()
                         updateQuickSettingsTile()
+                        com.flex.widget.FlexWidgetUpdater.updateAll(this@WorkTimerService)
                         timerJob?.cancel()
                         return@collect
                     }
@@ -196,6 +198,7 @@ class WorkTimerService : Service() {
                     }
 
                     getSystemService(NotificationManager::class.java).notify(NOTIF_ID, notification)
+                    com.flex.widget.FlexWidgetUpdater.updateAll(this@WorkTimerService)
                 }
         }
         updateQuickSettingsTile()
@@ -209,6 +212,9 @@ class WorkTimerService : Service() {
         } catch (_: Exception) {}
         serviceScope.cancel()
         updateQuickSettingsTile()
+        CoroutineScope(Dispatchers.Default).launch {
+            com.flex.widget.FlexWidgetUpdater.updateAll(this@WorkTimerService)
+        }
         super.onDestroy()
     }
 
@@ -378,12 +384,15 @@ class WorkTimerService : Service() {
             .setUsesChronometer(true)
             .setShowWhen(true)
             .setContentIntent(mainActivityIntent())
-            .setOngoing(false)
+            .setOngoing(true)
             .setOnlyAlertOnce(true)
             .addExtras(android.os.Bundle().apply { putBoolean("android.requestPromotedOngoing", true) })
             .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
             .addAction(
                 Notification.Action.Builder(null, "Weiterarbeiten", resumeWorkIntent()).build()
+            )
+            .addAction(
+                Notification.Action.Builder(null, "Ausstempeln", clockOutIntent()).build()
             )
             .setStyle(progressStyle)
             .build()
@@ -445,7 +454,7 @@ class WorkTimerService : Service() {
             .setContentText("${formatDuration(netMinutes)} / ${formatDuration(targetMinutes)} · $locationLabel")
             .setSubText(subText)
             .setContentIntent(mainActivityIntent())
-            .setOngoing(false)
+            .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
@@ -458,6 +467,7 @@ class WorkTimerService : Service() {
                 }
             }
             .addAction(0, "Weiterarbeiten", resumeWorkIntent())
+            .addAction(0, "Ausstempeln", clockOutIntent())
             .build()
     }
 
@@ -477,11 +487,10 @@ class WorkTimerService : Service() {
     }
 
     private fun pauseIntent(): PendingIntent {
-        val intent = Intent(this, NotificationActionActivity::class.java).apply {
-            action = NotificationActionActivity.ACTION_PAUSE
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        val intent = Intent(this, PauseReceiver::class.java).apply {
+            action = PauseReceiver.ACTION_PAUSE
         }
-        return PendingIntent.getActivity(
+        return PendingIntent.getBroadcast(
             this, 102, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

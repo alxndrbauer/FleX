@@ -16,6 +16,9 @@ import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.ui.dashboard.DashboardUiState
+import com.flex.ui.dashboard.DashboardViewModel
+import com.flex.ui.dashboard.VacationInfo
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -55,7 +58,7 @@ class QuotaViewModelTest : BaseUnitTest() {
     @Mock
     private lateinit var calculateFlextime: CalculateFlextimeUseCase
 
-    private lateinit var viewModel: QuotaViewModel
+    private lateinit var viewModel: DashboardViewModel
 
     @BeforeEach
     override fun setUp() {
@@ -75,7 +78,7 @@ class QuotaViewModelTest : BaseUnitTest() {
     @Test
     fun `initial state uses current YearMonth`() = runTest {
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -100,7 +103,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(expectedQuota)
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -123,7 +126,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(expectedFlextime)
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -152,7 +155,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(yearDays))
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -182,7 +185,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(yearDays))
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -206,7 +209,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(yearDays))
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -235,7 +238,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(yearDays))
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -260,7 +263,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(getSettings()).thenReturn(flowOf(expectedSettings))
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -287,7 +290,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRuleForMonth(any(), any())).thenReturn(quotaRule)
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -307,7 +310,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRuleForMonth(any(), any())).thenReturn(null)
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -337,7 +340,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(expectedQuota)
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -370,7 +373,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(expectedFlextime)
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -399,7 +402,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(getMonthWorkDays(any())).thenReturn(flowOf(monthDays))
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -422,7 +425,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRuleForMonth(any(), any())).thenReturn(null)
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -442,7 +445,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(emptyList()))
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )
@@ -466,7 +469,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(yearDays))
 
         // When: ViewModel is created
-        viewModel = QuotaViewModel(
+        viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateQuota, calculateFlextime
         )

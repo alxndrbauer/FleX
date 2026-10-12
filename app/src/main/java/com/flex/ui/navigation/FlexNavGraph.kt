@@ -57,8 +57,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.AnimatedContentScope
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -71,7 +74,6 @@ import com.flex.ui.home.HomeScreen
 import com.flex.ui.month.MonthScreen
 import com.flex.ui.onboarding.OnboardingScreen
 import com.flex.ui.planning.PlanningScreen
-import com.flex.ui.quota.QuotaScreen
 import com.flex.ui.settings.CalendarSettingsScreen
 import com.flex.ui.settings.GeofenceSettingsScreen
 import com.flex.ui.settings.QuotaRulesScreen
@@ -170,10 +172,10 @@ fun FlexNavGraph(
             navController = navController,
             startDestination = if (onboardingCompleted) (initialRoute ?: Screen.Home.route) else Screen.Onboarding.route,
             modifier = modifier,
-            enterTransition = { fadeIn(tween(250)) + slideInHorizontally(tween(250)) { it / 6 } },
+            enterTransition = { fadeIn(tween(250)) },
             exitTransition = { fadeOut(tween(200)) },
             popEnterTransition = { fadeIn(tween(250)) },
-            popExitTransition = { fadeOut(tween(200)) + slideOutHorizontally(tween(200)) { it / 6 } }
+            popExitTransition = { fadeOut(tween(200)) }
         ) {
             composable(Screen.Onboarding.route) {
                 OnboardingScreen(
@@ -212,25 +214,25 @@ fun FlexNavGraph(
                     }
                 )
             }
-            composable(Screen.Backup.route) {
+            subScreenComposable(Screen.Backup.route) {
                 BackupScreen(onNavigateBack = { navController.popBackStack() })
             }
-            composable(Screen.About.route) {
+            subScreenComposable(Screen.About.route) {
                 AboutScreen(onNavigateBack = { navController.popBackStack() })
             }
-            composable(Screen.GeofenceSettings.route) {
+            subScreenComposable(Screen.GeofenceSettings.route) {
                 GeofenceSettingsScreen(onNavigateBack = { navController.popBackStack() })
             }
-            composable(Screen.WifiSettings.route) {
+            subScreenComposable(Screen.WifiSettings.route) {
                 WifiSettingsScreen(onNavigateBack = { navController.popBackStack() })
             }
-            composable(Screen.CalendarSettings.route) {
+            subScreenComposable(Screen.CalendarSettings.route) {
                 CalendarSettingsScreen(onNavigateBack = { navController.popBackStack() })
             }
-            composable(Screen.QuotaRules.route) {
+            subScreenComposable(Screen.QuotaRules.route) {
                 QuotaRulesScreen(onNavigateBack = { navController.popBackStack() })
             }
-            composable(Screen.WorkTimeRules.route) {
+            subScreenComposable(Screen.WorkTimeRules.route) {
                 WorkTimeRulesScreen(onNavigateBack = { navController.popBackStack() })
             }
         }
@@ -337,6 +339,20 @@ fun FlexNavGraph(
             AppNavHost(modifier = Modifier.padding(innerPadding))
         }
     }
+}
+
+private fun NavGraphBuilder.subScreenComposable(
+    route: String,
+    content: @Composable AnimatedContentScope.(NavBackStackEntry) -> Unit
+) {
+    composable(
+        route = route,
+        enterTransition = { slideInHorizontally(tween(300)) { it } + fadeIn(tween(300)) },
+        exitTransition = { fadeOut(tween(150)) },
+        popEnterTransition = { slideInHorizontally(tween(300)) { -it / 4 } + fadeIn(tween(300)) },
+        popExitTransition = { slideOutHorizontally(tween(300)) { it } + fadeOut(tween(150)) },
+        content = content
+    )
 }
 
 @Composable

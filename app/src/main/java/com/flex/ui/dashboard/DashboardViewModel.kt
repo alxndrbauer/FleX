@@ -86,7 +86,7 @@ private data class DateSelection(
 )
 
 @HiltViewModel
-open class DashboardViewModel @Inject constructor(
+class DashboardViewModel @Inject constructor(
     private val getMonthWorkDays: GetMonthWorkDaysUseCase,
     private val getSettings: GetSettingsUseCase,
     private val workDayRepository: WorkDayRepository,

@@ -20,11 +20,13 @@ class PauseReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        android.util.Log.d("PauseReceiver", "onReceive: action=${intent.action}")
         if (intent.action != ACTION_PAUSE) return
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val paused = pauseWorkUseCase()
+                android.util.Log.d("PauseReceiver", "pauseWorkUseCase result: $paused")
                 if (paused) {
                     context.startForegroundService(
                         Intent(context, WorkTimerService::class.java).apply {
@@ -36,6 +38,8 @@ class PauseReceiver : BroadcastReceiver() {
                         android.content.ComponentName(context, com.flex.tile.QuickSettingsTileService::class.java)
                     )
                 }
+            } catch (e: Exception) {
+                android.util.Log.e("PauseReceiver", "Error pausing work", e)
             } finally {
                 pendingResult.finish()
             }

@@ -8,4 +8,5 @@
     <string name="shortcut_home_office_long">Home-Office einstempeln</string>
     <string name="shortcut_month_short">Monat</string>
     <string name="shortcut_month_long">Monatsübersicht</string>
+    <string name="widget_description">Arbeitszeit und Gleitzeitsaldo auf einen Blick mit Schnell-Stempeln</string>
 </resources>

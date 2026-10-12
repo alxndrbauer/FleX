@@ -13,7 +13,7 @@ import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
-import com.flex.ui.quota.QuotaViewModel
+import com.flex.ui.dashboard.DashboardViewModel
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.shouldBe
@@ -48,7 +48,7 @@ class QuotaViewModelBehaviorSpec : BehaviorSpec({
         quotaRules: List<QuotaRule> = emptyList(),
         quotaResult: QuotaStatus = QuotaStatus(),
         flextimeResult: FlextimeBalance = FlextimeBalance()
-    ): QuotaViewModel {
+    ): DashboardViewModel {
         val getMonthWorkDays = mockk<GetMonthWorkDaysUseCase>(relaxed = true)
         val getSettings = mockk<GetSettingsUseCase>(relaxed = true)
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
@@ -69,7 +69,7 @@ class QuotaViewModelBehaviorSpec : BehaviorSpec({
         every { calculateFlextime(any(), any(), any()) } returns flextimeResult
         every { calculateFlextime(any(), any(), any(), any()) } returns flextimeResult
 
-        return QuotaViewModel(
+        return DashboardViewModel(
             getMonthWorkDays = getMonthWorkDays,
             getSettings = getSettings,
             workDayRepository = workDayRepository,
