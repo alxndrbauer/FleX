@@ -1,11 +1,13 @@
 package com.flex.domain.usecase
 
+import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.DayType
 import com.flex.domain.model.ExportBlockRow
 import com.flex.domain.model.ExportData
 import com.flex.domain.model.ExportDayRow
 import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.Settings
+import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import kotlinx.coroutines.flow.firstOrNull
@@ -29,16 +31,20 @@ class PrepareExportDataUseCase @Inject constructor(
         var totalNet = 0L
         var totalTarget = 0L
 
+        fun getRule(date: java.time.LocalDate): WorkTimeRule? {
+            return settingsRepository.getWorkTimeRuleForDate(date, workTimeRules)
+        }
+
         fun getDailyTarget(date: java.time.LocalDate): Int {
-            return settingsRepository.getWorkTimeRuleForDate(date, workTimeRules)?.dailyWorkMinutes
-                ?: settings.dailyWorkMinutes
+            return getRule(date)?.dailyWorkMinutes ?: settings.dailyWorkMinutes
         }
 
         for (day in 1..yearMonth.lengthOfMonth()) {
             val date = yearMonth.atDay(day)
             val workDay = workDayMap[date]
-            val dayOfWeek = date.dayOfWeek
-            val isWeekend = dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY
+            val rule = getRule(date)
+            val activeWorkDays = rule?.workDays ?: DEFAULT_WORK_DAYS
+            val isScheduledWorkDay = date.dayOfWeek in activeWorkDays
             val isHoliday = PublicHolidays.isHoliday(date)
             val dailyTarget = getDailyTarget(date)
 
@@ -81,7 +87,11 @@ class PrepareExportDataUseCase @Inject constructor(
                     workDay.location
                 }
 
-                val target = if (isWorkType) dailyTarget else 0
+                val target = if (workDay.dayType in listOf(DayType.WORK, DayType.BUSINESS_TRIP) && isScheduledWorkDay && !isHoliday) {
+                    dailyTarget
+                } else {
+                    0
+                }
 
                 rows.add(ExportDayRow(
                     date = date,
@@ -100,7 +110,7 @@ class PrepareExportDataUseCase @Inject constructor(
                 if (isWorkType) totalNet += result.netMinutes
                 totalTarget += target
             } else {
-                val target = if (!isWeekend && !isHoliday) dailyTarget else 0
+                val target = if (isScheduledWorkDay && !isHoliday) dailyTarget else 0
                 rows.add(ExportDayRow(
                     date = date,
                     dayType = null,

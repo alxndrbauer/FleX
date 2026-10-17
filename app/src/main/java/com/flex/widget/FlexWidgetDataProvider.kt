@@ -66,8 +66,12 @@ class FlexWidgetDataProvider @Inject constructor(
         yearDays: List<WorkDay>,
         isPaused: Boolean
     ): WidgetState {
-        val targetMinutesToday = (settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)?.dailyWorkMinutes
-            ?: settings.dailyWorkMinutes).toLong()
+        val rule = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)
+        val targetMinutesToday = if (rule != null) {
+            if (today.dayOfWeek in rule.workDays) rule.dailyWorkMinutes.toLong() else 0L
+        } else {
+            settings.dailyWorkMinutes.toLong()
+        }
 
         val allBlocks = workDay?.timeBlocks ?: emptyList()
         val runningBlock = allBlocks.find { it.endTime == null }

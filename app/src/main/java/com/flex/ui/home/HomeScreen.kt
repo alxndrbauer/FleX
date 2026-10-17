@@ -568,8 +568,9 @@ fun HomeScreen(
     // Manual entry dialog
     if (showManualEntry) {
         val isBusinessTrip = state.selectedDayType == DayType.BUSINESS_TRIP
+        val defaultMinutes = if (state.dailyTargetMinutes > 0) state.dailyTargetMinutes else state.settings.dailyWorkMinutes
         ManualTimeEntryDialog(
-            dailyWorkMinutes = state.settings.dailyWorkMinutes,
+            dailyWorkMinutes = defaultMinutes,
             selectedLocation = if (isBusinessTrip) WorkLocation.OFFICE else state.selectedLocation,
             defaultStartTime = state.settings.defaultStartTime,
             existingBlocks = state.timeBlocks,
@@ -620,8 +621,8 @@ private fun HeroCard(
     onGoToToday: () -> Unit,
     onJumpToDate: (LocalDate) -> Unit,
 ) {
-    val rawDailyProgress = if (state.settings.dailyWorkMinutes > 0)
-        (state.dayWorkTime.netMinutes.toFloat() / state.settings.dailyWorkMinutes).coerceIn(0f, 1f)
+    val rawDailyProgress = if (state.dailyTargetMinutes > 0)
+        (state.dayWorkTime.netMinutes.toFloat() / state.dailyTargetMinutes).coerceIn(0f, 1f)
     else 0f
     val animatedDailyProgress by animateFloatAsState(
         targetValue = rawDailyProgress,
@@ -633,7 +634,7 @@ private fun HeroCard(
     val mins = state.dayWorkTime.netMinutes % 60
     val netTimeText = if (hours > 0) "${hours}h ${mins}m" else "${mins}min"
 
-    val dailyGoalReached = state.dayWorkTime.netMinutes >= state.settings.dailyWorkMinutes
+    val dailyGoalReached = state.dailyTargetMinutes > 0 && state.dayWorkTime.netMinutes >= state.dailyTargetMinutes
     val statusLabel = when {
         state.isClockRunning -> "Läuft"
         dailyGoalReached -> "Fertig"
@@ -755,8 +756,8 @@ private fun HeroCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Stats row: Soll | Pause | Verbleibend
-            val tH = state.settings.dailyWorkMinutes / 60
-            val tM = state.settings.dailyWorkMinutes % 60
+            val tH = state.dailyTargetMinutes / 60
+            val tM = state.dailyTargetMinutes % 60
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -805,7 +806,9 @@ private fun HeroCard(
             remaining?.let { rem ->
                 if (rem > 0) {
                     val animProg by animateFloatAsState(
-                        targetValue = (1f - rem.toFloat() / state.settings.dailyWorkMinutes).coerceIn(0f, 1f),
+                        targetValue = if (state.dailyTargetMinutes > 0) {
+                            (1f - rem.toFloat() / state.dailyTargetMinutes).coerceIn(0f, 1f)
+                        } else 0f,
                         animationSpec = tween(600),
                         label = "remainingProgress"
                     )

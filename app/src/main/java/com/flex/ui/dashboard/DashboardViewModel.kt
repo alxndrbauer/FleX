@@ -16,6 +16,7 @@ import com.flex.domain.model.TimeSeriesPoint
 import com.flex.domain.model.UpcomingEvent
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkHabits
+import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.model.getRuleForMonth
 import com.flex.domain.repository.SettingsRepository
@@ -159,14 +160,17 @@ class DashboardViewModel @Inject constructor(
 
                     // Cumulative flextime from all year's actual data
                     val actualYearDays = yearDays.filter { !it.isPlanned }
-                    val flextime = calculateFlextime(actualYearDays, settings, yearMonth)
+                    val flextime = calculateFlextime(actualYearDays, settings, yearMonth, workTimeRules)
 
                     // Fixed monthly target, reduced by neutral days
                     val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
                     val neutralDays = monthDays.filter { it.dayType in neutralTypes }
                     val neutralDaysDeduction = neutralDays.sumOf { day ->
-                        (settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)?.dailyWorkMinutes
-                            ?: settings.dailyWorkMinutes).toLong()
+                        val rule = settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)
+                        val isWorkDay = if (rule != null) day.date.dayOfWeek in rule.workDays else true
+                        if (isWorkDay) {
+                            (rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
+                        } else 0L
                     }
                     val baseMonthlyTarget = (workTimeRules.getRuleForMonth(yearMonth)?.monthlyWorkMinutes
                         ?: settings.monthlyWorkMinutes).toLong()
@@ -206,7 +210,7 @@ class DashboardViewModel @Inject constructor(
                     val habits = calculateDashboardMetrics.calculateWorkHabits(monthDays)
                     val absenceSummary = calculateDashboardMetrics.calculateAbsenceSummary(yearDays)
                     val currentWeekStatus = if (year == today.year) {
-                        calculateDashboardMetrics.calculateCurrentWeekStatus(today, yearDays, settings)
+                        calculateDashboardMetrics.calculateCurrentWeekStatus(today, yearDays, settings, workTimeRules)
                     } else null
 
                     val monthFlextime = calculateAnalytics(

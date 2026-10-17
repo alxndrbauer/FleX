@@ -12,6 +12,7 @@ import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
@@ -78,7 +79,8 @@ data class HomeUiState(
     val requiredOfficeMinutes: Long = 0,
     val breakCheckResult: BreakCheckResult = BreakCheckResult(emptyList(), skipped = false),
     val permissionIssues: List<String> = emptyList(),
-    val hasTimeBlockOverlap: Boolean = false
+    val hasTimeBlockOverlap: Boolean = false,
+    val dailyTargetMinutes: Int = 426
 )
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -128,8 +130,12 @@ class HomeViewModel @Inject constructor(
         }
         val isBusinessTrip = state.selectedDayType == DayType.BUSINESS_TRIP
         val result = if (isBusinessTrip) calculateDayWorkTime(blocksForCalc, isBusinessTrip = true) else calculateDayWorkTime(blocksForCalc)
-        val dailyTarget = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)?.dailyWorkMinutes
-            ?: state.settings.dailyWorkMinutes
+        val rule = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)
+        val dailyTarget = if (rule != null) {
+            if (today.dayOfWeek in rule.workDays) rule.dailyWorkMinutes else 0
+        } else {
+            state.settings.dailyWorkMinutes
+        }
         return (dailyTarget - result.netMinutes).toInt().coerceAtLeast(0)
     }
 
@@ -339,9 +345,22 @@ class HomeViewModel @Inject constructor(
 
                         val baseMonthlyTarget = (settingsRepository.getWorkTimeRuleForDate(yearMonth.atEndOfMonth(), workTimeRules)?.monthlyWorkMinutes ?: settings.monthlyWorkMinutes).toLong()
                         val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
-                        val neutralDaysDeduction = actualMonthDays.filter { it.dayType in neutralTypes }.sumOf { (settingsRepository.getWorkTimeRuleForDate(it.date, workTimeRules)?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong() }
+                        val neutralDaysDeduction = actualMonthDays.filter { it.dayType in neutralTypes }.sumOf { day ->
+                            val rule = settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)
+                            val isWorkDay = if (rule != null) day.date.dayOfWeek in rule.workDays else true
+                            if (isWorkDay) {
+                                (rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
+                            } else 0L
+                        }
                         val totalMin = (baseMonthlyTarget - neutralDaysDeduction).coerceAtLeast(0)
                         val requiredMin = (totalMin * qPercent / 100.0).toLong()
+
+                        val ruleForDate = settingsRepository.getWorkTimeRuleForDate(date, workTimeRules)
+                        val dailyTarget = if (ruleForDate != null) {
+                            if (date.dayOfWeek in ruleForDate.workDays) ruleForDate.dailyWorkMinutes else 0
+                        } else {
+                            settings.dailyWorkMinutes
+                        }
 
                         val workingDays = actualMonthDays.filter { it.dayType !in neutralTypes }
                         var officeMin = 0L
@@ -387,7 +406,8 @@ class HomeViewModel @Inject constructor(
                                 officeMinutes = officeMin,
                                 requiredOfficeMinutes = requiredMin,
                                 breakCheckResult = breakCheckResult,
-                                hasTimeBlockOverlap = hasOverlap
+                                hasTimeBlockOverlap = hasOverlap,
+                                dailyTargetMinutes = dailyTarget
                             ),
                             workTimeRules
                         )

@@ -255,4 +255,23 @@ class DashboardViewModelTest : BaseUnitTest() {
         assertThat(viewModel.uiState.value.projectedQuotaStatus.officeDays).isEqualTo(2)
         assertThat(viewModel.uiState.value.forecast?.plannedOfficeDays).isEqualTo(1)
     }
+
+    @Test
+    fun `calculateFlextime and currentWeekStatus receive workTimeRules when available`() = runTest {
+        val rule = com.flex.domain.model.WorkTimeRule(
+            id = 1,
+            validFrom = YearMonth.of(2026, 10),
+            dailyWorkMinutes = 324, // 5h 24m
+            monthlyWorkMinutes = 7047
+        )
+        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(listOf(rule)))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        verify(calculateFlextime).invoke(any(), any(), any(), org.mockito.kotlin.eq(listOf(rule)))
+        val currentWeek = viewModel.uiState.value.currentWeekStatus
+        assertThat(currentWeek).isNotNull()
+        assertThat(currentWeek?.targetMinutes).isEqualTo(5 * 324L)
+    }
 }

@@ -2,9 +2,11 @@ package com.flex.ui.year
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.DayType
 import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
@@ -13,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
@@ -24,7 +27,9 @@ data class DayHeatmapEntry(
     val holidayName: String?,
     val netMinutes: Long,
     val location: WorkLocation,
-    val isPlanned: Boolean
+    val isPlanned: Boolean,
+    val isScheduledWorkDay: Boolean = true,
+    val dailyTargetMinutes: Int = 426
 )
 
 data class YearSummary(
@@ -54,7 +59,8 @@ data class YearOverviewUiState(
 class YearOverviewViewModel @Inject constructor(
     private val workDayRepository: WorkDayRepository,
     private val getSettings: GetSettingsUseCase,
-    private val calculateDayWorkTime: CalculateDayWorkTimeUseCase
+    private val calculateDayWorkTime: CalculateDayWorkTimeUseCase,
+    private val settingsRepository: SettingsRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(YearOverviewUiState())
@@ -72,10 +78,12 @@ class YearOverviewViewModel @Inject constructor(
     private fun loadData() {
         viewModelScope.launch {
             _year.collect { year ->
+                val rulesFlow = settingsRepository?.getWorkTimeRules() ?: flowOf(emptyList())
                 combine(
                     workDayRepository.getWorkDaysForYear(year),
-                    getSettings()
-                ) { workDays, settings ->
+                    getSettings(),
+                    rulesFlow
+                ) { workDays, settings, workTimeRules ->
                     val holidays = PublicHolidays.getHolidaysForYear(year)
                     val workDayMap = workDays.filter { !it.isPlanned }.associateBy { it.date }
 
@@ -91,6 +99,12 @@ class YearOverviewViewModel @Inject constructor(
                             if (wd.dayType == DayType.BUSINESS_TRIP) calculateDayWorkTime(wd.timeBlocks, isBusinessTrip = true).netMinutes
                             else calculateDayWorkTime(wd.timeBlocks).netMinutes
                         } else 0L
+
+                        val rule = settingsRepository?.getWorkTimeRuleForDate(d, workTimeRules)
+                        val activeWorkDays = rule?.workDays ?: DEFAULT_WORK_DAYS
+                        val isScheduledWorkDay = d.dayOfWeek in activeWorkDays
+                        val dailyTarget = rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes
+
                         entries[d] = DayHeatmapEntry(
                             date = d,
                             dayType = wd?.dayType,
@@ -98,7 +112,9 @@ class YearOverviewViewModel @Inject constructor(
                             holidayName = holidayName,
                             netMinutes = netMin,
                             location = wd?.location ?: WorkLocation.HOME_OFFICE,
-                            isPlanned = wd?.isPlanned ?: false
+                            isPlanned = wd?.isPlanned ?: false,
+                            isScheduledWorkDay = isScheduledWorkDay,
+                            dailyTargetMinutes = dailyTarget
                         )
                         d = d.plusDays(1)
                     }

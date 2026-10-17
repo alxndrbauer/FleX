@@ -15,6 +15,10 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Add bounce and morph animation to navigation icons
 - Add homescreen widget, UX improvements, R8 shrinking, and fix pause notification
 
+### Bugfixes
+
+- Respect WorkTimeRule targets and work days across views and widgets
+
 ## [1.8.2] - 2026-10-08
 
 ### Features

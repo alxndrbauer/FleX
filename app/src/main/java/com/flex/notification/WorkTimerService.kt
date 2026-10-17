@@ -13,6 +13,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import com.flex.MainActivity
 import com.flex.R
+import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
@@ -125,8 +126,15 @@ class WorkTimerService : Service() {
 
                     val settings = settingsRepository.getSettings().first()
                     val workTimeRules = settingsRepository.getWorkTimeRules().first()
-                    val targetMinutes = (settingsRepository.getWorkTimeRuleForDate(LocalDate.now(), workTimeRules)?.dailyWorkMinutes
-                        ?: settings.dailyWorkMinutes).toLong()
+                    val today = LocalDate.now()
+                    val rule = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)
+                    val activeWorkDays = rule?.workDays ?: DEFAULT_WORK_DAYS
+                    val isScheduledWorkDay = today.dayOfWeek in activeWorkDays
+                    val targetMinutes = if (isScheduledWorkDay) {
+                        (rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
+                    } else {
+                        0L
+                    }
 
                     val notification = if (runningBlock != null) {
                         if (pausePreferences.isPaused) {

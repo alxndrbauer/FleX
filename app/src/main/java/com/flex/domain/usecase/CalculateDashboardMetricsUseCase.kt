@@ -12,6 +12,9 @@ import com.flex.domain.model.UpcomingEventType
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkHabits
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.model.WorkTimeRule
+import com.flex.domain.model.DEFAULT_WORK_DAYS
+import com.flex.domain.model.getRuleForDate
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -263,7 +266,8 @@ class CalculateDashboardMetricsUseCase @Inject constructor(
     fun calculateCurrentWeekStatus(
         today: LocalDate,
         yearDays: List<WorkDay>,
-        settings: Settings
+        settings: Settings,
+        workTimeRules: List<WorkTimeRule> = emptyList()
     ): CurrentWeekStatus {
         val weekNumber = today.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
         val monday = today.with(DayOfWeek.MONDAY)
@@ -273,7 +277,16 @@ class CalculateDashboardMetricsUseCase @Inject constructor(
         val workedMinutes = weekDays.sumOf {
             calculateDayWorkTime(it.timeBlocks, it.dayType == DayType.BUSINESS_TRIP).netMinutes
         }
-        val targetMinutes = (settings.dailyWorkMinutes * 5).toLong()
+        var targetMinutes = 0L
+        var d = monday
+        while (!d.isAfter(sunday)) {
+            val rule = workTimeRules.getRuleForDate(d)
+            val activeWorkDays = rule?.workDays ?: DEFAULT_WORK_DAYS
+            if (d.dayOfWeek in activeWorkDays) {
+                targetMinutes += (rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes)
+            }
+            d = d.plusDays(1)
+        }
 
         val officeDays = weekDays.count {
             it.dayType in setOf(DayType.WORK, DayType.BUSINESS_TRIP) &&

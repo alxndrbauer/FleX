@@ -170,8 +170,11 @@ private data class MonthConfig(
                 val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
                 val neutralDays = prognosisDays.filter { it.dayType in neutralTypes }
                 val neutralDaysDeduction = neutralDays.sumOf { day ->
-                    (settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)?.dailyWorkMinutes
-                        ?: settings.dailyWorkMinutes).toLong()
+                    val rule = settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)
+                    val isWorkDay = if (rule != null) day.date.dayOfWeek in rule.workDays else true
+                    if (isWorkDay) {
+                        (rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
+                    } else 0L
                 }
                 val baseMonthlyTarget = (workTimeRules.getRuleForMonth(month)?.monthlyWorkMinutes
                     ?: settings.monthlyWorkMinutes).toLong()
@@ -242,7 +245,11 @@ private data class MonthConfig(
                     else calculateDayWorkTime(day.timeBlocks).netMinutes
                 }
                 val creditMinutesMonth = creditDaysInMonth.sumOf { day ->
-                    (settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
+                    val rule = settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)
+                    val isWorkDay = if (rule != null) day.date.dayOfWeek in rule.workDays else true
+                    if (isWorkDay) {
+                        (rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
+                    } else 0L
                 }
 
                 var holidayCreditMinutes = 0L
@@ -309,6 +316,10 @@ private data class MonthConfig(
 
     fun nextMonth() {
         _selectedMonth.value = _selectedMonth.value.plusMonths(1)
+    }
+
+    fun selectMonth(month: YearMonth) {
+        _selectedMonth.value = month
     }
 
     fun selectDay(date: LocalDate) {

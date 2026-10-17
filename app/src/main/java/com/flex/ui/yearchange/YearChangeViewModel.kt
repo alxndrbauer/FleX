@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
@@ -52,16 +53,17 @@ class YearChangeViewModel @Inject constructor(
                 .flatMapLatest { settings ->
                     combine(
                         workDayRepository.getWorkDaysForYear(settings.settingsYear),
+                        settingsRepository.getWorkTimeRules().onStart { emit(emptyList()) },
                         _manuallyOpened,
                         _dismissed
-                    ) { workDays, manuallyOpened, dismissed ->
+                    ) { workDays, workTimeRules, manuallyOpened, dismissed ->
                         val actualDays = workDays.filter { !it.isPlanned }
                         val usedVacation = actualDays.count { it.dayType == DayType.VACATION }
                         val remaining = maxOf(
                             0,
                             settings.annualVacationDays + settings.carryOverVacationDays - usedVacation
                         )
-                        val balance = calculateFlextime(actualDays, settings)
+                        val balance = calculateFlextime(actualDays, settings, null, workTimeRules)
                         val shouldShowAuto = LocalDate.now().year > settings.settingsYear
                         val showDialog = (shouldShowAuto || manuallyOpened) && !dismissed
 

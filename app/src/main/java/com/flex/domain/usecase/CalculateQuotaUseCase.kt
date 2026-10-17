@@ -81,7 +81,13 @@ class CalculateQuotaUseCase @Inject constructor(
         }
 
         val neutralDays = workDays.filter { it.dayType in neutralTypes }
-        val neutralDaysDeduction = neutralDays.sumOf { getDailyTarget(it.date).toLong() }
+        val neutralDaysDeduction = neutralDays.sumOf { day ->
+            val rule = workTimeRules.getRuleForDate(day.date)
+            val isWorkDay = if (rule != null) day.date.dayOfWeek in rule.workDays else true
+            if (isWorkDay) {
+                (rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
+            } else 0L
+        }
         val baseMonthlyTarget = getMonthlyTarget(yearMonth).toLong()
         val fixedTarget = (baseMonthlyTarget - neutralDaysDeduction).coerceAtLeast(0)
         val officePercent = if (fixedTarget > 0) {

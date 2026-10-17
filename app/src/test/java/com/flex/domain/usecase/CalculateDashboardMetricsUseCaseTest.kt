@@ -9,9 +9,11 @@ import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.UpcomingEventType
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.model.WorkTimeRule
 import com.google.common.truth.Truth.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -324,5 +326,119 @@ class CalculateDashboardMetricsUseCaseTest : BaseUnitTest() {
         assertThat(status.targetMinutes).isEqualTo(2400L) // 40h = 2400m
         assertThat(status.officeDays).isEqualTo(2)
         assertThat(status.homeOfficeDays).isEqualTo(1)
+    }
+
+    @Test
+    fun `calculateCurrentWeekStatus calculates targetMinutes using WorkTimeRule for each day in week`() {
+        // Given: KW 42 in October 2026 (Mon 2026-10-12 .. Sun 2026-10-18)
+        val today = LocalDate.of(2026, 10, 14) // Wednesday
+        val rule = WorkTimeRule(
+            id = 1,
+            validFrom = YearMonth.of(2026, 10),
+            dailyWorkMinutes = 324, // 5h 24m
+            monthlyWorkMinutes = 7047,
+            workDays = setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+        )
+
+        // When
+        val status = useCase.calculateCurrentWeekStatus(
+            today = today,
+            yearDays = emptyList(),
+            settings = Settings(dailyWorkMinutes = 426), // 7h 6m fallback
+            workTimeRules = listOf(rule)
+        )
+
+        // Then: 5 days * 324m = 1620m (27h 0m), not 5 * 426 = 2130m (35h 30m)
+        assertThat(status.targetMinutes).isEqualTo(1620L)
+    }
+
+    @Test
+    fun `calculateCurrentWeekStatus respects custom workDays like 4-day week in WorkTimeRule`() {
+        // Given: 4-day week (Tue..Fri), 5h per day = 300 min
+        val today = LocalDate.of(2026, 1, 14) // Wednesday
+        val rule = WorkTimeRule(
+            id = 1,
+            validFrom = YearMonth.of(2026, 1),
+            dailyWorkMinutes = 300, // 5h 0m
+            monthlyWorkMinutes = 5220,
+            workDays = setOf(DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+        )
+
+        // When
+        val status = useCase.calculateCurrentWeekStatus(
+            today = today,
+            yearDays = emptyList(),
+            settings = Settings(dailyWorkMinutes = 426),
+            workTimeRules = listOf(rule)
+        )
+
+        // Then: 4 days * 300m = 1200m (20h 0m)
+        assertThat(status.targetMinutes).isEqualTo(1200L)
+    }
+
+    @Test
+    fun `calculateCurrentWeekStatus handles mid-week month transition with different rules`() {
+        // Given: Week spanning September and October 2026 (KW 40: Mon 2026-09-28 .. Sun 2026-10-04)
+        // Mon 28, Tue 29, Wed 30 are in September (Rule: 426m = 7h 6m)
+        // Thu 01, Fri 02 are in October (Rule: 324m = 5h 24m)
+        val today = LocalDate.of(2026, 10, 1) // Thursday
+        val sepRule = WorkTimeRule(
+            id = 1,
+            validFrom = YearMonth.of(2026, 8),
+            dailyWorkMinutes = 426,
+            monthlyWorkMinutes = 9266,
+            workDays = setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+        )
+        val octRule = WorkTimeRule(
+            id = 2,
+            validFrom = YearMonth.of(2026, 10),
+            dailyWorkMinutes = 324,
+            monthlyWorkMinutes = 7047,
+            workDays = setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+        )
+
+        // When
+        val status = useCase.calculateCurrentWeekStatus(
+            today = today,
+            yearDays = emptyList(),
+            settings = Settings(dailyWorkMinutes = 480),
+            workTimeRules = listOf(sepRule, octRule)
+        )
+
+        // Then: 3 days * 426m (Mon, Tue, Wed) + 2 days * 324m (Thu, Fri) = 1278 + 648 = 1926m (32h 6m)
+        assertThat(status.targetMinutes).isEqualTo(1926L)
+    }
+
+    @Test
+    fun `calculateCurrentWeekStatus handles mid-week month transition with different workDays`() {
+        // Given: KW 14 in 2026 (Mon 2026-03-30 .. Sun 2026-04-05)
+        // March: 5-day week (Mon..Fri), 240m (4h 0m) -> Mon 30, Tue 31 = 2 days * 240m = 480m
+        // April: 4-day week (Tue..Fri), 300m (5h 0m) -> Wed 01, Thu 02, Fri 03 = 3 days * 300m = 900m
+        val today = LocalDate.of(2026, 4, 2) // Thursday
+        val marchRule = WorkTimeRule(
+            id = 1,
+            validFrom = YearMonth.of(2026, 3),
+            dailyWorkMinutes = 240,
+            monthlyWorkMinutes = 5220,
+            workDays = setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+        )
+        val aprilRule = WorkTimeRule(
+            id = 2,
+            validFrom = YearMonth.of(2026, 4),
+            dailyWorkMinutes = 300,
+            monthlyWorkMinutes = 5220,
+            workDays = setOf(DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+        )
+
+        // When
+        val status = useCase.calculateCurrentWeekStatus(
+            today = today,
+            yearDays = emptyList(),
+            settings = Settings(dailyWorkMinutes = 426),
+            workTimeRules = listOf(marchRule, aprilRule)
+        )
+
+        // Then: 2 * 240m + 3 * 300m = 480 + 900 = 1380m (23h 0m)
+        assertThat(status.targetMinutes).isEqualTo(1380L)
     }
 }

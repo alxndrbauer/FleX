@@ -1,5 +1,6 @@
 package com.flex.ui.month
 
+import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.getRuleForDate
 
 import android.widget.Toast
@@ -463,10 +464,15 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                                 val showDailyFlex = dayWorkDay != null && (
                                     dayWorkDay.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP, DayType.FLEX_DAY)
                                 )
+                                val rule = state.workTimeRules.getRuleForDate(date)
+                                val activeWorkDays = rule?.workDays ?: DEFAULT_WORK_DAYS
+                                val isOffDay = date.dayOfWeek !in activeWorkDays
+
                                 DayCell(
                                     date = date,
                                     workDay = dayWorkDay,
                                     isToday = date == LocalDate.now(),
+                                    isOffDay = isOffDay,
                                     hasBreakViolation = state.breakViolationDates.contains(date),
                                     hasOverlap = state.overlappingDates.contains(date),
                                     flextime = if (showDailyFlex) state.dailyFlextimeByDate[date] else null,
@@ -639,21 +645,23 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
 
 internal fun getMonthDayCellColor(
     date: LocalDate,
-    workDay: WorkDay?
-): Color = getDayCellBackgroundColor(date, workDay, isWeekend = false)
+    workDay: WorkDay?,
+    isOffDay: Boolean = false
+): Color = getDayCellBackgroundColor(date, workDay, isWeekend = isOffDay)
 
 @Composable
 fun DayCell(
     date: LocalDate,
     workDay: WorkDay?,
     isToday: Boolean,
+    isOffDay: Boolean = false,
     hasBreakViolation: Boolean = false,
     hasOverlap: Boolean = false,
     flextime: Long? = null,
     onClick: () -> Unit
 ) {
     val holidayName = PublicHolidays.getHolidayName(date)
-    val bgColor = getMonthDayCellColor(date, workDay)
+    val bgColor = getMonthDayCellColor(date, workDay, isOffDay = isOffDay)
 
     val hatchColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
     val borderMod = if (workDay?.isPlanned == true) {
@@ -678,6 +686,7 @@ fun DayCell(
                 fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
                 color = if (isToday) MaterialTheme.colorScheme.primary
                 else if (holidayName != null) PublicHolidayColor
+                else if (isOffDay) MaterialTheme.colorScheme.onSurfaceVariant
                 else MaterialTheme.colorScheme.onSurface
             )
             if (flextime != null) {

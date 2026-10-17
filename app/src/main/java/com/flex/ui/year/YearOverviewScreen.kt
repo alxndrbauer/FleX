@@ -252,14 +252,16 @@ private fun YearHeatmap(
                         val date = weekStart.plusDays(dayOffset.toLong())
                         val isInYear = date.year == year
                         val entry = if (isInYear) heatmapEntries[date] else null
-                        val isWeekend = date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
-                        val isSurface = isInYear && entry?.dayType == null && !isWeekend
-                        val isWeekendNoEntry = isInYear && isWeekend && entry?.dayType == null && entry?.isPublicHoliday != true
+                        val isOffDay = entry?.let { !it.isScheduledWorkDay }
+                            ?: (date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY)
+                        val isSurface = isInYear && entry?.dayType == null && !isOffDay
+                        val isOffDayNoEntry = isInYear && isOffDay && entry?.dayType == null && entry?.isPublicHoliday != true
 
+                        val targetMinutes = entry?.dailyTargetMinutes ?: dailyWorkMinutes
                         val bgColor = when {
                             !isInYear -> Color.Transparent
-                            isWeekendNoEntry -> Color(0xFF808080).copy(alpha = 0.08f)
-                            else -> cellColor(entry, dailyWorkMinutes, isSurface)
+                            isOffDayNoEntry -> Color(0xFF808080).copy(alpha = 0.08f)
+                            else -> cellColor(entry, targetMinutes, isSurface)
                         }
 
                         val isToday = date == today

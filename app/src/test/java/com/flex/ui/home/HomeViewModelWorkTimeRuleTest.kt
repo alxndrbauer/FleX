@@ -404,4 +404,107 @@ class HomeViewModelWorkTimeRuleTest : BaseUnitTest() {
         // Then: effectiveQuotaMinDays must be 8 (August rule)
         assertThat(viewModel.uiState.value.effectiveQuotaMinDays).isEqualTo(8)
     }
+
+    // ========== WorkTimeRule Resolution for Daily Target ==========
+
+    @Test
+    fun `dailyTargetMinutes uses WorkTimeRule when one exists for selectedDate`() = runTest {
+        // Given: WorkTimeRule for October 2026 has dailyWorkMinutes = 324 (5h 24m)
+        // Settings has dailyWorkMinutes = 426 (7h 6m)
+        val octDate = LocalDate.of(2026, 10, 16) // Friday
+        val settings = Settings(dailyWorkMinutes = 426)
+        val octRule = WorkTimeRule(
+            id = 1,
+            validFrom = YearMonth.of(2026, 10),
+            dailyWorkMinutes = 324,
+            monthlyWorkMinutes = 7047
+        )
+
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(listOf(octRule)))
+        whenever(settingsRepository.getWorkTimeRuleForDate(octDate, listOf(octRule))).thenReturn(octRule)
+
+        viewModel = createViewModel()
+        viewModel.navigateToDate(octDate)
+        advanceUntilIdle()
+
+        // Then: dailyTargetMinutes should be 324 (5h 24m), NOT 426 (7h 6m)
+        assertThat(viewModel.uiState.value.dailyTargetMinutes).isEqualTo(324)
+        assertThat(viewModel.uiState.value.dailyTargetMinutes).isNotEqualTo(426)
+    }
+
+    @Test
+    fun `dailyTargetMinutes falls back to Settings when no WorkTimeRule exists`() = runTest {
+        val settings = Settings(dailyWorkMinutes = 426)
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
+        whenever(settingsRepository.getWorkTimeRuleForDate(any(), any())).thenReturn(null)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.dailyTargetMinutes).isEqualTo(426)
+    }
+
+    @Test
+    fun `dailyTargetMinutes updates when navigating between months with different rules`() = runTest {
+        // Given: Rule 1 from August (426m = 7h 6m), Rule 2 from October (324m = 5h 24m)
+        // August 14, 2026 is Friday (work day in DEFAULT_WORK_DAYS)
+        val augDate = LocalDate.of(2026, 8, 14)
+        val octDate = LocalDate.of(2026, 10, 16)
+        val augRule = WorkTimeRule(
+            id = 1,
+            validFrom = YearMonth.of(2026, 8),
+            dailyWorkMinutes = 426,
+            monthlyWorkMinutes = 9266
+        )
+        val octRule = WorkTimeRule(
+            id = 2,
+            validFrom = YearMonth.of(2026, 10),
+            dailyWorkMinutes = 324,
+            monthlyWorkMinutes = 7047
+        )
+        val rules = listOf(augRule, octRule)
+
+        whenever(getSettings()).thenReturn(flowOf(Settings(dailyWorkMinutes = 480)))
+        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(rules))
+        whenever(settingsRepository.getWorkTimeRuleForDate(octDate, rules)).thenReturn(octRule)
+        whenever(settingsRepository.getWorkTimeRuleForDate(augDate, rules)).thenReturn(augRule)
+
+        viewModel = createViewModel()
+        viewModel.navigateToDate(octDate)
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.dailyTargetMinutes).isEqualTo(324)
+
+        viewModel.navigateToDate(augDate)
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.dailyTargetMinutes).isEqualTo(426)
+    }
+
+    @Test
+    fun `dailyTargetMinutes is 0 on scheduled off-days like weekends and non-workdays in 4-day week`() = runTest {
+        val satDate = LocalDate.of(2026, 10, 17) // Saturday
+        val friDate = LocalDate.of(2026, 9, 4) // Friday in 4-day week (Mon-Thu)
+        val fourDayRule = WorkTimeRule(
+            id = 1,
+            validFrom = YearMonth.of(2026, 9),
+            dailyWorkMinutes = 533,
+            monthlyWorkMinutes = 9594,
+            workDays = setOf(java.time.DayOfWeek.MONDAY, java.time.DayOfWeek.TUESDAY, java.time.DayOfWeek.WEDNESDAY, java.time.DayOfWeek.THURSDAY)
+        )
+        whenever(getSettings()).thenReturn(flowOf(Settings(dailyWorkMinutes = 426)))
+        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(listOf(fourDayRule)))
+        whenever(settingsRepository.getWorkTimeRuleForDate(friDate, listOf(fourDayRule))).thenReturn(fourDayRule)
+        whenever(settingsRepository.getWorkTimeRuleForDate(satDate, listOf(fourDayRule))).thenReturn(fourDayRule)
+
+        viewModel = createViewModel()
+
+        viewModel.navigateToDate(friDate)
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.dailyTargetMinutes).isEqualTo(0)
+
+        viewModel.navigateToDate(satDate)
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.dailyTargetMinutes).isEqualTo(0)
+    }
 }

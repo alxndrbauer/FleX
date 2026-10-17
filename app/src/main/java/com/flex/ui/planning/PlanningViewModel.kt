@@ -275,7 +275,13 @@ private data class PlanningConfig(
         // Fixed monthly target, reduced by neutral days
         val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
         val neutralDays = prognosisDays.filter { it.dayType in neutralTypes }
-        val neutralDaysDeduction = neutralDays.sumOf { getDailyTarget(it.date).toLong() }
+        val neutralDaysDeduction = neutralDays.sumOf { day ->
+            val rule = settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)
+            val isWorkDay = if (rule != null) day.date.dayOfWeek in rule.workDays else true
+            if (isWorkDay) {
+                (rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
+            } else 0L
+        }
         val baseMonthlyTarget = getMonthlyTarget(month).toLong()
         val totalMinutes = (baseMonthlyTarget - neutralDaysDeduction).coerceAtLeast(0)
 

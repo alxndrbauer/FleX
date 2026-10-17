@@ -1,5 +1,6 @@
 package com.flex.ui.planning
 
+import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.getRuleForDate
 
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -258,10 +259,12 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                             Box(modifier = Modifier.weight(1f)) {
                                 if (date != null) {
                                     val workDay = workDayMap[date]
-                                    val isWeekend = date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
+                                    val rule = state.workTimeRules.getRuleForDate(date)
+                                    val activeWorkDays = rule?.workDays ?: DEFAULT_WORK_DAYS
+                                    val isOffDay = date.dayOfWeek !in activeWorkDays
                                     val isHoliday = PublicHolidays.isHoliday(date)
 
-                                    val bgColor = getPlanningDayCellColor(date, workDay, isWeekend, isHoliday)
+                                    val bgColor = getPlanningDayCellColor(date, workDay, isOffDay, isHoliday)
 
                                     Box(
                                         modifier = Modifier
@@ -298,7 +301,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                                                 text = date.dayOfMonth.toString(),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = if (isHoliday) PublicHolidayColor
-                                                else if (isWeekend) MaterialTheme.colorScheme.onSurfaceVariant
+                                                else if (isOffDay) MaterialTheme.colorScheme.onSurfaceVariant
                                                 else MaterialTheme.colorScheme.onSurface
                                             )
                                             if ((workDay?.timeBlocks?.size ?: 0) > 1) {
