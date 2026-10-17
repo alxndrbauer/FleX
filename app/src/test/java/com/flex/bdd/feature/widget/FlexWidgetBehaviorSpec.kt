@@ -270,4 +270,98 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
             }
         }
     }
+
+    Given("die FlexWidget Tagesfortschritts- und Formatierungs-Berechnung") {
+        fun formatMinutes(minutes: Long): String {
+            val h = minutes / 60
+            val m = minutes % 60
+            return "%02d:%02d".format(h, m)
+        }
+
+        fun calculateProgressDetail(netMinutesToday: Long, targetMinutesToday: Long, isNarrow: Boolean): Pair<Float, String> {
+            val progress = if (targetMinutesToday > 0) {
+                (netMinutesToday.toFloat() / targetMinutesToday.toFloat()).coerceIn(0f, 1f)
+            } else 0f
+            val progressPercent = (progress * 100).toInt()
+            val progressDetail = when {
+                targetMinutesToday <= 0 -> {
+                    if (netMinutesToday > 0) {
+                        "${formatMinutes(netMinutesToday)} Std. (kein Soll)"
+                    } else {
+                        "Kein Tagessoll"
+                    }
+                }
+                netMinutesToday >= targetMinutesToday -> "$progressPercent% (Ziel erreicht)"
+                else -> {
+                    val remaining = targetMinutesToday - netMinutesToday
+                    "$progressPercent% (noch ${formatMinutes(remaining)} Std.)"
+                }
+            }
+            val displayText = if (isNarrow) {
+                if (targetMinutesToday <= 0) {
+                    if (netMinutesToday > 0) "${formatMinutes(netMinutesToday)} Std." else "Kein Soll"
+                } else {
+                    "$progressPercent%"
+                }
+            } else {
+                progressDetail
+            }
+            return progress to displayText
+        }
+
+        When("das Tagesziel noch nicht erreicht ist (z.B. 300 von 480 Min)") {
+            val (progress, textWide) = calculateProgressDetail(300L, 480L, isNarrow = false)
+            val (_, textNarrow) = calculateProgressDetail(300L, 480L, isNarrow = true)
+
+            Then("ist der Fortschritt ca. 62% und Restzeit 03:00 Std.") {
+                progress shouldBe (300f / 480f)
+                textWide shouldBe "62% (noch 03:00 Std.)"
+                textNarrow shouldBe "62%"
+            }
+        }
+
+        When("das Tagesziel exakt erreicht ist (480 von 480 Min)") {
+            val (progress, textWide) = calculateProgressDetail(480L, 480L, isNarrow = false)
+            val (_, textNarrow) = calculateProgressDetail(480L, 480L, isNarrow = true)
+
+            Then("wird Ziel erreicht gemeldet") {
+                progress shouldBe 1f
+                textWide shouldBe "100% (Ziel erreicht)"
+                textNarrow shouldBe "100%"
+            }
+        }
+
+        When("das Tagesziel überschritten ist (520 von 480 Min)") {
+            val (progress, textWide) = calculateProgressDetail(520L, 480L, isNarrow = false)
+            val (_, textNarrow) = calculateProgressDetail(520L, 480L, isNarrow = true)
+
+            Then("wird der Fortschritt auf 100% gedeckelt und Ziel erreicht gemeldet") {
+                progress shouldBe 1f
+                textWide shouldBe "100% (Ziel erreicht)"
+                textNarrow shouldBe "100%"
+            }
+        }
+
+        When("kein Tagessoll definiert ist und keine Arbeitszeit vorliegt (0 Min Soll, 0 Min gearbeitet)") {
+            val (progress, textWide) = calculateProgressDetail(0L, 0L, isNarrow = false)
+            val (_, textNarrow) = calculateProgressDetail(0L, 0L, isNarrow = true)
+
+            Then("wird Kein Tagessoll bzw. Kein Soll gemeldet ohne 0% Fehler") {
+                progress shouldBe 0f
+                textWide shouldBe "Kein Tagessoll"
+                textNarrow shouldBe "Kein Soll"
+            }
+        }
+
+        When("an einem Tag ohne Soll gearbeitet wurde (0 Min Soll, 150 Min gearbeitet)") {
+            val (progress, textWide) = calculateProgressDetail(150L, 0L, isNarrow = false)
+            val (_, textNarrow) = calculateProgressDetail(150L, 0L, isNarrow = true)
+
+            Then("wird die gearbeitete Zeit angezeigt statt irreführender 0%") {
+                progress shouldBe 0f
+                textWide shouldBe "02:30 Std. (kein Soll)"
+                textNarrow shouldBe "02:30 Std."
+            }
+        }
+    }
 })

@@ -14,6 +14,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Add comprehensive Dashboard screen to bottom navigation
 - Add bounce and morph animation to navigation icons
 - Add homescreen widget, UX improvements, R8 shrinking, and fix pause notification
+- Add quick actions widget and modernize dashboard widget
 
 ### Bugfixes
 

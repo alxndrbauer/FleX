@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:background="@drawable/bg_widget_preview_card"
+    android:gravity="center_vertical"
+    android:padding="6dp">
+
+    <!-- Tile 1: Büro (Neutral im ausgestempelten Zustand) -->
+    <FrameLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="@drawable/bg_widget_preview_btn">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_widget_preview_office"
+            android:contentDescription="@null" />
+    </FrameLayout>
+
+    <!-- Tile 2: Home-Office -->
+    <FrameLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:layout_marginStart="5dp"
+        android:background="@drawable/bg_widget_preview_btn">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_widget_preview_home"
+            android:contentDescription="@null" />
+    </FrameLayout>
+
+    <!-- Tile 3: Pause -->
+    <FrameLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:layout_marginStart="5dp"
+        android:background="@drawable/bg_widget_preview_btn">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_widget_preview_pause"
+            android:contentDescription="@null" />
+    </FrameLayout>
+
+    <!-- Tile 4: Stopp -->
+    <FrameLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:layout_marginStart="5dp"
+        android:background="@drawable/bg_widget_preview_btn">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_widget_preview_stop"
+            android:contentDescription="@null" />
+    </FrameLayout>
+</LinearLayout>

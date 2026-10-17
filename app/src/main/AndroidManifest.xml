@@ -148,7 +148,17 @@
             </intent-filter>
         </activity>
 
-        <!-- Homescreen Widget (Glance) -->
+        <activity
+            android:name=".widget.FlexQuickActionsDialogActivity"
+            android:theme="@style/Theme.FleX.DialogActivity"
+            android:exported="false"
+            android:taskAffinity=""
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:showWhenLocked="true" />
+
+        <!-- Homescreen Dashboard Widget (Glance) -->
         <receiver
             android:name=".widget.FlexWidgetReceiver"
             android:label="@string/app_name"
@@ -159,6 +169,19 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/flex_widget_info" />
+        </receiver>
+
+        <!-- Homescreen Quick Actions Widget (Glance) -->
+        <receiver
+            android:name=".widget.FlexQuickActionsWidgetReceiver"
+            android:label="@string/widget_quick_actions_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/flex_quick_actions_widget_info" />
         </receiver>
 
 

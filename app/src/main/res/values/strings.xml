@@ -9,4 +9,18 @@
     <string name="shortcut_month_short">Monat</string>
     <string name="shortcut_month_long">Monatsübersicht</string>
     <string name="widget_description">Arbeitszeit und Gleitzeitsaldo auf einen Blick mit Schnell-Stempeln</string>
+    <string name="widget_dashboard_name">FleX</string>
+    <string name="widget_dashboard_description">Arbeitszeit, Gleitzeitsaldo und Monatsquote im Überblick mit Schnell-Stempeln</string>
+    <string name="widget_quick_actions_name">FleX – Schnellaktionen</string>
+    <string name="widget_quick_actions_description">Kompakte Schnellstempel-Leiste mit flexibler Anpassung</string>
+    <string name="widget_action_office">Büro</string>
+    <string name="widget_action_home_office">Home-Office</string>
+    <string name="widget_action_pause">Pause</string>
+    <string name="widget_action_resume">Weiter</string>
+    <string name="widget_action_stop">Stopp</string>
+    <string name="widget_action_switch">Wechseln</string>
+    <string name="widget_status_office">Büro</string>
+    <string name="widget_status_home">Home-Office</string>
+    <string name="widget_status_paused">Pause</string>
+    <string name="widget_status_clocked_out">Ausgestempelt</string>
 </resources>
