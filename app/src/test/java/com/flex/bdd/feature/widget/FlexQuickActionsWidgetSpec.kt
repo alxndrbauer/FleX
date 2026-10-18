@@ -28,6 +28,7 @@ import com.flex.widget.FlexWidgetUpdater
 import com.flex.widget.PauseAction
 import com.flex.widget.QuickLocationAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.flex.widget.ActionButtonColorRole
 import com.flex.widget.QuickActionType
 import com.flex.widget.QuickActionsHorizontalTier
@@ -566,10 +567,10 @@ class FlexQuickActionsWidgetSpec : BehaviorSpec({
                 FlexQuickActionsWidget.resolveButtonColorRole(buttons[3]) shouldBe ActionButtonColorRole.ERROR_CONTAINER
             }
 
-            Then("hat bei Home-Office-Arbeit Home-Office SecondaryContainer und Stopp ErrorContainer") {
+            Then("hat bei Home-Office-Arbeit Home-Office Secondary und Stopp ErrorContainer") {
                 val buttons = FlexQuickActionsWidget.resolveActionButtons(4, runningHomeState)
                 FlexQuickActionsWidget.resolveButtonColorRole(buttons[0]) shouldBe ActionButtonColorRole.DEFAULT
-                FlexQuickActionsWidget.resolveButtonColorRole(buttons[1]) shouldBe ActionButtonColorRole.SECONDARY_CONTAINER
+                FlexQuickActionsWidget.resolveButtonColorRole(buttons[1]) shouldBe ActionButtonColorRole.SECONDARY
                 FlexQuickActionsWidget.resolveButtonColorRole(buttons[2]) shouldBe ActionButtonColorRole.DEFAULT
                 FlexQuickActionsWidget.resolveButtonColorRole(buttons[3]) shouldBe ActionButtonColorRole.ERROR_CONTAINER
             }
@@ -943,6 +944,35 @@ class FlexQuickActionsWidgetSpec : BehaviorSpec({
                 FlexQuickActionsWidget.resolveProgressFillWidth(p2) shouldBe 23.dp
                 FlexQuickActionsWidget.resolveProgressFillWidth(p3) shouldBe 46.dp
                 FlexQuickActionsWidget.resolveProgressFillWidth(p4) shouldBe 92.dp
+            }
+        }
+    }
+
+    Given("Skalierbare und vergrößerte Schriftgrößen für den Status-Chip der 5er-Reihe") {
+        When("die Schrifthöhe für kompakte Höhen (<56dp) abgefragt wird") {
+            Then("ist die Zeitanzeige mit 15sp deutlich größer als zuvor und Std mit 10sp lesbar") {
+                FlexQuickActionsWidget.resolveTimeFontSize(48.dp) shouldBe 15.sp
+                FlexQuickActionsWidget.resolveTimeFontSize(55.dp) shouldBe 15.sp
+                FlexQuickActionsWidget.resolveStdFontSize(48.dp) shouldBe 10.sp
+                FlexQuickActionsWidget.resolveStdFontSize(55.dp) shouldBe 10.sp
+            }
+        }
+
+        When("die Schrifthöhe für Standard-Höhen (56dp bis 69dp) abgefragt wird") {
+            Then("ist die Zeitanzeige mit 17sp prominent groß und Std mit 11sp gut lesbar") {
+                FlexQuickActionsWidget.resolveTimeFontSize(56.dp) shouldBe 17.sp
+                FlexQuickActionsWidget.resolveTimeFontSize(64.dp) shouldBe 17.sp
+                FlexQuickActionsWidget.resolveStdFontSize(56.dp) shouldBe 11.sp
+                FlexQuickActionsWidget.resolveStdFontSize(64.dp) shouldBe 11.sp
+            }
+        }
+
+        When("die Schrifthöhe für größere Höhen (>=70dp) abgefragt wird") {
+            Then("skaliert die Zeitanzeige auf 19sp und Std auf 12sp") {
+                FlexQuickActionsWidget.resolveTimeFontSize(70.dp) shouldBe 19.sp
+                FlexQuickActionsWidget.resolveTimeFontSize(80.dp) shouldBe 19.sp
+                FlexQuickActionsWidget.resolveStdFontSize(70.dp) shouldBe 12.sp
+                FlexQuickActionsWidget.resolveStdFontSize(80.dp) shouldBe 12.sp
             }
         }
     }

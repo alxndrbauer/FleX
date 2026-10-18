@@ -6,6 +6,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
@@ -84,6 +85,7 @@ enum class StatusChipColorRole {
 
 enum class ActionButtonColorRole {
     PRIMARY,
+    SECONDARY,
     SECONDARY_CONTAINER,
     TERTIARY,
     ERROR_CONTAINER,
@@ -151,6 +153,7 @@ class FlexQuickActionsWidget : GlanceAppWidget() {
                     }
                     val (bg, fg) = when (tileSpec.colorRole) {
                         ActionButtonColorRole.PRIMARY -> GlanceTheme.colors.primary to GlanceTheme.colors.onPrimary
+                        ActionButtonColorRole.SECONDARY -> GlanceTheme.colors.secondary to GlanceTheme.colors.onSecondary
                         ActionButtonColorRole.TERTIARY -> GlanceTheme.colors.tertiary to GlanceTheme.colors.onTertiary
                         else -> GlanceTheme.colors.surfaceVariant to GlanceTheme.colors.onSurfaceVariant
                     }
@@ -480,7 +483,8 @@ class FlexQuickActionsWidget : GlanceAppWidget() {
 
             val size = LocalSize.current
             val isCompactHeight = size.height < 56.dp
-            val timeFontSize = if (isCompactHeight) 13.sp else 14.sp
+            val timeFontSize = resolveTimeFontSize(size.height)
+            val stdFontSize = resolveStdFontSize(size.height)
             val verticalPadding = if (isCompactHeight) 1.dp else 2.dp
 
             Box(
@@ -522,7 +526,7 @@ class FlexQuickActionsWidget : GlanceAppWidget() {
                         text = "Std",
                         style = TextStyle(
                             color = chipFg,
-                            fontSize = 8.sp,
+                            fontSize = stdFontSize,
                             fontWeight = FontWeight.Bold
                         ),
                         maxLines = 1
@@ -555,6 +559,7 @@ class FlexQuickActionsWidget : GlanceAppWidget() {
 
         val (bg, fg) = when (resolveButtonColorRole(spec)) {
             ActionButtonColorRole.PRIMARY -> GlanceTheme.colors.primary to GlanceTheme.colors.onPrimary
+            ActionButtonColorRole.SECONDARY -> GlanceTheme.colors.secondary to GlanceTheme.colors.onSecondary
             ActionButtonColorRole.SECONDARY_CONTAINER -> GlanceTheme.colors.secondaryContainer to GlanceTheme.colors.onSecondaryContainer
             ActionButtonColorRole.TERTIARY -> GlanceTheme.colors.tertiary to GlanceTheme.colors.onTertiary
             ActionButtonColorRole.ERROR_CONTAINER -> GlanceTheme.colors.errorContainer to GlanceTheme.colors.onErrorContainer
@@ -605,6 +610,7 @@ class FlexQuickActionsWidget : GlanceAppWidget() {
 
         val (bg, fg) = when (resolveButtonColorRole(spec)) {
             ActionButtonColorRole.PRIMARY -> GlanceTheme.colors.primary to GlanceTheme.colors.onPrimary
+            ActionButtonColorRole.SECONDARY -> GlanceTheme.colors.secondary to GlanceTheme.colors.onSecondary
             ActionButtonColorRole.SECONDARY_CONTAINER -> GlanceTheme.colors.secondaryContainer to GlanceTheme.colors.onSecondaryContainer
             ActionButtonColorRole.TERTIARY -> GlanceTheme.colors.tertiary to GlanceTheme.colors.onTertiary
             ActionButtonColorRole.ERROR_CONTAINER -> GlanceTheme.colors.errorContainer to GlanceTheme.colors.onErrorContainer
@@ -824,11 +830,23 @@ class FlexQuickActionsWidget : GlanceAppWidget() {
             !spec.isEnabled -> ActionButtonColorRole.DISABLED
             spec.isLead -> when (spec.type) {
                 QuickActionType.RESUME -> ActionButtonColorRole.TERTIARY
-                QuickActionType.HOME_OFFICE -> ActionButtonColorRole.SECONDARY_CONTAINER
+                QuickActionType.HOME_OFFICE -> ActionButtonColorRole.SECONDARY
                 else -> ActionButtonColorRole.PRIMARY
             }
             spec.type == QuickActionType.STOP -> ActionButtonColorRole.ERROR_CONTAINER
             else -> ActionButtonColorRole.DEFAULT
+        }
+
+        fun resolveTimeFontSize(height: Dp): TextUnit = when {
+            height < 56.dp -> 15.sp
+            height < 70.dp -> 17.sp
+            else -> 19.sp
+        }
+
+        fun resolveStdFontSize(height: Dp): TextUnit = when {
+            height < 56.dp -> 10.sp
+            height < 70.dp -> 11.sp
+            else -> 12.sp
         }
     }
 }
