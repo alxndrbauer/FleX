@@ -2,6 +2,7 @@ package com.flex.bdd.feature.widget
 
 import com.flex.domain.model.DayType
 import com.flex.domain.model.FlextimeBalance
+import com.flex.domain.model.ProjectedEndTime
 import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
@@ -10,6 +11,7 @@ import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.CalculateFlextimeUseCase
+import com.flex.domain.usecase.CalculateProjectedEndTimeUseCase
 import com.flex.domain.usecase.DayWorkTimeResult
 import com.flex.widget.FlexWidgetDataProvider
 import io.kotest.core.spec.style.BehaviorSpec
@@ -271,6 +273,121 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
         }
     }
 
+    Given("ein Benutzer hat eine laufende Zeiterfassung mit Feierabend-Prognose") {
+        val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
+        val settingsRepository = mockk<SettingsRepository>(relaxed = true)
+        val calculateDayWorkTime = mockk<CalculateDayWorkTimeUseCase>()
+        val calculateFlextime = mockk<CalculateFlextimeUseCase>()
+        val calculateProjectedEndTime = mockk<CalculateProjectedEndTimeUseCase>()
+
+        every { settingsRepository.getSettings() } returns flowOf(defaultSettings)
+        every { settingsRepository.getWorkTimeRules() } returns flowOf(emptyList())
+        every { settingsRepository.getWorkTimeRuleForDate(any(), any()) } returns null
+        every { workDayRepository.getWorkDaysForYear(any()) } returns flowOf(emptyList())
+
+        val dataProvider = FlexWidgetDataProvider(
+            workDayRepository = workDayRepository,
+            settingsRepository = settingsRepository,
+            calculateDayWorkTime = calculateDayWorkTime,
+            calculateFlextime = calculateFlextime,
+            calculateProjectedEndTime = calculateProjectedEndTime
+        )
+
+        val today = LocalDate.now()
+        val runningBlock = TimeBlock(
+            id = 30L,
+            workDayId = 3L,
+            startTime = LocalTime.of(8, 0),
+            endTime = null,
+            location = WorkLocation.OFFICE
+        )
+        val runningWorkDay = WorkDay(
+            id = 3L,
+            date = today,
+            location = WorkLocation.OFFICE,
+            dayType = DayType.WORK,
+            timeBlocks = listOf(runningBlock)
+        )
+
+        every { workDayRepository.getWorkDay(today) } returns flowOf(runningWorkDay)
+        every { calculateDayWorkTime(any(), any()) } returns DayWorkTimeResult(
+            grossMinutes = 180,
+            netMinutes = 180,
+            breakMinutes = 0,
+            exceedsMaxHours = false
+        )
+        every { calculateFlextime(any(), any(), any(), any()) } returns FlextimeBalance(
+            totalMinutes = 0,
+            targetMinutes = 480
+        )
+        every { calculateProjectedEndTime(any(), any(), any(), any()) } returns ProjectedEndTime(
+            projectedEndTime = LocalTime.of(16, 30),
+            projectedEndTimeWithoutBreak = LocalTime.of(16, 0),
+            pendingBreakMinutes = 30L,
+            takenBreakMinutes = 0L,
+            requiredBreakMinutes = 30L,
+            remainingNetMinutes = 300L
+        )
+
+        When("der FlexWidgetDataProvider den Widget-State bei laufender Stoppuhr berechnet") {
+            val state = dataProvider.getWidgetState()
+
+            Then("ist isClockRunning true") {
+                state.isClockRunning shouldBe true
+            }
+            Then("ist projectedEndTime mit 16:30 befüllt") {
+                state.projectedEndTime shouldBe LocalTime.of(16, 30)
+            }
+        }
+
+        When("der Benutzer ausgestempelt ist") {
+            val stoppedWorkDay = WorkDay(
+                id = 3L,
+                date = today,
+                location = WorkLocation.OFFICE,
+                dayType = DayType.WORK,
+                timeBlocks = listOf(
+                    TimeBlock(
+                        id = 30L,
+                        workDayId = 3L,
+                        startTime = LocalTime.of(8, 0),
+                        endTime = LocalTime.of(12, 0),
+                        location = WorkLocation.OFFICE
+                    )
+                )
+            )
+            every { workDayRepository.getWorkDay(today) } returns flowOf(stoppedWorkDay)
+
+            val state = dataProvider.getWidgetState()
+
+            Then("ist isClockRunning false") {
+                state.isClockRunning shouldBe false
+            }
+            Then("ist projectedEndTime null") {
+                state.projectedEndTime shouldBe null
+            }
+        }
+
+        When("das Tagessoll bereits erreicht ist") {
+            every { workDayRepository.getWorkDay(today) } returns flowOf(runningWorkDay)
+            every { calculateDayWorkTime(any(), any()) } returns DayWorkTimeResult(
+                grossMinutes = 510,
+                netMinutes = 480, // Tagessoll 480 erreicht
+                breakMinutes = 30,
+                exceedsMaxHours = false
+            )
+
+            val state = dataProvider.getWidgetState()
+
+            Then("ist netMinutesToday >= targetMinutesToday") {
+                (state.netMinutesToday >= state.targetMinutesToday) shouldBe true
+            }
+            Then("ist projectedEndTime trotz laufender Stoppuhr null") {
+                state.projectedEndTime shouldBe null
+            }
+        }
+    }
+
     Given("die FlexWidget Tagesfortschritts- und Formatierungs-Berechnung") {
         fun formatMinutes(minutes: Long): String {
             val h = minutes / 60
@@ -278,7 +395,13 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
             return "%02d:%02d".format(h, m)
         }
 
-        fun calculateProgressDetail(netMinutesToday: Long, targetMinutesToday: Long, isNarrow: Boolean): Pair<Float, String> {
+        fun calculateProgressDetail(
+            netMinutesToday: Long,
+            targetMinutesToday: Long,
+            isNarrow: Boolean,
+            isClockRunning: Boolean = false,
+            projectedEndTime: LocalTime? = null
+        ): Pair<Float, String> {
             val progress = if (targetMinutesToday > 0) {
                 (netMinutesToday.toFloat() / targetMinutesToday.toFloat()).coerceIn(0f, 1f)
             } else 0f
@@ -294,7 +417,12 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
                 netMinutesToday >= targetMinutesToday -> "$progressPercent% (Ziel erreicht)"
                 else -> {
                     val remaining = targetMinutesToday - netMinutesToday
-                    "$progressPercent% (noch ${formatMinutes(remaining)} Std.)"
+                    val endSuffix = if (isClockRunning && projectedEndTime != null) {
+                        " · Ende %02d:%02d".format(projectedEndTime.hour, projectedEndTime.minute)
+                    } else {
+                        ""
+                    }
+                    "$progressPercent% (noch ${formatMinutes(remaining)} Std.$endSuffix)"
                 }
             }
             val displayText = if (isNarrow) {
@@ -317,6 +445,39 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
                 progress shouldBe (300f / 480f)
                 textWide shouldBe "62% (noch 03:00 Std.)"
                 textNarrow shouldBe "62%"
+            }
+        }
+
+        When("die Stoppuhr läuft und eine Feierabend-Prognose vorhanden ist (z.B. 300 von 480 Min, Ende 16:30)") {
+            val (progress, textWide) = calculateProgressDetail(300L, 480L, isNarrow = false, isClockRunning = true, projectedEndTime = LocalTime.of(16, 30))
+            val (_, textNarrow) = calculateProgressDetail(300L, 480L, isNarrow = true, isClockRunning = true, projectedEndTime = LocalTime.of(16, 30))
+
+            Then("enthält die Detail-Ansicht ' · Ende 16:30'") {
+                progress shouldBe (300f / 480f)
+                textWide shouldBe "62% (noch 03:00 Std. · Ende 16:30)"
+                textNarrow shouldBe "62%"
+            }
+        }
+
+        When("der Benutzer ausgestempelt ist trotz übergebenem Endzeit-Wert") {
+            val (progress, textWide) = calculateProgressDetail(300L, 480L, isNarrow = false, isClockRunning = false, projectedEndTime = LocalTime.of(16, 30))
+            val (_, textNarrow) = calculateProgressDetail(300L, 480L, isNarrow = true, isClockRunning = false, projectedEndTime = LocalTime.of(16, 30))
+
+            Then("wird kein Ende-Suffix angehängt") {
+                progress shouldBe (300f / 480f)
+                textWide shouldBe "62% (noch 03:00 Std.)"
+                textNarrow shouldBe "62%"
+            }
+        }
+
+        When("das Tagesziel erreicht ist trotz laufender Stoppuhr und übergebenem Endzeit-Wert") {
+            val (progress, textWide) = calculateProgressDetail(480L, 480L, isNarrow = false, isClockRunning = true, projectedEndTime = LocalTime.of(16, 30))
+            val (_, textNarrow) = calculateProgressDetail(480L, 480L, isNarrow = true, isClockRunning = true, projectedEndTime = LocalTime.of(16, 30))
+
+            Then("wird 'Ziel erreicht' gemeldet und kein Ende-Suffix angehängt") {
+                progress shouldBe 1f
+                textWide shouldBe "100% (Ziel erreicht)"
+                textNarrow shouldBe "100%"
             }
         }
 

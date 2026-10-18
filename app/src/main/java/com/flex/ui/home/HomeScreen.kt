@@ -12,6 +12,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -103,13 +104,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.flex.R
 import com.flex.domain.model.BreakViolationType
 import com.flex.domain.model.DayType
+import com.flex.domain.model.ProjectedEndTime
 import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkLocation
@@ -802,24 +809,49 @@ private fun HeroCard(
                 }
             }
 
-            // Progress bar for remaining time
-            remaining?.let { rem ->
-                if (rem > 0) {
-                    val animProg by animateFloatAsState(
-                        targetValue = if (state.dailyTargetMinutes > 0) {
-                            (1f - rem.toFloat() / state.dailyTargetMinutes).coerceIn(0f, 1f)
-                        } else 0f,
-                        animationSpec = tween(600),
-                        label = "remainingProgress"
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = { animProg },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                    )
+            val prognosis = state.projectedEndTime
+            if (state.isClockRunning && isToday && prognosis != null && (remaining == null || remaining > 0)) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_sunset),
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = buildAnnotatedString {
+                                    append("Feierabend ")
+                                    withStyle(
+                                        SpanStyle(
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                    ) {
+                                        append(prognosis.formatCompact())
+                                    }
+                                },
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
                 }
             }
 

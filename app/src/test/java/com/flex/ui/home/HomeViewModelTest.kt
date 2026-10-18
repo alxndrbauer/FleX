@@ -5,6 +5,7 @@ import com.flex.BaseUnitTest
 import com.flex.MainDispatcherExtension
 import com.flex.domain.model.DayType
 import com.flex.domain.model.FlextimeBalance
+import com.flex.domain.model.ProjectedEndTime
 import com.flex.domain.model.QuotaStatus
 import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeBlock
@@ -1195,6 +1196,150 @@ class HomeViewModelTest : BaseUnitTest() {
 
         verify(calculateDayWorkTime, atLeastOnce()).invoke(org.mockito.kotlin.eq(blocks), org.mockito.kotlin.eq(true))
         verify(checkBreakViolation, atLeastOnce()).invoke(org.mockito.kotlin.eq(blocks), any(), org.mockito.kotlin.eq(true))
+    }
+
+    // ========== projectedEndTime Tests ==========
+
+    @Test
+    fun `projectedEndTime is populated in HomeUiState when clocked in with a target`() = runTest {
+        val today = LocalDate.now()
+        val runningBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.now().minusHours(1),
+            endTime = null
+        )
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
+        val settings = Settings(dailyWorkMinutes = 480) // 8 hours target (> 6h -> 30m break)
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertThat(state.isClockRunning).isTrue()
+        assertThat(state.projectedEndTime).isNotNull()
+        assertThat(state.projectedEndTime?.requiredBreakMinutes).isEqualTo(30L)
+        assertThat(state.projectedEndTime?.pendingBreakMinutes).isEqualTo(30L)
+        assertThat(state.projectedEndTime?.hasPendingBreak).isTrue()
+        assertThat(state.projectedEndTime?.formatWithBreakHint()).contains("ohne Pause")
+    }
+
+    @Test
+    fun `projectedEndTime is null when clock is not running`() = runTest {
+        val today = LocalDate.now()
+        val completedBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.of(8, 0),
+            endTime = LocalTime.of(12, 0)
+        )
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(completedBlock))
+        val settings = Settings(dailyWorkMinutes = 480)
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isClockRunning).isFalse()
+        assertThat(viewModel.uiState.value.projectedEndTime).isNull()
+    }
+
+    @Test
+    fun `projectedEndTime is null when selectedDate is not today`() = runTest {
+        val today = LocalDate.now()
+        val yesterday = today.minusDays(1)
+        val runningBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.now().minusHours(1),
+            endTime = null
+        )
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
+        val settings = Settings(dailyWorkMinutes = 480)
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+        whenever(workDayRepository.getWorkDay(yesterday)).thenReturn(flowOf(null))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.projectedEndTime).isNotNull()
+
+        viewModel.navigateToDate(yesterday)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.projectedEndTime).isNull()
+    }
+
+    @Test
+    fun `projectedEndTime is null when daily target is already reached`() = runTest {
+        val today = LocalDate.now()
+        // Worked 120 minutes with a target of 60 minutes
+        val runningBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.now().minusMinutes(120),
+            endTime = null
+        )
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
+        val settings = Settings(dailyWorkMinutes = 60)
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isClockRunning).isTrue()
+        assertThat(viewModel.uiState.value.projectedEndTime).isNull()
+    }
+
+    @Test
+    fun `updateLiveWorkTime keeps projectedEndTime updated when clock is running`() = runTest {
+        val today = LocalDate.now()
+        val runningBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.now().minusHours(1),
+            endTime = null
+        )
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
+        val settings = Settings(dailyWorkMinutes = 480)
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val initialPrognosis = viewModel.uiState.value.projectedEndTime
+        assertThat(initialPrognosis).isNotNull()
+
+        viewModel.updateLiveWorkTime()
+        advanceUntilIdle()
+
+        val updatedPrognosis = viewModel.uiState.value.projectedEndTime
+        assertThat(updatedPrognosis).isNotNull()
+    }
+
+    @Test
+    fun `projectedEndTime is null when dailyTargetMinutes is zero`() = runTest {
+        val today = LocalDate.now()
+        val runningBlock = TimeBlock(
+            id = 1,
+            workDayId = 1,
+            startTime = LocalTime.now().minusHours(1),
+            endTime = null
+        )
+        val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
+        val settings = Settings(dailyWorkMinutes = 0)
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.projectedEndTime).isNull()
     }
 }
 

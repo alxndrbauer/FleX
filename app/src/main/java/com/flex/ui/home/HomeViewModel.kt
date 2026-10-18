@@ -13,11 +13,13 @@ import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.DEFAULT_WORK_DAYS
+import com.flex.domain.model.ProjectedEndTime
 import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.CalculateFlextimeUseCase
+import com.flex.domain.usecase.CalculateProjectedEndTimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.DayWorkTimeResult
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
@@ -80,7 +82,8 @@ data class HomeUiState(
     val breakCheckResult: BreakCheckResult = BreakCheckResult(emptyList(), skipped = false),
     val permissionIssues: List<String> = emptyList(),
     val hasTimeBlockOverlap: Boolean = false,
-    val dailyTargetMinutes: Int = 426
+    val dailyTargetMinutes: Int = 426,
+    val projectedEndTime: ProjectedEndTime? = null
 )
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -100,7 +103,8 @@ class HomeViewModel @Inject constructor(
     private val whatsNewPreferences: WhatsNewPreferences,
     private val backupPreferences: com.flex.data.backup.BackupPreferences,
     private val autoBookPlannedDaysUseCase: AutoBookPlannedDaysUseCase,
-    private val checkTimeBlockOverlap: CheckTimeBlockOverlapUseCase = CheckTimeBlockOverlapUseCase()
+    private val checkTimeBlockOverlap: CheckTimeBlockOverlapUseCase = CheckTimeBlockOverlapUseCase(),
+    private val calculateProjectedEndTime: CalculateProjectedEndTimeUseCase = CalculateProjectedEndTimeUseCase()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -137,6 +141,24 @@ class HomeViewModel @Inject constructor(
             state.settings.dailyWorkMinutes
         }
         return (dailyTarget - result.netMinutes).toInt().coerceAtLeast(0)
+    }
+
+    private fun computeProjectedEndTime(state: HomeUiState, workTimeRules: List<WorkTimeRule> = cachedWorkTimeRules): ProjectedEndTime? {
+        val today = LocalDate.now()
+        if (!state.isClockRunning || state.selectedDate != today || state.timeBlocks.isEmpty()) return null
+        val rule = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)
+        val dailyTarget = if (rule != null) {
+            if (today.dayOfWeek in rule.workDays) rule.dailyWorkMinutes else 0
+        } else {
+            state.settings.dailyWorkMinutes
+        }
+        if (dailyTarget <= 0) return null
+        return calculateProjectedEndTime(
+            timeBlocks = state.timeBlocks,
+            dailyTargetMinutes = dailyTarget,
+            now = LocalTime.now(),
+            isBusinessTrip = state.selectedDayType == DayType.BUSINESS_TRIP
+        )
     }
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
@@ -210,9 +232,12 @@ class HomeViewModel @Inject constructor(
                     breakCheckResult = liveBreakCheck,
                     liveFlextimeBalance = liveFlextime,
                     liveMonthlyFlextimeBalance = liveMonthlyFlextime,
-                    hasTimeBlockOverlap = liveOverlap
+                    hasTimeBlockOverlap = liveOverlap,
+                    projectedEndTime = computeProjectedEndTime(it)
                 )
             }
+        } else if (_uiState.value.projectedEndTime != null) {
+            _uiState.update { it.copy(projectedEndTime = null) }
         }
         _remainingMinutes.value = computeRemainingMinutes(_uiState.value)
     }
@@ -415,7 +440,7 @@ class HomeViewModel @Inject constructor(
                 }
                 .collect { (state, rules) ->
                     val wasRunning = _uiState.value.isClockRunning
-                    _uiState.value = state
+                    _uiState.value = state.copy(projectedEndTime = computeProjectedEndTime(state, rules))
                     _remainingMinutes.value = computeRemainingMinutes(state, rules)
                     checkPermissions(state.settings)
                     // Restart service if clocked in and it was just loaded (first emission)

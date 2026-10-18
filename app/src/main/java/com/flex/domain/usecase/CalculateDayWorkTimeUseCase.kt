@@ -34,12 +34,12 @@ class CalculateDayWorkTimeUseCase @Inject constructor() {
             }
         }
 
-        private fun roundDownTo5Min(time: LocalTime): LocalTime {
+        fun roundDownTo5Min(time: LocalTime): LocalTime {
             val remainder = time.minute % 5
             return if (remainder == 0) time else time.minusMinutes(remainder.toLong())
         }
 
-        private fun roundUpTo5Min(time: LocalTime): LocalTime {
+        fun roundUpTo5Min(time: LocalTime): LocalTime {
             val remainder = time.minute % 5
             return if (remainder == 0) time else time.plusMinutes((5 - remainder).toLong())
         }

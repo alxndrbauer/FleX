@@ -1,6 +1,7 @@
 package com.flex.widget
 
 import com.flex.domain.model.WorkLocation
+import java.time.LocalTime
 
 data class WidgetState(
     val isClockRunning: Boolean,
@@ -13,5 +14,7 @@ data class WidgetState(
     val targetQuotaPercent: Int = 40,
     val officeDays: Int = 0,
     val targetOfficeDays: Int = 8,
-    val isQuotaMet: Boolean = false
+    val isQuotaMet: Boolean = false,
+    val projectedEndTime: LocalTime? = null
 )
+

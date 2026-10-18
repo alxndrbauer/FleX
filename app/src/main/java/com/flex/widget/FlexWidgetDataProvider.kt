@@ -11,6 +11,7 @@ import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.CalculateFlextimeUseCase
+import com.flex.domain.usecase.CalculateProjectedEndTimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -30,7 +31,8 @@ class FlexWidgetDataProvider @Inject constructor(
     private val calculateFlextime: CalculateFlextimeUseCase,
     private val calculateQuota: CalculateQuotaUseCase? = null,
     private val pausePreferences: PausePreferences? = null,
-    private val dataChangeEventBus: DataChangeEventBus? = null
+    private val dataChangeEventBus: DataChangeEventBus? = null,
+    private val calculateProjectedEndTime: CalculateProjectedEndTimeUseCase = CalculateProjectedEndTimeUseCase()
 ) {
 
     fun getWidgetStateFlow(): Flow<WidgetState> {
@@ -97,6 +99,14 @@ class FlexWidgetDataProvider @Inject constructor(
             0L
         }
 
+        val prognosis = if (isClockRunning && targetMinutesToday > 0 && netMinutesToday < targetMinutesToday) {
+            val blocksToUse = if (allBlocks.any { it.endTime == null }) allBlocks else blocksForCalc
+            calculateProjectedEndTime(blocksToUse, targetMinutesToday.toInt(), now, isBusinessTrip)
+                ?: calculateProjectedEndTime(blocksForCalc, targetMinutesToday.toInt(), now, isBusinessTrip)
+        } else {
+            null
+        }
+
         // Flextime Balance calculation (year days including live today)
         val todayWithNow = (workDay ?: WorkDay(date = today, location = currentLocation, dayType = DayType.WORK))
             .copy(timeBlocks = blocksForCalc)
@@ -134,7 +144,8 @@ class FlexWidgetDataProvider @Inject constructor(
             targetQuotaPercent = targetQuotaPercent,
             officeDays = quotaStatus?.officeDays ?: 0,
             targetOfficeDays = targetOfficeDays,
-            isQuotaMet = quotaStatus?.quotaMet ?: false
+            isQuotaMet = quotaStatus?.quotaMet ?: false,
+            projectedEndTime = prognosis?.projectedEndTime
         )
     }
 }

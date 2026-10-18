@@ -327,7 +327,12 @@ class FlexWidget : GlanceAppWidget() {
                     state.netMinutesToday >= state.targetMinutesToday -> "$progressPercent% (Ziel erreicht)"
                     else -> {
                         val remaining = state.targetMinutesToday - state.netMinutesToday
-                        "$progressPercent% (noch ${formatMinutes(remaining)} Std.)"
+                        val endSuffix = if (state.isClockRunning && state.projectedEndTime != null) {
+                            " · Ende %02d:%02d".format(state.projectedEndTime.hour, state.projectedEndTime.minute)
+                        } else {
+                            ""
+                        }
+                        "$progressPercent% (noch ${formatMinutes(remaining)} Std.$endSuffix)"
                     }
                 }
                 val displayText = if (isNarrow) {

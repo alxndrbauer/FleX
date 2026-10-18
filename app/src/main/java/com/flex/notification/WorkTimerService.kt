@@ -15,9 +15,11 @@ import com.flex.MainActivity
 import com.flex.R
 import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.model.ProjectedEndTime
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
+import com.flex.domain.usecase.CalculateProjectedEndTimeUseCase
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +45,7 @@ class WorkTimerService : Service() {
     @Inject lateinit var calculateDayWorkTime: CalculateDayWorkTimeUseCase
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var pausePreferences: PausePreferences
+    @Inject lateinit var calculateProjectedEndTime: CalculateProjectedEndTimeUseCase
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -51,6 +54,45 @@ class WorkTimerService : Service() {
         private const val CHANNEL_ID = "work_timer_channel"
         private const val BREAK_THRESHOLD_MINUTES = 360 // 6h
         const val ACTION_UPDATE = "com.flex.ACTION_UPDATE_WORK_TIMER"
+
+        fun formatDuration(minutes: Long): String {
+            val h = minutes / 60
+            val m = minutes % 60
+            return if (h == 0L) "${m}min" else "${h}h ${m}min"
+        }
+
+        fun formatShortDuration(minutes: Long): String {
+            val h = minutes / 60
+            val m = minutes % 60
+            return if (h == 0L) "${m}m" else "${h}h ${m}m"
+        }
+
+        fun formatFlexDelta(deltaMinutes: Long): String {
+            val sign = if (deltaMinutes >= 0) "+" else "−"
+            val abs = kotlin.math.abs(deltaMinutes)
+            val h = abs / 60
+            val m = abs % 60
+            return if (h == 0L) "$sign${m}min" else "$sign${h}h ${m}min"
+        }
+
+        fun buildNotificationContent(
+            netMinutes: Long,
+            targetMinutes: Long,
+            locationLabel: String,
+            isOvertime: Boolean,
+            projectedEndTime: ProjectedEndTime? = null
+        ): String {
+            return if (isOvertime) {
+                "${formatDuration(netMinutes)} · $locationLabel"
+            } else {
+                val endPart = if (projectedEndTime != null && targetMinutes > 0 && netMinutes < targetMinutes) {
+                    " · Ende ${projectedEndTime.formatCompact()}"
+                } else {
+                    ""
+                }
+                "${formatDuration(netMinutes)} / ${formatDuration(targetMinutes)} · $locationLabel$endPart"
+            }
+        }
     }
 
     private var timerJob: kotlinx.coroutines.Job? = null
@@ -159,6 +201,17 @@ class WorkTimerService : Service() {
                         else null
 
                         val isOvertime = flexDelta > 0
+                        val projectedEndTime = if (!isOvertime && targetMinutes > 0) {
+                            calculateProjectedEndTime(
+                                workDay?.timeBlocks ?: emptyList(),
+                                targetMinutes.toInt(),
+                                LocalTime.now(),
+                                false
+                            )
+                        } else {
+                            null
+                        }
+
                         val title: String
                         val content: String
                         val subText: String
@@ -167,14 +220,26 @@ class WorkTimerService : Service() {
 
                         if (isOvertime) {
                             title = "Ziel erreicht"
-                            content = "${formatDuration(netMinutes)} · $locationLabel"
+                            content = buildNotificationContent(
+                                netMinutes = netMinutes,
+                                targetMinutes = targetMinutes,
+                                locationLabel = locationLabel,
+                                isOvertime = true,
+                                projectedEndTime = null
+                            )
                             val overtimePart = "Überstunden: ${formatFlexDelta(flexDelta)}"
                             subText = listOfNotNull(overtimePart, breakPart).joinToString("  ·  ")
                             progress = netMinutes.toInt()
                             progressMax = netMinutes.toInt() // full bar effectively
                         } else {
                             title = "Arbeitszeit läuft"
-                            content = "${formatDuration(netMinutes)} / ${formatDuration(targetMinutes)} · $locationLabel"
+                            content = buildNotificationContent(
+                                netMinutes = netMinutes,
+                                targetMinutes = targetMinutes,
+                                locationLabel = locationLabel,
+                                isOvertime = false,
+                                projectedEndTime = projectedEndTime
+                            )
                             val flexPart = "Flexzeit: ${formatFlexDelta(flexDelta)}"
                             subText = listOfNotNull(breakPart, flexPart).joinToString("  ·  ")
                             progress = netMinutes.toInt()
@@ -545,27 +610,5 @@ class WorkTimerService : Service() {
             this, 104, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-    }
-
-    // ── Formatierung ─────────────────────────────────────────────────────────
-
-    private fun formatDuration(minutes: Long): String {
-        val h = minutes / 60
-        val m = minutes % 60
-        return if (h == 0L) "${m}min" else "${h}h ${m}min"
-    }
-
-    private fun formatShortDuration(minutes: Long): String {
-        val h = minutes / 60
-        val m = minutes % 60
-        return if (h == 0L) "${m}m" else "${h}h ${m}m"
-    }
-
-    private fun formatFlexDelta(deltaMinutes: Long): String {
-        val sign = if (deltaMinutes >= 0) "+" else "−"
-        val abs = kotlin.math.abs(deltaMinutes)
-        val h = abs / 60
-        val m = abs % 60
-        return if (h == 0L) "$sign${m}min" else "$sign${h}h ${m}min"
     }
 }
