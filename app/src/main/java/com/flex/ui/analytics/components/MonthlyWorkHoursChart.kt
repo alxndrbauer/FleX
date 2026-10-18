@@ -18,6 +18,10 @@ import androidx.compose.ui.unit.dp
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.patrykandpatrick.vico.compose.cartesian.layer.ColumnCartesianLayer
+import com.patrykandpatrick.vico.compose.common.Fill
+import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
@@ -89,12 +93,25 @@ fun MonthlyWorkHoursChart(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+    
+    val columnColor = MaterialTheme.colorScheme.primary
+    val marker = rememberChartMarker(valueSuffix = "h")
+    val columnLayer = rememberColumnCartesianLayer(
+        columnProvider = ColumnCartesianLayer.ColumnProvider.series(
+            rememberLineComponent(
+                fill = Fill(columnColor),
+                thickness = 16.dp,
+                shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)
+            )
+        )
+    )
 
     CartesianChartHost(
         chart = rememberCartesianChart(
-            rememberColumnCartesianLayer(),
+            columnLayer,
             startAxis = VerticalAxis.rememberStart(valueFormatter = startFormatter),
             bottomAxis = HorizontalAxis.rememberBottom(valueFormatter = bottomFormatter),
+            marker = marker
         ),
         modelProducer = modelProducer,
         modifier = modifier

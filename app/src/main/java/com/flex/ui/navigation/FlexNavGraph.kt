@@ -48,6 +48,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,6 +59,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.AnimatedContentScope
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -82,6 +89,8 @@ import com.flex.ui.settings.WifiSettingsScreen
 import com.flex.ui.settings.WorkTimeRulesScreen
 import com.flex.ui.year.YearOverviewScreen
 import kotlinx.coroutines.launch
+
+val LocalFloatingNavVisible = compositionLocalOf { true }
 
 sealed class Screen(
     val route: String,
@@ -132,9 +141,37 @@ fun FlexNavGraph(
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
     var showBottomSheet by remember { mutableStateOf(false) }
+    var isNavBarVisible by remember { mutableStateOf(true) }
+    var cumulativeScroll by remember { mutableFloatStateOf(0f) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+
+    LaunchedEffect(currentDestination?.route) {
+        isNavBarVisible = true
+        cumulativeScroll = 0f
+    }
+
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                if (delta < 0f) { // Scrolling down (content moving up)
+                    cumulativeScroll = (cumulativeScroll + delta).coerceIn(-150f, 50f)
+                    if (cumulativeScroll <= -70f) {
+                        isNavBarVisible = false
+                    }
+                } else if (delta > 0f) { // Scrolling up (content moving down)
+                    cumulativeScroll = (cumulativeScroll + delta).coerceIn(-150f, 50f)
+                    if (delta > 15f || cumulativeScroll >= 0f) {
+                        isNavBarVisible = true
+                        cumulativeScroll = 0f
+                    }
+                }
+                return Offset.Zero
+            }
+        }
+    }
 
     val configuration = LocalConfiguration.current
     val isExpandedScreen = configuration.screenWidthDp >= 600
@@ -172,10 +209,16 @@ fun FlexNavGraph(
             navController = navController,
             startDestination = if (onboardingCompleted) (initialRoute ?: Screen.Home.route) else Screen.Onboarding.route,
             modifier = modifier,
-            enterTransition = { fadeIn(tween(250)) },
-            exitTransition = { fadeOut(tween(200)) },
-            popEnterTransition = { fadeIn(tween(250)) },
-            popExitTransition = { fadeOut(tween(200)) }
+            enterTransition = {
+                fadeIn(tween(280, easing = FastOutSlowInEasing)) +
+                slideInHorizontally(spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)) { 40 }
+            },
+            exitTransition = { fadeOut(tween(200, easing = FastOutSlowInEasing)) },
+            popEnterTransition = {
+                fadeIn(tween(280, easing = FastOutSlowInEasing)) +
+                slideInHorizontally(spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)) { -40 }
+            },
+            popExitTransition = { fadeOut(tween(200, easing = FastOutSlowInEasing)) }
         ) {
             composable(Screen.Onboarding.route) {
                 OnboardingScreen(
@@ -238,63 +281,27 @@ fun FlexNavGraph(
         }
     }
 
-    if (isExpandedScreen) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            NavigationRail {
-                bottomNavItems.forEach { screen ->
-                    val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
-                    NavigationRailItem(
-                        icon = {
-                            AnimatedNavIcon(
-                                selected = isSelected,
-                                filledIcon = screen.icon,
-                                outlinedIcon = screen.outlinedIcon,
-                                contentDescription = screen.title
-                            )
-                        },
-                        label = { Text(screen.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
-                        selected = isSelected,
-                        onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    )
-                }
+    val topLevelRoutes = remember {
+        setOf(
+            Screen.Home.route,
+            Screen.Month.route,
+            Screen.Planning.route,
+            Screen.Dashboard.route,
+            Screen.Quota.route,
+            Screen.Analytics.route,
+            Screen.Year.route,
+            Screen.Settings.route
+        )
+    }
+    val isTopLevelDestination = currentDestination?.route in topLevelRoutes
 
-                val isMoreSelected = currentDestination?.hierarchy?.any { dest ->
-                    moreItems.any { it.route == dest.route }
-                } == true
-                NavigationRailItem(
-                    icon = {
-                        AnimatedNavIcon(
-                            selected = isMoreSelected,
-                            filledIcon = Icons.Default.Menu,
-                            outlinedIcon = Icons.Outlined.Menu,
-                            contentDescription = "Mehr"
-                        )
-                    },
-                    label = { Text("Mehr", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
-                    selected = isMoreSelected,
-                    onClick = { showBottomSheet = true }
-                )
-            }
-
-            Box(modifier = Modifier.weight(1f)) {
-                AppNavHost()
-            }
-        }
-    } else {
-        Scaffold(
-            bottomBar = {
-                NavigationBar {
+    CompositionLocalProvider(LocalFloatingNavVisible provides (isTopLevelDestination && isNavBarVisible)) {
+        if (isExpandedScreen) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                NavigationRail {
                     bottomNavItems.forEach { screen ->
                         val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
-                        NavigationBarItem(
+                        NavigationRailItem(
                             icon = {
                                 AnimatedNavIcon(
                                     selected = isSelected,
@@ -320,7 +327,7 @@ fun FlexNavGraph(
                     val isMoreSelected = currentDestination?.hierarchy?.any { dest ->
                         moreItems.any { it.route == dest.route }
                     } == true
-                    NavigationBarItem(
+                    NavigationRailItem(
                         icon = {
                             AnimatedNavIcon(
                                 selected = isMoreSelected,
@@ -334,9 +341,49 @@ fun FlexNavGraph(
                         onClick = { showBottomSheet = true }
                     )
                 }
+
+                Box(modifier = Modifier.weight(1f)) {
+                    AppNavHost()
+                }
             }
-        ) { innerPadding ->
-            AppNavHost(modifier = Modifier.padding(innerPadding))
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(nestedScrollConnection)
+            ) {
+                AppNavHost()
+
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isTopLevelDestination && isNavBarVisible,
+                    enter = androidx.compose.animation.slideInVertically(
+                        spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
+                    ) { it } + fadeIn(tween(200)),
+                    exit = androidx.compose.animation.slideOutVertically(
+                        tween(200, easing = FastOutSlowInEasing)
+                    ) { it } + fadeOut(tween(180)),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
+                    val isMoreSelected = currentDestination?.hierarchy?.any { dest ->
+                        moreItems.any { it.route == dest.route }
+                    } == true
+                    FloatingNavigationBar(
+                        items = bottomNavItems,
+                        currentDestination = currentDestination,
+                        moreSelected = isMoreSelected,
+                        onItemClick = { screen ->
+                            navController.navigate(screen.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        onMoreClick = { showBottomSheet = true }
+                    )
+                }
+            }
         }
     }
 }

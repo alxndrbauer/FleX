@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -150,8 +151,10 @@ fun SettingsScreen(
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding(),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
     ) {
 
         // ── Darstellung ──────────────────────────────────────────────
@@ -161,7 +164,12 @@ fun SettingsScreen(
                 ListItem(
                     headlineContent = { Text("Design") },
                     supportingContent = {
-                        Text(when (themeMode) { ThemeMode.SYSTEM -> "System"; ThemeMode.LIGHT -> "Hell"; ThemeMode.DARK -> "Dunkel" })
+                        Text(when (themeMode) {
+                            ThemeMode.SYSTEM -> "System"
+                            ThemeMode.LIGHT -> "Hell"
+                            ThemeMode.DARK -> "Dunkel"
+                            ThemeMode.AMOLED -> "AMOLED"
+                        })
                     },
                     leadingContent = { SettingsIcon(Icons.Default.Palette, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer) },
                     trailingContent = { ChevronTrailing() },
@@ -553,7 +561,12 @@ fun SettingsScreen(
             onDismissRequest = { showThemeDialog = false },
             title = { Text("Design") },
             text = {
-                val options = listOf(ThemeMode.SYSTEM to "System", ThemeMode.LIGHT to "Hell", ThemeMode.DARK to "Dunkel")
+                val options = listOf(
+                    ThemeMode.SYSTEM to "System",
+                    ThemeMode.LIGHT to "Hell",
+                    ThemeMode.DARK to "Dunkel",
+                    ThemeMode.AMOLED to "AMOLED"
+                )
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     options.forEachIndexed { index, (mode, label) ->
                         SegmentedButton(

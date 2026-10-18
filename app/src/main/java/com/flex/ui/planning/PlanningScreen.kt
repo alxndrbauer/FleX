@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -83,6 +84,7 @@ import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import java.time.LocalDate
 import com.flex.ui.components.InfoTooltip
+import com.flex.ui.components.OfficeQuotaCard
 import com.flex.ui.components.TOOLTIP_FLEXTIME_PROGNOSIS
 import com.flex.ui.components.TOOLTIP_FLEXTIME_PROGNOSIS_TITLE
 import com.flex.ui.components.TOOLTIP_QUOTA_PREVIEW
@@ -132,17 +134,29 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+    ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Month navigation — above the tabs, always visible
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp),
+                .padding(horizontal = 4.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { viewModel.previousMonth() }) {
-                Icon(Icons.Default.ChevronLeft, contentDescription = "Zurück")
+                Icon(
+                    Icons.Default.ChevronLeft,
+                    contentDescription = "Zurück",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
             }
             Text(
                 text = state.yearMonth.format(
@@ -150,15 +164,24 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
                 ),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center
             )
             IconButton(onClick = { viewModel.nextMonth() }) {
-                Icon(Icons.Default.ChevronRight, contentDescription = "Weiter")
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = "Weiter",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
 
-        PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
+        PrimaryTabRow(
+            selectedTabIndex = pagerState.currentPage,
+            containerColor = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.primary
+        ) {
             Tab(
                 selected = pagerState.currentPage == 0,
                 onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
@@ -175,7 +198,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             if (page == 0) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 100.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
 
@@ -369,103 +392,24 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             }
         }
 
-        // Quota preview — redesigned with two sections like MonthScreen prognosis card
+        // Quota preview — OfficeQuotaCard with modern unified design
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            "Quoten-Vorschau",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        InfoTooltip(
-                            title = TOOLTIP_QUOTA_PREVIEW_TITLE,
-                            text = TOOLTIP_QUOTA_PREVIEW
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    val quota = state.quotaStatus
-                    val oh = state.officeHours
-                    val statusColor =
-                        if (quota.quotaMet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-
-                    // Section A: Office hours + status badge
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                "${oh.plannedOfficeHours} Büro",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                "von ${oh.requiredOfficeHours} gefordert",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = statusColor.copy(alpha = 0.12f)
-                        ) {
-                            Text(
-                                if (quota.quotaMet) "Quote erfüllt" else "nicht erfüllt",
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = statusColor
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    val hoursProgress = if (oh.requiredOfficeMinutes > 0)
-                        (oh.plannedOfficeMinutes.toFloat() / oh.requiredOfficeMinutes).coerceIn(0f, 1f)
-                    else 0f
-                    LinearProgressIndicator(
-                        progress = { hoursProgress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp),
-                        color = OfficeColor,
-                        trackColor = ProgressIndicatorDefaults.linearTrackColor,
-                        strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "${quota.officeDays} Büro · ${quota.homeOfficeDays} HO · ${"%.0f".format(quota.officePercent)}% (Ziel ${state.settings.officeQuotaPercent}%)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    // Section B: Total hours context
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            "Gesamt: ${oh.plannedTotalHours}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            "Büro-Anteil: ${"%.1f".format(quota.officePercent)}%",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
+            val quota = state.quotaStatus
+            val oh = state.officeHours
+            OfficeQuotaCard(
+                officePercent = quota.officePercent,
+                targetPercent = state.settings.officeQuotaPercent,
+                isMet = quota.quotaMet,
+                officeDays = quota.officeDays,
+                requiredDays = state.settings.officeQuotaMinDays,
+                officeMinutes = oh.plannedOfficeMinutes,
+                requiredOfficeMinutes = oh.requiredOfficeMinutes,
+                title = "Quoten-Vorschau",
+                subtitle = "Planungs-Prognose",
+                tooltipTitle = TOOLTIP_QUOTA_PREVIEW_TITLE,
+                tooltipText = TOOLTIP_QUOTA_PREVIEW,
+                statusTextOverride = if (quota.quotaMet) "Quote erfüllt ✓" else "Ausstehend"
+            )
         }
 
         // Flextime preview — Soll-Wert aus Titel in Untertitel
@@ -510,7 +454,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             if (page == 1) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 100.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(state.monthSummaries) { summary ->
@@ -637,6 +581,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
         modifier = Modifier.align(Alignment.BottomCenter)
     )
     } // end Box
+    } // end Surface
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

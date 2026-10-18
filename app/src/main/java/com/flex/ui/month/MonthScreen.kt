@@ -8,8 +8,22 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,9 +36,11 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,18 +52,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Warning
+import com.flex.ui.components.EmptyStateView
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -96,6 +117,9 @@ import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.usecase.CheckTimeBlockOverlapUseCase
 import com.flex.ui.components.InfoTooltip
+import com.flex.ui.components.OfficeQuotaCard
+import com.flex.ui.components.TOOLTIP_OFFICE_QUOTA
+import com.flex.ui.components.TOOLTIP_OFFICE_QUOTA_TITLE
 import com.flex.ui.components.TOOLTIP_PROGNOSIS
 import com.flex.ui.components.TOOLTIP_PROGNOSIS_TITLE
 import com.flex.ui.components.diagonalHatch
@@ -176,151 +200,136 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-    Column(
-        modifier = Modifier.fillMaxSize()
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        // Month navigation header — export action on the left, navigation symmetric on the right
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                viewModel.onExportClick()
-            }) {
-                Icon(Icons.Default.FileDownload, contentDescription = "Exportieren")
-            }
-            IconButton(onClick = { viewModel.previousMonth() }) {
-                Icon(Icons.Default.ChevronLeft, contentDescription = "Vorheriger Monat")
-            }
-            Text(
-                text = state.yearMonth.format(
-                    DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN)
-                ),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center
-            )
-            IconButton(onClick = { viewModel.nextMonth() }) {
-                Icon(Icons.Default.ChevronRight, contentDescription = "Nächster Monat")
-            }
-        }
-
-        val pagerState = rememberPagerState { 2 }
-        val scope = rememberCoroutineScope()
-
-        PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
-            Tab(
-                selected = pagerState.currentPage == 0,
-                onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
-                text = { Text("Kalender") }
-            )
-            Tab(
-                selected = pagerState.currentPage == 1,
-                onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
-                text = { Text("Einträge") }
-            )
-        }
-
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.weight(1f)
-        ) { page ->
-
-            if (page == 0) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState())
+                .statusBarsPadding()
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
-
-        // Prognosis card — two visual sections
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        "Monatsübersicht",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+            // Month navigation header — export action on the left, navigation symmetric on the right
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    viewModel.onExportClick()
+                }) {
+                    Icon(
+                        Icons.Default.FileDownload,
+                        contentDescription = "Exportieren",
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
-                    InfoTooltip(title = TOOLTIP_PROGNOSIS_TITLE, text = TOOLTIP_PROGNOSIS)
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                IconButton(onClick = { viewModel.previousMonth() }) {
+                    Icon(
+                        Icons.Default.ChevronLeft,
+                        contentDescription = "Vorheriger Monat",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Text(
+                    text = state.yearMonth.format(
+                        DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN)
+                    ),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center
+                )
+                IconButton(onClick = { viewModel.nextMonth() }) {
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = "Nächster Monat",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
 
-                val q = state.prognosisQuota
+            val pagerState = rememberPagerState { 2 }
+            val scope = rememberCoroutineScope()
 
-                // Section A: Office quota
-                val officeH = state.officeMinutes / 60
-                val officeM = state.officeMinutes % 60
-                val reqH = state.requiredOfficeMinutes / 60
-                val reqM = state.requiredOfficeMinutes % 60
+            PrimaryTabRow(
+                selectedTabIndex = pagerState.currentPage,
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.primary
+            ) {
+                Tab(
+                    selected = pagerState.currentPage == 0,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
+                    text = { Text("Kalender") }
+                )
+                Tab(
+                    selected = pagerState.currentPage == 1,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
+                    text = { Text("Einträge") }
+                )
+            }
 
-                val statusColor =
-                    if (q.quotaMet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+            HorizontalPager(
+                state = pagerState,
+                userScrollEnabled = false,
+                modifier = Modifier.weight(1f)
+            ) { page ->
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
+                if (page == 0) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        Spacer(modifier = Modifier.height(8.dp))
+
+            val q = state.prognosisQuota
+
+            // 1. Büro-Quote Card (New Modern Design)
+            OfficeQuotaCard(
+                officePercent = q.officePercent,
+                targetPercent = state.effectiveQuotaPercent,
+                isMet = q.quotaMet,
+                officeDays = q.officeDays,
+                requiredDays = state.effectiveQuotaMinDays,
+                officeMinutes = state.officeMinutes,
+                requiredOfficeMinutes = state.requiredOfficeMinutes,
+                title = "Büro-Präsenz",
+                subtitle = "Monatsquote",
+                tooltipTitle = TOOLTIP_OFFICE_QUOTA_TITLE,
+                tooltipText = TOOLTIP_OFFICE_QUOTA
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 2. Gleitzeit & Arbeitszeit Card
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                )
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         Text(
-                            "${officeH}h ${officeM}m Büro",
+                            "Arbeitszeit & Gleitzeit",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
-                        Text(
-                            "von ${reqH}h ${reqM}m gefordert",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        InfoTooltip(title = TOOLTIP_PROGNOSIS_TITLE, text = TOOLTIP_PROGNOSIS)
                     }
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = statusColor.copy(alpha = 0.12f)
-                    ) {
-                        Text(
-                            if (q.quotaMet) "Quote erfüllt" else "nicht erfüllt",
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = statusColor
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                val hoursProgress = if (state.requiredOfficeMinutes > 0)
-                    (state.officeMinutes.toFloat() / state.requiredOfficeMinutes).coerceIn(0f, 1f)
-                else 0f
-                LinearProgressIndicator(
-                    progress = { hoursProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp),
-                    color = OfficeColor,
-                    trackColor = ProgressIndicatorDefaults.linearTrackColor,
-                    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "${q.officeDays}/${state.effectiveQuotaMinDays} Tage · ${"%.0f".format(q.officePercent)}% (Ziel ${state.effectiveQuotaPercent}%)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                // Section B: Hours balance
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                 val actualHours = state.actualWorkedMinutesMonth / 60
                 val actualMinutes = state.actualWorkedMinutesMonth % 60
@@ -331,71 +340,93 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                 val sign = if (state.differenceMinutesMonth >= 0) "+" else ""
                 val diffHours = kotlin.math.abs(state.differenceMinutesMonth) / 60
                 val diffMinutes = kotlin.math.abs(state.differenceMinutesMonth) % 60
-                val diffColor =
-                    if (state.differenceMinutesMonth >= 0) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.error
+                val isPositive = state.differenceMinutesMonth >= 0
+                val diffColor = if (isPositive) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
 
-                Column {
+                // Prominent Monthly Flextime Card
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = diffColor.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, diffColor.copy(alpha = 0.3f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                "Geleistet",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "${actualHours}h ${actualMinutes}m",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(diffColor.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isPositive) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
+                                    contentDescription = null,
+                                    tint = diffColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    "Gleitzeit Monat",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                val totalFlexMin = state.prognosisFlextime.totalMinutes
+                                val totalSign = if (totalFlexMin >= 0) "+" else "-"
+                                val totH = kotlin.math.abs(totalFlexMin) / 60
+                                val totM = kotlin.math.abs(totalFlexMin) % 60
+                                Text(
+                                    "Gesamt-Saldo: $totalSign${totH}h ${totM}m",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                "Angerechnet",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "${workedHours}h ${workedMinutes}m",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+
+                        Text(
+                            text = "$sign${diffHours}h ${diffMinutes}m",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = diffColor
+                        )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                "Soll",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "${targetHours}h ${targetMinutes}m",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                "Differenz",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "$sign${diffHours}h ${diffMinutes}m",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = diffColor
-                            )
-                        }
-                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Detailed metrics: Geleistet, Angerechnet, Soll
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    MetricMiniTile(
+                        title = "Geleistet",
+                        value = "${actualHours}h ${actualMinutes}m",
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    MetricMiniTile(
+                        title = "Angerechnet",
+                        value = "${workedHours}h ${workedMinutes}m",
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    MetricMiniTile(
+                        title = "Soll (Monat)",
+                        value = "${targetHours}h ${targetMinutes}m",
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
@@ -420,64 +451,113 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Day of week headers
-        Row(modifier = Modifier.fillMaxWidth()) {
-            listOf("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So").forEach { day ->
-                Text(
-                    text = day,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
+        val density = LocalDensity.current
+        val swipeThreshold = with(density) { 48.dp.toPx() }
+        var totalDragOffset by remember { mutableFloatStateOf(0f) }
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Calendar grid — non-lazy grid (safe inside verticalScroll), max 42 cells
-        val firstDay = state.yearMonth.atDay(1)
-        val startOffset = (firstDay.dayOfWeek.value - 1)
-        val daysInMonth = state.yearMonth.lengthOfMonth()
-        val workDayMap = state.workDays.associateBy { it.date }
-
-        val totalCells = startOffset + daysInMonth
-        val rowCount = (totalCells + 6) / 7
-        val allCells = List(rowCount * 7) { index ->
-            when {
-                index < startOffset -> null
-                index < startOffset + daysInMonth -> state.yearMonth.atDay(index - startOffset + 1)
-                else -> null
-            }
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            allCells.chunked(7).forEach { week ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    week.forEach { date ->
-                        Box(modifier = Modifier.weight(1f)) {
-                            if (date != null) {
-                                val dayWorkDay = workDayMap[date]
-                                val showDailyFlex = dayWorkDay != null && (
-                                    dayWorkDay.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP, DayType.FLEX_DAY)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .pointerInput(state.yearMonth) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { totalDragOffset = 0f },
+                        onDragEnd = {
+                            if (totalDragOffset > swipeThreshold) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.previousMonth()
+                            } else if (totalDragOffset < -swipeThreshold) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.nextMonth()
+                            }
+                            totalDragOffset = 0f
+                        },
+                        onDragCancel = {
+                            totalDragOffset = 0f
+                        },
+                        onHorizontalDrag = { _, dragAmount ->
+                            totalDragOffset += dragAmount
+                        }
+                    )
+                },
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            shape = MaterialTheme.shapes.large
+        ) {
+            Column(modifier = Modifier.padding(10.dp)) {
+                AnimatedContent(
+                    targetState = state.yearMonth,
+                    transitionSpec = {
+                        if (targetState > initialState) {
+                            (slideInHorizontally(spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)) { width -> width / 2 } + fadeIn(tween(220)))
+                                .togetherWith(slideOutHorizontally(tween(200)) { width -> -width / 2 } + fadeOut(tween(160)))
+                        } else {
+                            (slideInHorizontally(spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)) { width -> -width / 2 } + fadeIn(tween(220)))
+                                .togetherWith(slideOutHorizontally(tween(200)) { width -> width / 2 } + fadeOut(tween(160)))
+                        }
+                    },
+                    label = "month_calendar_transition"
+                ) { currentMonth ->
+                    Column {
+                        // Day of week headers
+                        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+                            listOf("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So").forEach { day ->
+                                Text(
+                                    text = day,
+                                    modifier = Modifier.weight(1f),
+                                    textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                val rule = state.workTimeRules.getRuleForDate(date)
-                                val activeWorkDays = rule?.workDays ?: DEFAULT_WORK_DAYS
-                                val isOffDay = date.dayOfWeek !in activeWorkDays
+                            }
+                        }
 
-                                DayCell(
-                                    date = date,
-                                    workDay = dayWorkDay,
-                                    isToday = date == LocalDate.now(),
-                                    isOffDay = isOffDay,
-                                    hasBreakViolation = state.breakViolationDates.contains(date),
-                                    hasOverlap = state.overlappingDates.contains(date),
-                                    flextime = if (showDailyFlex) state.dailyFlextimeByDate[date] else null,
-                                    onClick = { viewModel.selectDay(date) }
-                                )
+                        // Calendar grid — non-lazy grid (safe inside verticalScroll), max 42 cells
+                        val firstDay = currentMonth.atDay(1)
+                        val startOffset = (firstDay.dayOfWeek.value - 1)
+                        val daysInMonth = currentMonth.lengthOfMonth()
+                        val workDayMap = state.workDays.associateBy { it.date }
+
+                        val totalCells = startOffset + daysInMonth
+                        val rowCount = (totalCells + 6) / 7
+                        val allCells = List(rowCount * 7) { index ->
+                            when {
+                                index < startOffset -> null
+                                index < startOffset + daysInMonth -> currentMonth.atDay(index - startOffset + 1)
+                                else -> null
+                            }
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            allCells.chunked(7).forEach { week ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    week.forEach { date ->
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            if (date != null) {
+                                                val dayWorkDay = workDayMap[date]
+                                                val showDailyFlex = dayWorkDay != null && (
+                                                    dayWorkDay.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP, DayType.FLEX_DAY)
+                                                )
+                                                val rule = state.workTimeRules.getRuleForDate(date)
+                                                val activeWorkDays = rule?.workDays ?: DEFAULT_WORK_DAYS
+                                                val isOffDay = date.dayOfWeek !in activeWorkDays
+
+                                                DayCell(
+                                                    date = date,
+                                                    workDay = dayWorkDay,
+                                                    isToday = date == LocalDate.now(),
+                                                    isOffDay = isOffDay,
+                                                    hasBreakViolation = state.breakViolationDates.contains(date),
+                                                    hasOverlap = state.overlappingDates.contains(date),
+                                                    flextime = if (showDailyFlex) state.dailyFlextimeByDate[date] else null,
+                                                    onClick = { viewModel.selectDay(date) }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -485,7 +565,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // Legend — FlowRow so it wraps on narrow screens
         FlowRow(
@@ -502,6 +582,8 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             LegendItem(color = SickDayColor, label = "Krank")
             LegendItem(color = PublicHolidayColor, label = "Feiertag")
         }
+
+        Spacer(modifier = Modifier.height(100.dp))
 
         } // end scrollable Column
             } // end page == 0
@@ -525,21 +607,37 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             }
             Spacer(modifier = Modifier.height(4.dp))
 
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(state.workDays.sortedBy { it.date }) { workDay ->
-                    WorkDayListItem(
-                        workDay = workDay,
-                        netMinutes = state.netMinutesByDate[workDay.date] ?: 0,
-                        dailyFlextime = state.dailyFlextimeByDate[workDay.date],
-                        flextime = state.flextimeByDate[workDay.date],
-                        hasOverlap = state.overlappingDates.contains(workDay.date),
-                        onClick = { viewModel.selectDay(workDay.date) }
+            if (state.workDays.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    EmptyStateView(
+                        icon = Icons.Default.CalendarToday,
+                        title = "Keine Einträge",
+                        description = "In diesem Monat wurden bisher keine Arbeitstage erfasst."
                     )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(bottom = 100.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(state.workDays.sortedBy { it.date }) { workDay ->
+                        WorkDayListItem(
+                            workDay = workDay,
+                            netMinutes = state.netMinutesByDate[workDay.date] ?: 0,
+                            dailyFlextime = state.dailyFlextimeByDate[workDay.date],
+                            flextime = state.flextimeByDate[workDay.date],
+                            hasOverlap = state.overlappingDates.contains(workDay.date),
+                            onClick = { viewModel.selectDay(workDay.date) }
+                        )
+                    }
                 }
             }
                 } // end Column for page 1
@@ -639,7 +737,8 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
         hostState = snackbarHostState,
         modifier = Modifier.align(Alignment.BottomCenter)
     )
-    } // end Box
+        } // end Box
+    } // end Surface
 }
 
 
@@ -668,56 +767,108 @@ fun DayCell(
         Modifier.diagonalHatch(hatchColor)
     } else Modifier
 
-    Box(
+    val hasOfficeBlock = workDay?.timeBlocks?.any { it.location == WorkLocation.OFFICE } == true
+    val hasHomeOfficeBlock = workDay?.timeBlocks?.any { it.location == WorkLocation.HOME_OFFICE } == true
+    val isSplitLocation = hasOfficeBlock && hasHomeOfficeBlock
+
+    val todayBorder = if (isToday) {
+        BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+    } else null
+
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = bgColor,
+        border = todayBorder,
         modifier = Modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(4.dp))
-            .background(bgColor)
+            .clip(RoundedCornerShape(8.dp))
             .then(borderMod)
             .clickable(enabled = holidayName == null, onClick = onClick)
     ) {
-        Column(
-            modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = date.dayOfMonth.toString(),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
-                color = if (isToday) MaterialTheme.colorScheme.primary
-                else if (holidayName != null) PublicHolidayColor
-                else if (isOffDay) MaterialTheme.colorScheme.onSurfaceVariant
-                else MaterialTheme.colorScheme.onSurface
-            )
-            if (flextime != null) {
-                val sign = if (flextime > 0) "+" else if (flextime < 0) "-" else ""
-                val absFlex = Math.abs(flextime)
-                val color = if (flextime < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(vertical = 2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
                 Text(
-                    text = "$sign${absFlex / 60}:${(absFlex % 60).toString().padStart(2, '0')}",
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, lineHeight = 8.sp),
-                    color = color
+                    text = date.dayOfMonth.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isToday) MaterialTheme.colorScheme.primary
+                    else if (holidayName != null) PublicHolidayColor
+                    else if (isOffDay) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onSurface
                 )
+                if (flextime != null) {
+                    val sign = if (flextime > 0) "+" else if (flextime < 0) "-" else ""
+                    val absFlex = Math.abs(flextime)
+                    val color = if (flextime < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    Text(
+                        text = "$sign${absFlex / 60}:${(absFlex % 60).toString().padStart(2, '0')}",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, lineHeight = 8.sp),
+                        color = color
+                    )
+                }
+                if (isSplitLocation) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(
+                        modifier = Modifier
+                            .size(width = 16.dp, height = 3.5.dp)
+                            .clip(RoundedCornerShape(2.dp)),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(OfficeColor)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(HomeOfficeColor)
+                        )
+                    }
+                } else if (hasOfficeBlock && !isToday) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(width = 10.dp, height = 3.5.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(OfficeColor.copy(alpha = 0.85f))
+                    )
+                } else if (hasHomeOfficeBlock && !isToday) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(width = 10.dp, height = 3.5.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(HomeOfficeColor.copy(alpha = 0.85f))
+                    )
+                } else if (isToday) {
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 2.dp)
+                            .size(4.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                }
             }
-            if (isToday) {
+            if (hasBreakViolation || hasOverlap) {
                 Box(
                     modifier = Modifier
-                        .padding(top = 2.dp)
-                        .size(4.dp)
+                        .align(Alignment.TopEnd)
+                        .padding(2.dp)
+                        .size(6.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
+                        .background(MaterialTheme.colorScheme.error)
                 )
             }
-        }
-        if (hasBreakViolation || hasOverlap) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(2.dp)
-                    .size(6.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.error)
-            )
         }
     }
 }
@@ -1305,4 +1456,36 @@ fun EditDayDialog(
             }
         }
     )
+}
+
+@Composable
+private fun MetricMiniTile(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                title,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.titleSmall.copy(fontSize = 12.sp),
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1
+            )
+        }
+    }
 }

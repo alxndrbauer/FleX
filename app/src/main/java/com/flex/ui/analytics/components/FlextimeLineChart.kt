@@ -25,6 +25,13 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
+import com.patrykandpatrick.vico.compose.common.Fill
+
 @Composable
 fun FlextimeLineChart(
     data: List<TimeSeriesPoint>,
@@ -70,12 +77,31 @@ fun FlextimeLineChart(
         }
     }
 
+    val lineColor = MaterialTheme.colorScheme.primary
+    val marker = rememberChartMarker(valueSuffix = "h")
+    val lineLayer = rememberLineCartesianLayer(
+        lineProvider = LineCartesianLayer.LineProvider.series(
+            LineCartesianLayer.rememberLine(
+                fill = LineCartesianLayer.LineFill.single(Fill(lineColor)),
+                stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 2.5.dp, cap = StrokeCap.Round),
+                areaFill = LineCartesianLayer.AreaFill.single(
+                    Fill(
+                        Brush.verticalGradient(
+                            listOf(lineColor.copy(alpha = 0.32f), Color.Transparent)
+                        )
+                    )
+                )
+            )
+        )
+    )
+
     key(isDaily) {
         CartesianChartHost(
             chart = rememberCartesianChart(
-                rememberLineCartesianLayer(),
+                lineLayer,
                 startAxis = VerticalAxis.rememberStart(valueFormatter = startFormatter),
                 bottomAxis = HorizontalAxis.rememberBottom(valueFormatter = bottomFormatter),
+                marker = marker
             ),
             modelProducer = modelProducer,
             modifier = modifier

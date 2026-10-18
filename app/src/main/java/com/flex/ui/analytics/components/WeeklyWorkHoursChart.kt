@@ -29,6 +29,10 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.compose.cartesian.data.columnModel
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.patrykandpatrick.vico.compose.cartesian.layer.ColumnCartesianLayer
+import com.patrykandpatrick.vico.compose.common.Fill
+import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 
@@ -94,11 +98,25 @@ fun WeeklyWorkHoursChart(
         )
     }
 
+    val marker = rememberChartMarker(valueSuffix = "h")
+    val columnLayer = rememberColumnCartesianLayer(
+        columnProvider = ColumnCartesianLayer.ColumnProvider.series(
+            listOf(OfficeColor, HomeOfficeColor).map { color ->
+                rememberLineComponent(
+                    fill = Fill(color),
+                    thickness = 12.dp,
+                    shape = RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp)
+                )
+            }
+        )
+    )
+
     CartesianChartHost(
         chart = rememberCartesianChart(
-            rememberColumnCartesianLayer(),
+            columnLayer,
             startAxis = VerticalAxis.rememberStart(valueFormatter = startFormatter),
             bottomAxis = HorizontalAxis.rememberBottom(valueFormatter = bottomFormatter),
+            marker = marker
         ),
         modelProducer = modelProducer,
         modifier = modifier

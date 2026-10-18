@@ -618,4 +618,25 @@ class SettingsViewModelTest : BaseUnitTest() {
         assertThat(emittedResult).isEqualTo(expectedResult)
         job.cancel()
     }
+
+    @Test
+    fun `setThemeMode with AMOLED delegates to themePreferences`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.setThemeMode(ThemeMode.AMOLED)
+
+        verify(themePreferences).setThemeMode(ThemeMode.AMOLED)
+    }
+
+    @Test
+    fun `themeMode state exposes AMOLED from themePreferences`() = runTest {
+        val themeFlow = MutableStateFlow(ThemeMode.AMOLED)
+        whenever(themePreferences.themeModeFlow).thenReturn(themeFlow)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.themeMode.value).isEqualTo(ThemeMode.AMOLED)
+    }
 }

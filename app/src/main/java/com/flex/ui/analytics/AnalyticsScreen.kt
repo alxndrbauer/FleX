@@ -2,16 +2,21 @@ package com.flex.ui.analytics
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.flex.ui.components.EmptyStateView
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -38,7 +43,9 @@ fun AnalyticsScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
@@ -56,7 +63,16 @@ fun AnalyticsScreen(
             )
         }
 
-        state.analyticsData?.let { data ->
+        val data = state.analyticsData
+        if (data == null || data.isEmpty) {
+            item {
+                EmptyStateView(
+                    icon = Icons.Outlined.BarChart,
+                    title = "Keine Daten verfügbar",
+                    description = "Für den ausgewählten Zeitraum liegen keine Arbeitszeiten zur Auswertung vor."
+                )
+            }
+        } else {
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {

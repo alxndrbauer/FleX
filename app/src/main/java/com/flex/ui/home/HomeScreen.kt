@@ -2,8 +2,28 @@ package com.flex.ui.home
 
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import com.flex.ui.navigation.LocalFloatingNavVisible
+import androidx.compose.ui.graphics.graphicsLayer
+import com.flex.ui.home.components.CircularWorkGauge
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,20 +42,26 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
@@ -48,13 +74,24 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Coffee
+import androidx.compose.material.icons.filled.EditCalendar
+import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.DatePicker
@@ -103,6 +140,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -112,6 +150,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.flex.R
 import com.flex.domain.model.BreakViolationType
@@ -123,7 +162,9 @@ import com.flex.domain.model.WorkLocation
 import com.flex.domain.usecase.CheckTimeBlockOverlapUseCase
 import com.flex.ui.yearchange.YearChangeDialog
 import com.flex.ui.yearchange.YearChangeViewModel
+import com.flex.ui.components.EmptyStateView
 import com.flex.ui.components.InfoTooltip
+import com.flex.ui.components.OfficeQuotaCard
 import com.flex.ui.components.TOOLTIP_FLEXTIME
 import com.flex.ui.components.TOOLTIP_FLEXTIME_TITLE
 import com.flex.ui.components.TOOLTIP_OFFICE_QUOTA
@@ -203,95 +244,261 @@ fun HomeScreen(
     val holidayName = PublicHolidays.getHolidayName(state.selectedDate)
     val isWorkDay = state.selectedDayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP)
 
+    val isNavVisible = LocalFloatingNavVisible.current
+    val fabBottomPadding by animateDpAsState(
+        targetValue = if (isNavVisible) 76.dp else 16.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "fab_bottom_padding"
+    )
+
     Scaffold(
-        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
+        contentWindowInsets = WindowInsets.statusBars,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (isWorkDay && holidayName == null && isToday) {
+                val fabContainerColor by animateColorAsState(
+                    targetValue = if (state.isClockRunning) MaterialTheme.colorScheme.errorContainer
+                    else MaterialTheme.colorScheme.primaryContainer,
+                    animationSpec = tween(300),
+                    label = "fab_container_color"
+                )
+                val fabContentColor by animateColorAsState(
+                    targetValue = if (state.isClockRunning) MaterialTheme.colorScheme.onErrorContainer
+                    else MaterialTheme.colorScheme.onPrimaryContainer,
+                    animationSpec = tween(300),
+                    label = "fab_content_color"
+                )
+                val fabScale by animateFloatAsState(
+                    targetValue = if (state.isClockRunning) 1.04f else 1.0f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    ),
+                    label = "fab_scale"
+                )
+
                 ExtendedFloatingActionButton(
                     onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                        if (state.isClockRunning) viewModel.clockOut() else viewModel.clockIn()
+                        if (state.isClockRunning) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.clockOut()
+                        } else {
+                            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                            viewModel.clockIn()
+                        }
                     },
                     icon = {
-                        Icon(
-                            if (state.isClockRunning) Icons.Default.Stop else Icons.Default.PlayArrow,
-                            contentDescription = null
-                        )
+                        Crossfade(
+                            targetState = state.isClockRunning,
+                            animationSpec = tween(250),
+                            label = "fab_icon_crossfade"
+                        ) { isRunning ->
+                            Icon(
+                                imageVector = if (isRunning) Icons.Default.Stop else Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     },
-                    text = { Text(if (state.isClockRunning) "Ausstempeln" else "Einstempeln") },
-                    containerColor = if (state.isClockRunning)
-                        MaterialTheme.colorScheme.errorContainer
-                    else MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = if (state.isClockRunning)
-                        MaterialTheme.colorScheme.onErrorContainer
-                    else MaterialTheme.colorScheme.onPrimaryContainer
+                    text = {
+                        AnimatedContent(
+                            targetState = state.isClockRunning,
+                            transitionSpec = {
+                                (fadeIn(tween(200)) + slideInVertically { it / 2 })
+                                    .togetherWith(fadeOut(tween(150)) + slideOutVertically { -it / 2 })
+                            },
+                            label = "fab_text_animation"
+                        ) { isRunning ->
+                            Text(
+                                text = if (isRunning) "Ausstempeln" else "Einstempeln",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    },
+                    containerColor = fabContainerColor,
+                    contentColor = fabContentColor,
+                    modifier = Modifier
+                        .navigationBarsPadding()
+                        .padding(bottom = fabBottomPadding)
+                        .graphicsLayer {
+                            scaleX = fabScale
+                            scaleY = fabScale
+                        }
                 )
             }
         }
     ) { innerPadding ->
-        LazyColumn(
+        var showDatePicker by remember { mutableStateOf(false) }
+
+        if (showDatePicker) {
+            val initialMillis = state.selectedDate
+                .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            viewModel.navigateToDate(
+                                Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                            )
+                        }
+                        showDatePicker = false
+                    }) { Text("OK") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) { Text("Abbrechen") }
+                }
+            ) {
+                DatePicker(state = datePickerState)
+            }
+        }
+
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
+                .padding(top = innerPadding.calculateTopPadding())
         ) {
-            // Permission warning card
-            if (state.permissionIssues.isNotEmpty()) {
-                item {
-                    ElevatedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.elevatedCardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            // Day navigation header — fixed at the top, consistent with Month & Planning
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { viewModel.goToPreviousDay() }) {
+                    Icon(Icons.Default.ChevronLeft, contentDescription = "Vorheriger Tag")
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { showDatePicker = true }
+                        .padding(vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = if (isToday) "Heute" else state.selectedDate.format(DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = state.selectedDate.format(DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                    if (!isToday) {
+                        Surface(
+                            onClick = { viewModel.goToToday() },
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.padding(top = 4.dp)
                         ) {
-                            Icon(
-                                Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "Berechtigungen fehlen",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onErrorContainer
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Today,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(12.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                                 Text(
-                                    state.permissionIssues.joinToString(", "),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                            }
-                            TextButton(onClick = onNavigateToSettings) {
-                                Text(
-                                    "Einstellungen",
-                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                    "Zurück zu Heute",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                         }
                     }
                 }
+                IconButton(onClick = { viewModel.goToNextDay() }) {
+                    Icon(Icons.Default.ChevronRight, contentDescription = "Nächster Tag")
+                }
             }
 
-            // Hero card
-            item {
-                HeroCard(
-                    state = state,
-                    remaining = remaining,
-                    isToday = isToday,
-                    onPreviousDay = { viewModel.goToPreviousDay() },
-                    onNextDay = { viewModel.goToNextDay() },
-                    onGoToToday = { viewModel.goToToday() },
-                    onJumpToDate = { viewModel.navigateToDate(it) }
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(
+                    top = 8.dp,
+                    bottom = 120.dp
                 )
-            }
+            ) {
+                // Permission warning card
+                if (state.permissionIssues.isNotEmpty()) {
+                    item {
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.elevatedCardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "Berechtigungen fehlen",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    Text(
+                                        state.permissionIssues.joinToString(", "),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                                TextButton(onClick = onNavigateToSettings) {
+                                    Text(
+                                        "Einstellungen",
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Hero card
+                item {
+                    HeroCard(
+                        state = state,
+                        remaining = remaining,
+                        isToday = isToday,
+                        onLocationChange = { viewModel.setLocation(it) },
+                        onSelectDayType = { viewModel.saveDayType(it) },
+                        onDeleteDay = { viewModel.deleteDay() },
+                        onManualEntryClick = { showManualEntry = true },
+                        onClockToggle = {
+                            if (state.isClockRunning) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.clockOut()
+                            } else {
+                                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                viewModel.clockIn()
+                            }
+                        }
+                    )
+                }
 
             // Holiday card
             if (holidayName != null) {
@@ -331,199 +538,11 @@ fun HomeScreen(
             }
 
             if (holidayName == null) {
-                // Location selector
-                item {
-                    Text(
-                        "Arbeitsort (Standard)",
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.padding(bottom = 6.dp)
-                    )
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = state.selectedLocation == WorkLocation.OFFICE,
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                viewModel.setLocation(WorkLocation.OFFICE)
-                            },
-                            shape = SegmentedButtonDefaults.itemShape(0, 2),
-                            icon = {
-                                Icon(Icons.Default.Business, contentDescription = null,
-                                    modifier = Modifier.size(18.dp))
-                            }
-                        ) {
-                            Text("Büro")
-                        }
-                        SegmentedButton(
-                            selected = state.selectedLocation == WorkLocation.HOME_OFFICE,
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                viewModel.setLocation(WorkLocation.HOME_OFFICE)
-                            },
-                            shape = SegmentedButtonDefaults.itemShape(1, 2),
-                            icon = {
-                                Icon(Icons.Default.Home, contentDescription = null,
-                                    modifier = Modifier.size(18.dp))
-                            }
-                        ) {
-                            Text("Home-Office")
-                        }
-                    }
-                }
 
-                // Day type selector
-                item {
-                    Column {
-                        Text("Tagestyp", style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier.padding(bottom = 6.dp))
 
-                        val dayTypes = listOf(
-                            DayType.WORK             to Triple("Arbeitstag",    Icons.Default.Work,          MaterialTheme.colorScheme.primary),
-                            DayType.BUSINESS_TRIP    to Triple("Dienstgang / Dienstreise", Icons.Default.Commute, BusinessTripColor),
-                            DayType.VACATION         to Triple("Urlaub",         Icons.Default.BeachAccess,   VacationColor),
-                            DayType.SPECIAL_VACATION to Triple("Sonderurlaub",   Icons.Default.Star,          SpecialVacationColor),
-                            DayType.FLEX_DAY         to Triple("Gleittag",       Icons.Default.Schedule,      FlexDayColor),
-                            DayType.SATURDAY_BONUS   to Triple("Samstag+",       Icons.Default.Timer,         SaturdayBonusColor),
-                            DayType.SICK_DAY         to Triple("Krank",          Icons.Default.LocalHospital, SickDayColor),
-                            DayType.OVERTIME_DAY     to Triple("Überstunden",    Icons.Default.ArrowDownward, OvertimeDayColor),
-                        )
-                        val currentEntry = dayTypes.find { it.first == state.selectedDayType }
-                        val (currentLabel, currentIcon, currentColor) = currentEntry?.second
-                            ?: Triple("Arbeitstag", Icons.Default.Work, MaterialTheme.colorScheme.primary)
-
-                        var dayTypeExpanded by remember { mutableStateOf(false) }
-
-                        val isPaidOut = state.settings.specialVacationPaidOut && state.settings.settingsYear == state.selectedDate.year
-                        val isAfterOct31 = state.selectedDate.isAfter(LocalDate.of(state.selectedDate.year, 10, 31))
-                        val isSpecialVacationBlocked = isPaidOut || isAfterOct31
-
-                        ExposedDropdownMenuBox(
-                            expanded = dayTypeExpanded,
-                            onExpandedChange = { dayTypeExpanded = it },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            OutlinedTextField(
-                                value = currentLabel,
-                                onValueChange = {},
-                                readOnly = true,
-                                leadingIcon = {
-                                    Icon(
-                                        currentIcon,
-                                        contentDescription = null,
-                                        tint = currentColor,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                },
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayTypeExpanded)
-                                },
-                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                                    focusedLeadingIconColor = currentColor,
-                                    unfocusedLeadingIconColor = currentColor
-                                ),
-                                modifier = Modifier
-                                    .menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                                    .fillMaxWidth()
-                            )
-                            ExposedDropdownMenu(
-                                expanded = dayTypeExpanded,
-                                onDismissRequest = { dayTypeExpanded = false }
-                            ) {
-                                dayTypes.forEach { (type, info) ->
-                                    val (label, icon, color) = info
-                                    val isSpecial = type == DayType.SPECIAL_VACATION
-                                    val isEnabled = !(isSpecial && isSpecialVacationBlocked)
-                                    val disabledHint = if (isSpecial && isSpecialVacationBlocked) {
-                                        if (isPaidOut) "Ausgezahlt" else "Verfallen"
-                                    } else null
-
-                                    DropdownMenuItem(
-                                        text = {
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text(label)
-                                                if (disabledHint != null) {
-                                                    Text(
-                                                        text = disabledHint,
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                                    )
-                                                }
-                                            }
-                                        },
-                                        leadingIcon = {
-                                            Icon(
-                                                icon,
-                                                contentDescription = null,
-                                                tint = if (isEnabled) color else color.copy(alpha = 0.38f),
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        },
-                                        enabled = isEnabled,
-                                        onClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            viewModel.setDayType(type)
-                                            dayTypeExpanded = false
-                                        },
-                                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                                    )
-                                }
-                            }
-                        }
-
-                        val nonWorkSaveTypes = setOf(
-                            DayType.VACATION, DayType.SPECIAL_VACATION,
-                            DayType.FLEX_DAY, DayType.SATURDAY_BONUS, DayType.SICK_DAY, DayType.OVERTIME_DAY
-                        )
-                        val savedDayType = state.workDay?.dayType
-                        val showSaveButton = state.selectedDayType in nonWorkSaveTypes &&
-                            state.selectedDayType != savedDayType &&
-                            !(state.selectedDayType == DayType.SPECIAL_VACATION && isSpecialVacationBlocked)
-                        val showDeleteButton = savedDayType in nonWorkSaveTypes &&
-                            state.selectedDayType == savedDayType
-                        if (showSaveButton) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            val typeLabel = when (state.selectedDayType) {
-                                DayType.VACATION -> "Urlaub"
-                                DayType.SPECIAL_VACATION -> "Sonderurlaub"
-                                DayType.FLEX_DAY -> "Gleittag"
-                                DayType.SICK_DAY -> "Kranktag"
-                                DayType.OVERTIME_DAY -> "Überstundentag"
-                                else -> "Samstag+"
-                            }
-                            Button(
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                                    viewModel.saveDayType(state.selectedDayType)
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Als $typeLabel eintragen")
-                            }
-                        }
-                        if (showDeleteButton) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            OutlinedButton(
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                                    viewModel.deleteDay()
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Text("Eintrag löschen")
-                            }
-                        }
-                    }
-                }
-
-                // Manuell button (clock-in is now FAB)
-                item {
-                    if (isWorkDay) {
+                // Manuell button (when time blocks exist)
+                if (isWorkDay && state.timeBlocks.isNotEmpty()) {
+                    item {
                         OutlinedButton(
                             onClick = { showManualEntry = true },
                             modifier = Modifier.fillMaxWidth()
@@ -557,9 +576,21 @@ fun HomeScreen(
                         }
                     }
                 }
+            } else if (isWorkDay && holidayName == null) {
+                item {
+                    EmptyStateView(
+                        icon = Icons.Default.Schedule,
+                        title = "Keine Zeitblöcke vorhanden",
+                        description = if (isToday) "Starte die Zeiterfassung mit dem Stempel-Button oder trage Zeiten manuell nach."
+                            else "Für diesen Tag wurden noch keine Arbeitszeiten erfasst.",
+                        actionLabel = "Zeit manuell eintragen",
+                        onAction = { showManualEntry = true }
+                    )
+                }
             }
         }
     }
+}
 
     // Year change dialog (automatic on new year)
     if (yearChangeState.showDialog) {
@@ -623,19 +654,19 @@ private fun HeroCard(
     state: HomeUiState,
     remaining: Int?,
     isToday: Boolean,
-    onPreviousDay: () -> Unit,
-    onNextDay: () -> Unit,
-    onGoToToday: () -> Unit,
-    onJumpToDate: (LocalDate) -> Unit,
+    onLocationChange: (WorkLocation) -> Unit = {},
+    onSelectDayType: (DayType) -> Unit = {},
+    onDeleteDay: () -> Unit = {},
+    onManualEntryClick: () -> Unit = {},
+    onClockToggle: () -> Unit = {},
 ) {
+    val haptic = LocalHapticFeedback.current
     val rawDailyProgress = if (state.dailyTargetMinutes > 0)
-        (state.dayWorkTime.netMinutes.toFloat() / state.dailyTargetMinutes).coerceIn(0f, 1f)
+        (state.dayWorkTime.netMinutes.toFloat() / state.dailyTargetMinutes).coerceAtLeast(0f)
     else 0f
-    val animatedDailyProgress by animateFloatAsState(
-        targetValue = rawDailyProgress,
-        animationSpec = tween(800),
-        label = "dailyProgress"
-    )
+    val overtimeMinutes = if (state.dailyTargetMinutes > 0 && state.dayWorkTime.netMinutes > state.dailyTargetMinutes) {
+        (state.dayWorkTime.netMinutes - state.dailyTargetMinutes).toInt()
+    } else 0
 
     val hours = state.dayWorkTime.netMinutes / 60
     val mins = state.dayWorkTime.netMinutes % 60
@@ -653,215 +684,328 @@ private fun HeroCard(
         remaining == 0 -> MaterialTheme.colorScheme.secondary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-    val progressColor = if (dailyGoalReached) MaterialTheme.colorScheme.secondary
-        else MaterialTheme.colorScheme.primary
 
-    var showDatePicker by remember { mutableStateOf(false) }
-    if (showDatePicker) {
-        val initialMillis = state.selectedDate
-            .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        onJumpToDate(
-                            Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
-                        )
-                    }
-                    showDatePicker = false
-                }) { Text("OK") }
+    val dayTypes = listOf(
+        DayType.WORK             to Triple("Arbeitstag",    Icons.Default.Work,          MaterialTheme.colorScheme.primary),
+        DayType.BUSINESS_TRIP    to Triple("Dienstgang / Dienstreise", Icons.Default.Commute, BusinessTripColor),
+        DayType.VACATION         to Triple("Urlaub",         Icons.Default.BeachAccess,   VacationColor),
+        DayType.SPECIAL_VACATION to Triple("Sonderurlaub",   Icons.Default.Star,          SpecialVacationColor),
+        DayType.FLEX_DAY         to Triple("Gleittag",       Icons.Default.Schedule,      FlexDayColor),
+        DayType.SATURDAY_BONUS   to Triple("Samstag+",       Icons.Default.Timer,         SaturdayBonusColor),
+        DayType.SICK_DAY         to Triple("Krank",          Icons.Default.LocalHospital, SickDayColor),
+        DayType.OVERTIME_DAY     to Triple("Überstunden",    Icons.Default.ArrowDownward, OvertimeDayColor),
+    )
+    val currentDayTypeEntry = dayTypes.find { it.first == state.selectedDayType }
+    val (currentDayTypeLabel, currentDayTypeIcon, currentDayTypeColor) = currentDayTypeEntry?.second
+        ?: Triple("Arbeitstag", Icons.Default.Work, MaterialTheme.colorScheme.primary)
+
+    var showDayTypeSheet by remember { mutableStateOf(false) }
+
+    val isPaidOut = state.settings.specialVacationPaidOut && state.settings.settingsYear == state.selectedDate.year
+    val isAfterOct31 = state.selectedDate.isAfter(LocalDate.of(state.selectedDate.year, 10, 31))
+    val isSpecialVacationBlocked = isPaidOut || isAfterOct31
+
+    if (showDayTypeSheet) {
+        AlertDialog(
+            onDismissRequest = { showDayTypeSheet = false },
+            title = {
+                Text(
+                    "Tagestyp auswählen",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
             },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Abbrechen") }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
-    }
-
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Date + navigation
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onPreviousDay) {
-                    Icon(Icons.Default.ChevronLeft, contentDescription = "Vorheriger Tag")
-                }
+            text = {
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { showDatePicker = true }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = if (isToday) "Heute" else state.selectedDate.format(
-                            DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)
-                        ),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isToday) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = state.selectedDate.format(
-                            DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (!isToday) {
-                        TextButton(
-                            onClick = onGoToToday,
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                    dayTypes.forEach { (type, info) ->
+                        val (label, icon, color) = info
+                        val isSelected = state.selectedDayType == type
+                        val isBlocked = type == DayType.SPECIAL_VACATION && isSpecialVacationBlocked
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) color.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surface,
+                            border = if (isSelected) BorderStroke(1.5.dp, color) else null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable(enabled = !isBlocked) {
+                                    onSelectDayType(type)
+                                    showDayTypeSheet = false
+                                }
                         ) {
-                            Text("Zurück zu Heute", style = MaterialTheme.typography.labelSmall)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = if (isBlocked) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else color,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isBlocked) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                        else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    if (isBlocked) {
+                                        Text(
+                                            text = if (isPaidOut) "bereits ausgezahlt" else "nach dem 31.10. nicht mehr wählbar",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = color,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
-                IconButton(onClick = onNextDay) {
-                    Icon(Icons.Default.ChevronRight, contentDescription = "Nächster Tag")
+            },
+            confirmButton = {
+                TextButton(onClick = { showDayTypeSheet = false }) {
+                    Text("Schließen")
                 }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Circular progress
-            Box(contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(
-                    progress = { animatedDailyProgress },
-                    modifier = Modifier.size(120.dp),
-                    strokeWidth = 10.dp,
-                    strokeCap = StrokeCap.Round,
-                    color = progressColor,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = netTimeText,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    if (statusLabel != null) {
-                        Text(
-                            text = statusLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = statusColor
-                        )
+            },
+            dismissButton = {
+                if (state.workDay != null && state.workDay.dayType != DayType.WORK) {
+                    TextButton(
+                        onClick = {
+                            onDeleteDay()
+                            showDayTypeSheet = false
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Eintrag löschen")
                     }
                 }
             }
+        )
+    }
 
-            Spacer(modifier = Modifier.height(12.dp))
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
 
-            // Stats row: Soll | Pause | Verbleibend
             val tH = state.dailyTargetMinutes / 60
             val tM = state.dailyTargetMinutes % 60
+            val targetText = "${tH}h ${tM}min"
+            val prognosisText = if (state.isClockRunning && isToday && (remaining == null || remaining > 0)) {
+                state.projectedEndTime?.formatCompact()
+            } else null
+
+            // Google Health style 2-column layout: Circle on left, 3 cards on right
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Soll", style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${tH}h ${tM}min", style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold)
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Pause", style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(
-                        if (state.dayWorkTime.breakMinutes > 0) "${state.dayWorkTime.breakMinutes}min" else "–",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold
+                // Left: Circular progress gauge (Nettozeit + Soll + Feierabend inside)
+                CircularWorkGauge(
+                    netTimeText = netTimeText,
+                    targetText = targetText,
+                    progress = rawDailyProgress,
+                    isClockRunning = state.isClockRunning,
+                    dailyGoalReached = dailyGoalReached,
+                    statusLabel = statusLabel,
+                    statusColor = statusColor,
+                    projectedEndTime = prognosisText,
+                    overtimeMinutes = overtimeMinutes,
+                    sizeDp = 136
+                )
+
+                // Right: 3 compact metric cards
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Card 1: Gleitzeit (Saldo)
+                    val liveDelta = if (isToday) state.liveFlextimeDelta else 0L
+                    val balanceMin = (state.liveFlextimeBalance?.totalMinutes
+                        ?: state.flextimeBalance.totalMinutes) + liveDelta
+                    val bH = kotlin.math.abs(balanceMin) / 60
+                    val bM = kotlin.math.abs(balanceMin) % 60
+                    val bSign = if (balanceMin >= 0L) "+" else "-"
+                    val balanceText = "$bSign${bH}h ${bM}m"
+                    val isPos = balanceMin >= 0L
+
+                    HeroMetricCard(
+                        icon = Icons.AutoMirrored.Filled.TrendingUp,
+                        iconTint = if (isPos) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+                        iconBgColor = (if (isPos) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error).copy(alpha = 0.16f),
+                        title = "Gleitzeit",
+                        value = balanceText,
+                        valueColor = if (isPos) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error,
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.42f)
                     )
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Verbleibend", style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    when {
-                        remaining == 0 -> Text(
-                            "Erreicht ✓",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
+
+                    // Card 2: Pause
+                    val breakMin = state.dayWorkTime.breakMinutes
+                    val breakText = if (breakMin > 0) "${breakMin} min" else "–"
+                    val breakSubtitle = when {
+                        state.breakCheckResult.violations.isNotEmpty() -> "Pflicht!"
+                        state.dayWorkTime.netMinutes >= 360 && breakMin < 30 -> "30m nötig"
+                        breakMin >= 30 -> "OK ✓"
+                        else -> null
+                    }
+
+                    HeroMetricCard(
+                        icon = Icons.Default.Coffee,
+                        iconTint = MaterialTheme.colorScheme.primary,
+                        iconBgColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                        title = "Pause",
+                        value = breakText,
+                        subtitle = breakSubtitle,
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
+                    )
+
+                    // Card 3: Verbleibend
+                    val remainingText = when {
+                        remaining == 0 -> "Erreicht ✓"
                         remaining != null -> {
                             val rH = remaining / 60
                             val rM = remaining % 60
-                            Text(
-                                if (rH > 0) "${rH}h ${rM}min" else "${rM}min",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold
-                            )
+                            if (rH > 0) "${rH}h ${rM}m" else "${rM}min"
                         }
-                        else -> Text("–", style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        else -> "–"
                     }
+
+                    HeroMetricCard(
+                        icon = if (remaining == 0) Icons.Default.CheckCircle else Icons.Default.HourglassTop,
+                        iconTint = MaterialTheme.colorScheme.secondary,
+                        iconBgColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.16f),
+                        title = "Verbleibend",
+                        value = remainingText,
+                        valueColor = if (remaining == 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.42f)
+                    )
                 }
             }
 
-            val prognosis = state.projectedEndTime
-            if (state.isClockRunning && isToday && prognosis != null && (remaining == null || remaining > 0)) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
+            // Bottom quick action pill buttons (Google Health style)
+            Spacer(modifier = Modifier.height(14.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val isWorkDay = state.selectedDayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP)
+                val holidayName = PublicHolidays.getHolidayName(state.selectedDate)
+
+                // Eintragen
+                FilledTonalButton(
+                    onClick = onManualEntryClick,
+                    shape = RoundedCornerShape(50),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Surface(
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(17.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Eintragen", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                }
+
+                // Starten / Stoppen
+                if (isToday && isWorkDay && holidayName == null) {
+                    FilledTonalButton(
+                        onClick = onClockToggle,
                         shape = RoundedCornerShape(50),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
-                        border = BorderStroke(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f)
-                        )
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (state.isClockRunning) MaterialTheme.colorScheme.errorContainer
+                                else MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = if (state.isClockRunning) MaterialTheme.colorScheme.onErrorContainer
+                                else MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_sunset),
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.secondary
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = buildAnnotatedString {
-                                    append("Feierabend ")
-                                    withStyle(
-                                        SpanStyle(
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                                        )
-                                    ) {
-                                        append(prognosis.formatCompact())
-                                    }
-                                },
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
+                        Icon(
+                            imageVector = if (state.isClockRunning) Icons.Default.Stop else Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(17.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (state.isClockRunning) "Stoppen" else "Starten",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp
+                        )
                     }
+                }
+
+                // Location toggle button (Office / Home-Office)
+                val isOffice = state.selectedLocation == WorkLocation.OFFICE
+                FilledTonalIconButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onLocationChange(if (isOffice) WorkLocation.HOME_OFFICE else WorkLocation.OFFICE)
+                    },
+                    shape = CircleShape,
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = (if (isOffice) OfficeColor else HomeOfficeColor).copy(alpha = 0.16f),
+                        contentColor = if (isOffice) OfficeColor else HomeOfficeColor
+                    ),
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Crossfade(
+                        targetState = isOffice,
+                        animationSpec = tween(200),
+                        label = "loc_switcher_crossfade"
+                    ) { officeSelected ->
+                        Icon(
+                            imageVector = if (officeSelected) Icons.Default.Business else Icons.Default.Home,
+                            contentDescription = if (officeSelected) "Arbeitsort: Büro (tippen für Home-Office)" else "Arbeitsort: Home-Office (tippen für Büro)",
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+                }
+
+                // Second small button: Tagestyp button
+                FilledTonalIconButton(
+                    onClick = { showDayTypeSheet = true },
+                    shape = CircleShape,
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Icon(
+                        imageVector = currentDayTypeIcon,
+                        contentDescription = "Tagestyp wählen",
+                        tint = currentDayTypeColor,
+                        modifier = Modifier.size(17.dp)
+                    )
                 }
             }
 
             if (state.dayWorkTime.exceedsMaxHours) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "Achtung: Max. 10h Arbeitszeit überschritten!",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
-                    fontWeight = FontWeight.Bold
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }
 
@@ -879,7 +1023,7 @@ private fun HeroCard(
                     }
                     Text(
                         text = text,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold
                     )
@@ -890,94 +1034,95 @@ private fun HeroCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "⚠ Achtung: Zeitblöcke überlappen sich!",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Bold
                 )
             }
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Gleitzeit: gesamt + dieser Monat
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+@Composable
+private fun HeroMetricCard(
+    icon: ImageVector,
+    iconTint: Color,
+    iconBgColor: Color,
+    title: String,
+    value: String,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+    containerColor: Color,
+    subtitle: String? = null,
+    onClick: (() -> Unit)? = null
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = containerColor,
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 9.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(iconBgColor),
+                contentAlignment = Alignment.Center
             ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Gleitzeit gesamt",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        val liveBalance = state.liveFlextimeBalance
-                        if (liveBalance != null) {
-                            Text(
-                                text = state.flextimeBalance.formatDisplay(),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "→ ${liveBalance.formatDisplay()}",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = if (liveBalance.isPositive) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.error
-                            )
-                        } else {
-                            Text(
-                                text = state.flextimeBalance.formatDisplay(),
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = if (state.flextimeBalance.isPositive)
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = if (YearMonth.from(state.selectedDate) == YearMonth.now()) "Dieser Monat"
-                                   else state.selectedDate.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN)),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        val monthlyEarned = state.monthlyFlextimeBalance.earnedMinutes
-                        val monthlySign = if (monthlyEarned >= 0) "+" else "-"
-                        val monthlyH = kotlin.math.abs(monthlyEarned) / 60
-                        val monthlyM = kotlin.math.abs(monthlyEarned) % 60
-                        val baseMonthlyText = "$monthlySign${monthlyH}h ${monthlyM}min"
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
 
-                        val liveMonthly = state.liveMonthlyFlextimeBalance
-                        if (liveMonthly != null) {
-                            val liveEarned = liveMonthly.earnedMinutes
-                            val liveSign = if (liveEarned >= 0) "+" else "-"
-                            val liveH = kotlin.math.abs(liveEarned) / 60
-                            val liveM = kotlin.math.abs(liveEarned) % 60
-                            Text(
-                                text = baseMonthlyText,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "→ ${liveSign}${liveH}h ${liveM}min",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = if (liveEarned >= 0) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.error
-                            )
-                        } else {
-                            Text(
-                                text = baseMonthlyText,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = if (monthlyEarned >= 0)
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.error
-                            )
-                        }
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = valueColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = if (subtitle == "Pflicht!") MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                            maxLines = 1
+                        )
                     }
+                }
             }
         }
     }
@@ -987,11 +1132,6 @@ private fun HeroCard(
 private fun CompactQuotaCard(state: HomeUiState) {
     val quota = state.quotaStatus
 
-    val officeH = state.officeMinutes / 60
-    val officeM = state.officeMinutes % 60
-    val reqH = state.requiredOfficeMinutes / 60
-    val reqM = state.requiredOfficeMinutes % 60
-
     // Today is excluded from quota calc when it has no completed blocks yet (only running block).
     // Add a +1 live bonus day when clocked in as OFFICE before any clock-out.
     val todayHasNoCompletedBlock = state.timeBlocks.none { it.endTime != null }
@@ -999,122 +1139,26 @@ private fun CompactQuotaCard(state: HomeUiState) {
         state.liveFlextimeDelta else 0L
     val liveOfficeDayBonus = if (liveOfficeDelta > 0 && todayHasNoCompletedBlock) 1 else 0
     val liveOfficeMin = state.officeMinutes + liveOfficeDelta
-    val liveH = liveOfficeMin / 60
-    val liveM = liveOfficeMin % 60
-    // officePercent = officeMinutes / fixedTarget * 100, where fixedTarget = requiredOfficeMinutes * 100 / quotaPercent
     val fixedTarget = if (state.effectiveQuotaPercent > 0)
         state.requiredOfficeMinutes * 100.0 / state.effectiveQuotaPercent else 0.0
     val livePercent = if (fixedTarget > 0) liveOfficeMin.toDouble() / fixedTarget * 100 else 0.0
 
-    val rawHoursProgress = if (state.requiredOfficeMinutes > 0)
-        (state.officeMinutes.toFloat() / state.requiredOfficeMinutes).coerceIn(0f, 1f)
-    else 0f
-    val rawPctProgress = (quota.officePercent / state.effectiveQuotaPercent.toDouble())
-        .toFloat().coerceIn(0f, 1f)
-    val rawDayProgress = (quota.officeDays.toFloat() / state.effectiveQuotaMinDays.toFloat())
-        .coerceIn(0f, 1f)
+    val currentPct = if (liveOfficeDelta > 0) livePercent else quota.officePercent
+    val isMet = currentPct >= state.effectiveQuotaPercent || quota.quotaMet
+    val displayDays = quota.officeDays + liveOfficeDayBonus
+    val requiredDays = state.effectiveQuotaMinDays
+    val currentOfficeMinutes = if (liveOfficeDelta > 0) liveOfficeMin else state.officeMinutes.toLong()
 
-    val animHours by animateFloatAsState(rawHoursProgress, tween(600), label = "hoursProgress")
-    val animPct by animateFloatAsState(rawPctProgress, tween(600), label = "pctProgress")
-    val animDays by animateFloatAsState(rawDayProgress, tween(600), label = "dayProgress")
-
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text("Büro-Quote", style = MaterialTheme.typography.labelMedium)
-                    InfoTooltip(title = TOOLTIP_OFFICE_QUOTA_TITLE, text = TOOLTIP_OFFICE_QUOTA)
-                }
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = if (quota.quotaMet)
-                        MaterialTheme.colorScheme.secondaryContainer
-                    else MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.wrapContentSize()
-                ) {
-                    Text(
-                        text = if (quota.quotaMet) "Erfüllt" else "Ausstehend",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (quota.quotaMet)
-                            MaterialTheme.colorScheme.onSecondaryContainer
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            CompactProgressRow(
-                label = if (liveOfficeDelta > 0) "→ ${liveH}h ${liveM}min" else "${officeH}h ${officeM}min",
-                sublabel = "von ${reqH}h ${reqM}min Büro",
-                progress = if (liveOfficeDelta > 0) {
-                    if (state.requiredOfficeMinutes > 0)
-                        (liveOfficeMin.toFloat() / state.requiredOfficeMinutes).coerceIn(0f, 1f)
-                    else 0f
-                } else animHours,
-                isMet = rawHoursProgress >= 1f
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            CompactProgressRow(
-                label = if (liveOfficeDelta > 0) "→ ${"%.1f".format(livePercent)}%" else "${"%.1f".format(quota.officePercent)}%",
-                sublabel = "von ${state.effectiveQuotaPercent}% Ziel",
-                progress = if (liveOfficeDelta > 0) {
-                    (livePercent / state.effectiveQuotaPercent.toDouble()).toFloat().coerceIn(0f, 1f)
-                } else animPct,
-                isMet = quota.officePercent >= state.effectiveQuotaPercent
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            CompactProgressRow(
-                label = if (liveOfficeDayBonus > 0) "→ ${quota.officeDays + liveOfficeDayBonus} Tage" else "${quota.officeDays} Tage",
-                sublabel = "von ${state.effectiveQuotaMinDays} Büro-Tagen",
-                progress = if (liveOfficeDayBonus > 0)
-                    ((quota.officeDays + liveOfficeDayBonus).toFloat() / state.effectiveQuotaMinDays).coerceIn(0f, 1f)
-                else animDays,
-                isMet = quota.officeDays >= state.effectiveQuotaMinDays
-            )
-        }
-    }
-}
-
-@Composable
-private fun CompactProgressRow(
-    label: String,
-    sublabel: String,
-    progress: Float,
-    isMet: Boolean
-) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-            Text(
-                sublabel,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Spacer(modifier = Modifier.height(2.dp))
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(RoundedCornerShape(3.dp)),
-            color = if (isMet) MaterialTheme.colorScheme.secondary
-            else MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    }
+    OfficeQuotaCard(
+        officePercent = currentPct,
+        targetPercent = state.effectiveQuotaPercent,
+        isMet = isMet,
+        officeDays = displayDays,
+        requiredDays = requiredDays,
+        officeMinutes = currentOfficeMinutes,
+        requiredOfficeMinutes = state.requiredOfficeMinutes,
+        isLive = liveOfficeDelta > 0
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)

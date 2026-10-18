@@ -10,6 +10,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,19 +68,41 @@ class MainActivity : ComponentActivity() {
             val systemDark = isSystemInDarkTheme()
             val darkTheme = when (themeMode) {
                 ThemeMode.LIGHT -> false
-                ThemeMode.DARK -> true
+                ThemeMode.DARK, ThemeMode.AMOLED -> true
                 ThemeMode.SYSTEM -> systemDark
             }
+            val isAmoled = themeMode == ThemeMode.AMOLED
             var pendingUpdate by remember { mutableStateOf<UpdateInfo?>(null) }
             var isDownloading by remember { mutableStateOf(false) }
 
-            FlexTheme(darkTheme = darkTheme) {
-                FlexNavGraph(
-                    onboardingCompleted = onboardingCompleted,
-                    onOnboardingFinished = { onboardingPreferences.setCompleted() },
-                    onOnboardingReset = { onboardingPreferences.reset() },
-                    initialRoute = initialRouteState.value
+            androidx.compose.runtime.DisposableEffect(darkTheme) {
+                enableEdgeToEdge(
+                    statusBarStyle = if (darkTheme) {
+                        androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        androidx.activity.SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                    },
+                    navigationBarStyle = if (darkTheme) {
+                        androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        androidx.activity.SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                    }
                 )
+                onDispose {}
+            }
+
+            FlexTheme(darkTheme = darkTheme, amoled = isAmoled) {
+                Surface(
+                    modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    FlexNavGraph(
+                        onboardingCompleted = onboardingCompleted,
+                        onOnboardingFinished = { onboardingPreferences.setCompleted() },
+                        onOnboardingReset = { onboardingPreferences.reset() },
+                        initialRoute = initialRouteState.value
+                    )
+                }
                 pendingUpdate?.let { update ->
                     UpdateDialog(
                         updateInfo = update,

@@ -150,9 +150,20 @@ private data class MonthConfig(
                 val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
                 val qDays = rule?.officeQuotaMinDays ?: settings.officeQuotaMinDays
 
+                // Resolve running block on today so hours worked so far are accounted for
+                val now = LocalTime.now().withSecond(0).withNano(0)
+                val today = LocalDate.now()
+                val resolvedDays = days.map { day ->
+                    if (day.date == today && day.timeBlocks.any { it.endTime == null }) {
+                        day.copy(timeBlocks = day.timeBlocks.map { block ->
+                            if (block.endTime == null) block.copy(endTime = now) else block
+                        })
+                    } else day
+                }
+
                 // For current/past months, exclude planned days from calculations
                 val isCurrentOrPast = !month.isAfter(YearMonth.now())
-                val daysForCalc = if (isCurrentOrPast) days.filter { !it.isPlanned } else days
+                val daysForCalc = if (isCurrentOrPast) resolvedDays.filter { !it.isPlanned } else resolvedDays
                 val hasPlanned = days.any { it.isPlanned }
 
                 val prognosisDays = buildPrognosisDays(month, daysForCalc, settings, workTimeRules)
@@ -238,8 +249,8 @@ private data class MonthConfig(
                 val workingDaysMonth = daysForCalc.filter {
                     it.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP)
                 }
-                val creditTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY, DayType.FLEX_DAY)
-                val creditDaysInMonth = prognosisDays.filter { it.dayType in creditTypes }
+                val creditTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY)
+                val creditDaysInMonth = daysForCalc.filter { it.dayType in creditTypes }
                 val actualWorkedMinutesMonth = workingDaysMonth.sumOf { day ->
                     if (day.dayType == DayType.BUSINESS_TRIP) calculateDayWorkTime(day.timeBlocks, isBusinessTrip = true).netMinutes
                     else calculateDayWorkTime(day.timeBlocks).netMinutes
@@ -255,6 +266,7 @@ private data class MonthConfig(
                 var holidayCreditMinutes = 0L
                 for (day in 1..month.lengthOfMonth()) {
                     val date = month.atDay(day)
+                    if (isCurrentOrPast && date.isAfter(today)) continue
                     val ruleForDate = workTimeRules.getRuleForDate(date)
                     val activeWorkDays = ruleForDate?.workDays ?: DEFAULT_WORK_DAYS
                     if (date.dayOfWeek in activeWorkDays && PublicHolidays.isHoliday(date)) {
@@ -275,7 +287,10 @@ private data class MonthConfig(
                         targetMinutesMonth += dailyTarget
                     }
                 }
-                val differenceMinutesMonth = totalWorkMinutesMonth - targetMinutesMonth
+
+                // Monthly flextime earned in this month (initialFlextime = 0)
+                val monthlyFlextime = calculateFlextime(daysForCalc, settings.copy(initialFlextimeMinutes = 0), month, workTimeRules)
+                val differenceMinutesMonth = monthlyFlextime.totalMinutes
 
                 _uiState.value = _uiState.value.copy(
                     yearMonth = month,
