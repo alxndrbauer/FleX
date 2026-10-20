@@ -23,6 +23,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import com.flex.ui.components.glowBorder
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import com.flex.ui.navigation.LocalFloatingNavVisible
@@ -420,7 +421,12 @@ fun HomeScreen(
                             onClick = { viewModel.goToToday() },
                             shape = RoundedCornerShape(50),
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.padding(top = 4.dp)
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .glowBorder(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    shape = RoundedCornerShape(50)
+                                )
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
@@ -1093,14 +1099,11 @@ private fun HeroCard(
                         icon = Icons.AutoMirrored.Filled.TrendingUp,
                         iconTint = if (isPos) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onErrorContainer,
                         iconBgColor = if (isPos) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.errorContainer,
+                        borderGlowColor = if (isPos) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
                         title = "Gleitzeit",
                         value = balanceText,
                         valueColor = if (isPos) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error,
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f),
-                        border = BorderStroke(
-                            1.dp,
-                            (if (isPos) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error).copy(alpha = 0.35f)
-                        ),
                         isLive = isLiveFlextime,
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -1125,8 +1128,7 @@ private fun HeroCard(
                         title = "Pause",
                         value = breakText,
                         subtitle = breakSubtitle,
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
                     )
 
                     // Card 3: Verbleibend
@@ -1147,8 +1149,7 @@ private fun HeroCard(
                         title = "Verbleibend",
                         value = remainingText,
                         valueColor = if (remaining == 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f))
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
                     )
                 }
             }
@@ -1334,28 +1335,24 @@ private fun HeroMetricCard(
     value: String,
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
     containerColor: Color,
-    border: BorderStroke? = null,
+    borderGlowColor: Color? = null,
     subtitle: String? = null,
     isLive: Boolean = false,
     liveColor: Color = iconTint,
     onClick: (() -> Unit)? = null
 ) {
-    val cardBorder = border ?: if (onClick != null) {
-        BorderStroke(1.dp, iconTint.copy(alpha = 0.35f))
-    } else {
-        null
-    }
     val cardShape = RoundedCornerShape(14.dp)
+    val glowColor = borderGlowColor ?: iconTint
 
     Surface(
         shape = cardShape,
         color = containerColor,
-        border = cardBorder,
         modifier = Modifier
             .fillMaxWidth()
             .then(
                 if (onClick != null) {
                     Modifier
+                        .glowBorder(color = glowColor, shape = cardShape)
                         .clip(cardShape)
                         .clickable(role = Role.Button, onClick = onClick)
                 } else Modifier
@@ -2089,8 +2086,7 @@ internal fun TimelineBlockItem(
                         if (isRunning) {
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = locationColor.copy(alpha = 0.16f),
-                                border = BorderStroke(1.dp, locationColor.copy(alpha = 0.45f))
+                                color = locationColor.copy(alpha = 0.16f)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),

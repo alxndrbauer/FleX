@@ -95,11 +95,13 @@ class FlexWidgetDataProvider @Inject constructor(
         }
 
         val isBusinessTrip = workDay?.dayType == DayType.BUSINESS_TRIP
-        val netMinutesToday = if (blocksForCalc.isNotEmpty()) {
-            calculateDayWorkTime(blocksForCalc, isBusinessTrip).netMinutes
+        val dayWorkResult = if (blocksForCalc.isNotEmpty()) {
+            calculateDayWorkTime(blocksForCalc, isBusinessTrip)
         } else {
-            0L
+            null
         }
+        val netMinutesToday = dayWorkResult?.netMinutes ?: 0L
+        val breakMinutesToday = dayWorkResult?.breakMinutes ?: 0L
 
         val prognosis = if (isClockRunning && targetMinutesToday > 0 && netMinutesToday < targetMinutesToday) {
             val blocksToUse = if (allBlocks.any { it.endTime == null }) allBlocks else blocksForCalc
@@ -147,7 +149,8 @@ class FlexWidgetDataProvider @Inject constructor(
             officeDays = quotaStatus?.officeDays ?: 0,
             targetOfficeDays = targetOfficeDays,
             isQuotaMet = quotaStatus?.quotaMet ?: false,
-            projectedEndTime = prognosis?.projectedEndTime
+            projectedEndTime = prognosis?.projectedEndTime,
+            breakMinutesToday = breakMinutesToday
         )
     }
 }

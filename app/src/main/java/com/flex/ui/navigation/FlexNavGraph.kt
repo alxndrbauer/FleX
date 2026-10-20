@@ -143,6 +143,7 @@ fun FlexNavGraph(
     var showBottomSheet by remember { mutableStateOf(false) }
     var isNavBarVisible by remember { mutableStateOf(true) }
     var cumulativeScroll by remember { mutableFloatStateOf(0f) }
+    var targetNavMonth by remember { mutableStateOf<java.time.YearMonth?>(null) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -236,12 +237,33 @@ fun FlexNavGraph(
                     onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
                 )
             }
-            composable(Screen.Month.route) { MonthScreen() }
-            composable(Screen.Planning.route) { PlanningScreen() }
+            composable(Screen.Month.route) {
+                MonthScreen(
+                    initialMonth = targetNavMonth,
+                    onInitialMonthConsumed = { targetNavMonth = null }
+                )
+            }
+            composable(Screen.Planning.route) {
+                PlanningScreen(
+                    initialMonth = targetNavMonth,
+                    onInitialMonthConsumed = { targetNavMonth = null }
+                )
+            }
             composable(Screen.Dashboard.route) { DashboardScreen() }
             composable(Screen.Quota.route) { DashboardScreen() }
             composable(Screen.Analytics.route) { AnalyticsScreen() }
-            composable(Screen.Year.route) { YearOverviewScreen() }
+            composable(Screen.Year.route) {
+                YearOverviewScreen(
+                    onNavigateToMonth = { ym ->
+                        targetNavMonth = ym
+                        navController.navigate(Screen.Month.route)
+                    },
+                    onNavigateToPlanning = { ym ->
+                        targetNavMonth = ym
+                        navController.navigate(Screen.Planning.route)
+                    }
+                )
+            }
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     onNavigateToBackup = { navController.navigate(Screen.Backup.route) },

@@ -15,6 +15,7 @@ data class WidgetState(
     val officeDays: Int = 0,
     val targetOfficeDays: Int = 8,
     val isQuotaMet: Boolean = false,
-    val projectedEndTime: LocalTime? = null
+    val projectedEndTime: LocalTime? = null,
+    val breakMinutesToday: Long = 0L
 )
 

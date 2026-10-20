@@ -1,9 +1,12 @@
 package com.flex.widget
 
 import android.content.Context
+import android.content.res.Configuration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -12,6 +15,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.ActionParameters
@@ -76,14 +80,15 @@ class FlexWidget : GlanceAppWidget() {
         val height = size.height
         val isCompactHeight = height < 100.dp
         val isNarrow = width < 260.dp
-        val isTall = height >= 160.dp
+        val isTall = height >= 140.dp
+        val isHeroLayout = isTall && !isNarrow
 
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(GlanceTheme.colors.surface)
                 .cornerRadius(20.dp)
-                .padding(if (isCompactHeight) 10.dp else 14.dp)
+                .padding(horizontal = 10.dp, vertical = if (isCompactHeight) 6.dp else 8.dp)
         ) {
             // Header Row: Tap opens App
             Row(
@@ -188,185 +193,344 @@ class FlexWidget : GlanceAppWidget() {
                 }
             }
 
-            Spacer(modifier = GlanceModifier.height(if (isCompactHeight) 4.dp else 8.dp))
+            Spacer(modifier = GlanceModifier.height(if (isCompactHeight) 3.dp else 4.dp))
 
-            // Main Metrics Row: Today's Time + Flextime & Quota Badges
-            Row(
-                modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .clickable(actionStartActivity<MainActivity>()),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Large work time display
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = formatMinutes(state.netMinutesToday),
-                        style = TextStyle(
-                            color = GlanceTheme.colors.onSurface,
-                            fontSize = if (isCompactHeight) 20.sp else 24.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                    Spacer(modifier = GlanceModifier.width(4.dp))
-                    Text(
-                        text = "/ ${formatMinutes(state.targetMinutesToday)} Std.",
-                        style = TextStyle(
-                            color = GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Normal
-                        )
-                    )
-                }
-
-                Spacer(modifier = GlanceModifier.defaultWeight())
-
-                // Badges: Flextime & Office Quota with Vector Icons
-                Column(
-                    horizontalAlignment = Alignment.End
+            if (isHeroLayout) {
+                // Hero 2-Column Section matching HomeScreen Hero
+                Row(
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .defaultWeight()
+                        .clickable(actionStartActivity<MainActivity>()),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val flextimeFormatted = formatFlextime(state.flextimeBalanceMinutes)
-                    val (flexBg, flexColor) = if (state.flextimeBalanceMinutes >= 0) {
-                        GlanceTheme.colors.secondaryContainer to GlanceTheme.colors.onSecondaryContainer
-                    } else {
-                        GlanceTheme.colors.errorContainer to GlanceTheme.colors.onErrorContainer
+                    val progress = if (state.targetMinutesToday > 0) {
+                        (state.netMinutesToday.toFloat() / state.targetMinutesToday.toFloat()).coerceIn(0f, 1f)
+                    } else 0f
+                    val progressPercent = (progress * 100).toInt()
+                    val isGoalReached = state.targetMinutesToday > 0 && state.netMinutesToday >= state.targetMinutesToday
+
+                    val netH = state.netMinutesToday / 60
+                    val netM = state.netMinutesToday % 60
+                    val netTimeFormatted = if (netH > 0) "${netH}h ${netM}m" else "${netM}min"
+
+                    val targetH = state.targetMinutesToday / 60
+                    val targetM = state.targetMinutesToday % 60
+                    val targetFormatted = if (state.targetMinutesToday > 0) "von ${targetH}h ${targetM}min" else "Kein Soll"
+
+                    val prognosisText = when {
+                        state.targetMinutesToday <= 0 -> null
+                        isGoalReached -> "$progressPercent % ✓"
+                        state.isClockRunning && state.projectedEndTime != null -> {
+                            "~%02d:%02d".format(state.projectedEndTime.hour, state.projectedEndTime.minute)
+                        }
+                        state.isClockRunning -> "Läuft"
+                        else -> "$progressPercent %"
                     }
 
+                    val context = LocalContext.current
+                    val isDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
+                    val gaugeBitmap = remember(
+                        netTimeFormatted,
+                        targetFormatted,
+                        prognosisText,
+                        progress,
+                        state.isClockRunning,
+                        isGoalReached,
+                        isDark
+                    ) {
+                        CircularWorkGaugeBitmapRenderer.renderGauge(
+                            netTimeText = netTimeFormatted,
+                            targetText = targetFormatted,
+                            prognosisText = prognosisText,
+                            progress = progress,
+                            isClockRunning = state.isClockRunning,
+                            dailyGoalReached = isGoalReached,
+                            isDark = isDark
+                        )
+                    }
+
+                    // Left Column: The Circular Work Gauge Ring matching HomeScreen Hero
                     Box(
                         modifier = GlanceModifier
-                            .cornerRadius(6.dp)
-                            .background(flexBg)
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                            .defaultWeight(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Image(
-                                provider = ImageProvider(R.drawable.ic_widget_trending),
-                                contentDescription = null,
-                                modifier = GlanceModifier.size(11.dp),
-                                colorFilter = ColorFilter.tint(flexColor)
-                            )
-                            Spacer(modifier = GlanceModifier.width(4.dp))
-                            val badgeLabel = if (isNarrow) "Saldo" else "Gleitzeit"
-                            Text(
-                                text = "$badgeLabel $flextimeFormatted",
-                                style = TextStyle(
-                                    color = flexColor,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
+                        Image(
+                            provider = ImageProvider(gaugeBitmap),
+                            contentDescription = "Arbeitszeit Ring",
+                            modifier = GlanceModifier.size(102.dp)
+                        )
                     }
 
-                    if (!isCompactHeight) {
+                    Spacer(modifier = GlanceModifier.width(10.dp))
+
+                    // Right Column: 3 Metric Cards matching HomeScreen HeroMetricCard in Image 2
+                    Column(
+                        modifier = GlanceModifier.defaultWeight(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 1. Gleitzeit (Saldo)
+                        val bMin = state.flextimeBalanceMinutes
+                        val bH = kotlin.math.abs(bMin) / 60
+                        val bM = kotlin.math.abs(bMin) % 60
+                        val bSign = if (bMin >= 0) "+" else "-"
+                        val balanceText = "$bSign${bH}h ${bM}m"
+                        val isPos = bMin >= 0
+
+                        val flexContainer = if (isPos) {
+                            dayNightColor(Color(0xFFF2E8FA), Color(0xFF331E48))
+                        } else {
+                            dayNightColor(Color(0xFFFFEBEE), Color(0xFF491414))
+                        }
+                        val flexIconBg = if (isPos) {
+                            dayNightColor(Color(0xFFE4D0F8), Color(0xFF4C2F6E))
+                        } else {
+                            dayNightColor(Color(0xFFFFCDD2), Color(0xFF6B1B1B))
+                        }
+                        val flexIconTint = if (isPos) {
+                            dayNightColor(Color(0xFF3A1D5C), Color(0xFFE8D5FF))
+                        } else {
+                            dayNightColor(Color(0xFFB71C1C), Color(0xFFFFB4AB))
+                        }
+                        val flexValueColor = if (isPos) {
+                            GlanceTheme.colors.onSurface
+                        } else {
+                            dayNightColor(Color(0xFFB71C1C), Color(0xFFFFB4AB))
+                        }
+
+                        HeroMetricCardGlance(
+                            iconRes = R.drawable.ic_widget_trending,
+                            title = "Gleitzeit",
+                            value = balanceText,
+                            containerColor = flexContainer,
+                            iconBgColor = flexIconBg,
+                            iconTint = flexIconTint,
+                            valueColor = flexValueColor,
+                            modifier = GlanceModifier.defaultWeight()
+                        )
+
                         Spacer(modifier = GlanceModifier.height(3.dp))
 
-                        val quotaFormatted = "%.0f%%".format(state.officeQuotaPercent)
-                        val daysText = if (state.targetOfficeDays > 0) {
-                            "${state.officeDays}/${state.targetOfficeDays} T."
-                        } else {
-                            "${state.officeDays} T."
+                        // 2. Pause
+                        val breakText = if (state.breakMinutesToday > 0) "${state.breakMinutesToday} min" else "–"
+                        HeroMetricCardGlance(
+                            iconRes = R.drawable.ic_widget_coffee,
+                            title = "Pause",
+                            value = breakText,
+                            containerColor = dayNightColor(Color(0xFFE1EDFD), Color(0xFF1A3358)),
+                            iconBgColor = dayNightColor(Color(0xFFCCE0FF), Color(0xFF244A80)),
+                            iconTint = dayNightColor(Color(0xFF193C6F), Color(0xFFD0E2FF)),
+                            valueColor = GlanceTheme.colors.onSurface,
+                            modifier = GlanceModifier.defaultWeight()
+                        )
+
+                        Spacer(modifier = GlanceModifier.height(3.dp))
+
+                        // 3. Verbleibend
+                        val remainingMin = (state.targetMinutesToday - state.netMinutesToday).coerceAtLeast(0)
+                        val (remText, remIcon) = when {
+                            state.targetMinutesToday <= 0 -> "–" to R.drawable.ic_widget_schedule
+                            isGoalReached -> "Erreicht ✓" to R.drawable.ic_widget_check
+                            else -> {
+                                val rH = remainingMin / 60
+                                val rM = remainingMin % 60
+                                val text = if (rH > 0) "${rH}h ${rM}m" else "${rM}min"
+                                text to R.drawable.ic_widget_hourglass
+                            }
                         }
-                        val (quotaBg, quotaColor) = if (state.isQuotaMet) {
-                            GlanceTheme.colors.primaryContainer to GlanceTheme.colors.onPrimaryContainer
+                        HeroMetricCardGlance(
+                            iconRes = remIcon,
+                            title = "Verbleibend",
+                            value = remText,
+                            containerColor = dayNightColor(Color(0xFFE7EDF8), Color(0xFF222F3E)),
+                            iconBgColor = dayNightColor(Color(0xFFD4E2F4), Color(0xFF31455E)),
+                            iconTint = dayNightColor(Color(0xFF253448), Color(0xFFD4E3F8)),
+                            valueColor = GlanceTheme.colors.onSurface,
+                            modifier = GlanceModifier.defaultWeight()
+                        )
+                    }
+                }
+            } else {
+                // Main Metrics Row: Today's Time + Flextime & Quota Badges
+                Row(
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .clickable(actionStartActivity<MainActivity>()),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Large work time display
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = formatMinutes(state.netMinutesToday),
+                            style = TextStyle(
+                                color = GlanceTheme.colors.onSurface,
+                                fontSize = if (isCompactHeight) 20.sp else 24.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                        Spacer(modifier = GlanceModifier.width(4.dp))
+                        Text(
+                            text = "/ ${formatMinutes(state.targetMinutesToday)} Std.",
+                            style = TextStyle(
+                                color = GlanceTheme.colors.onSurfaceVariant,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Normal
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = GlanceModifier.defaultWeight())
+
+                    // Badges: Flextime & Office Quota with Vector Icons
+                    Column(
+                        horizontalAlignment = Alignment.End
+                    ) {
+                        val flextimeFormatted = formatFlextime(state.flextimeBalanceMinutes)
+                        val (flexBg, flexColor) = if (state.flextimeBalanceMinutes >= 0) {
+                            GlanceTheme.colors.secondaryContainer to GlanceTheme.colors.onSecondaryContainer
                         } else {
-                            GlanceTheme.colors.surfaceVariant to GlanceTheme.colors.onSurfaceVariant
+                            GlanceTheme.colors.errorContainer to GlanceTheme.colors.onErrorContainer
                         }
 
                         Box(
                             modifier = GlanceModifier
-                                .cornerRadius(6.dp)
-                                .background(quotaBg)
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                                .cornerRadius(8.dp)
+                                .background(flexBg)
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Image(
-                                    provider = ImageProvider(R.drawable.ic_widget_quota),
+                                    provider = ImageProvider(R.drawable.ic_widget_trending),
                                     contentDescription = null,
-                                    modifier = GlanceModifier.size(11.dp),
-                                    colorFilter = ColorFilter.tint(quotaColor)
+                                    modifier = GlanceModifier.size(12.dp),
+                                    colorFilter = ColorFilter.tint(flexColor)
                                 )
-                                Spacer(modifier = GlanceModifier.width(4.dp))
+                                Spacer(modifier = GlanceModifier.width(5.dp))
+                                val badgeLabel = if (isNarrow) "Saldo" else "Gleitzeit"
                                 Text(
-                                    text = "$daysText · $quotaFormatted",
+                                    text = "$badgeLabel $flextimeFormatted",
                                     style = TextStyle(
-                                        color = quotaColor,
+                                        color = flexColor,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                 )
                             }
                         }
-                    }
-                }
-            }
 
-            if (isTall) {
-                val progress = if (state.targetMinutesToday > 0) {
-                    (state.netMinutesToday.toFloat() / state.targetMinutesToday.toFloat()).coerceIn(0f, 1f)
-                } else 0f
+                        if (!isCompactHeight) {
+                            Spacer(modifier = GlanceModifier.height(5.dp))
 
-                Spacer(modifier = GlanceModifier.height(10.dp))
-                LinearProgressIndicator(
-                    progress = progress,
-                    modifier = GlanceModifier.fillMaxWidth().height(6.dp).cornerRadius(3.dp),
-                    color = GlanceTheme.colors.primary,
-                    backgroundColor = GlanceTheme.colors.surfaceVariant
-                )
-                Spacer(modifier = GlanceModifier.height(4.dp))
-                val progressPercent = (progress * 100).toInt()
-                val progressDetail = when {
-                    state.targetMinutesToday <= 0 -> {
-                        if (state.netMinutesToday > 0) {
-                            "${formatMinutes(state.netMinutesToday)} Std. (kein Soll)"
-                        } else {
-                            "Kein Tagessoll"
+                            val quotaFormatted = "%.0f%%".format(state.officeQuotaPercent)
+                            val daysText = if (state.targetOfficeDays > 0) {
+                                "${state.officeDays}/${state.targetOfficeDays} T."
+                            } else {
+                                "${state.officeDays} T."
+                            }
+                            val (quotaBg, quotaColor) = if (state.isQuotaMet) {
+                                GlanceTheme.colors.primaryContainer to GlanceTheme.colors.onPrimaryContainer
+                            } else {
+                                GlanceTheme.colors.surfaceVariant to GlanceTheme.colors.onSurfaceVariant
+                            }
+
+                            Box(
+                                modifier = GlanceModifier
+                                    .cornerRadius(8.dp)
+                                    .background(quotaBg)
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Image(
+                                        provider = ImageProvider(R.drawable.ic_widget_quota),
+                                        contentDescription = null,
+                                        modifier = GlanceModifier.size(12.dp),
+                                        colorFilter = ColorFilter.tint(quotaColor)
+                                    )
+                                    Spacer(modifier = GlanceModifier.width(5.dp))
+                                    Text(
+                                        text = "$daysText · $quotaFormatted",
+                                        style = TextStyle(
+                                            color = quotaColor,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    )
+                                }
+                            }
                         }
                     }
-                    state.netMinutesToday >= state.targetMinutesToday -> "$progressPercent% (Ziel erreicht)"
-                    else -> {
-                        val remaining = state.targetMinutesToday - state.netMinutesToday
-                        val endSuffix = if (state.isClockRunning && state.projectedEndTime != null) {
-                            " · Ende %02d:%02d".format(state.projectedEndTime.hour, state.projectedEndTime.minute)
-                        } else {
-                            ""
-                        }
-                        "$progressPercent% (noch ${formatMinutes(remaining)} Std.$endSuffix)"
-                    }
                 }
-                val displayText = if (isNarrow) {
-                    if (state.targetMinutesToday <= 0) {
-                        if (state.netMinutesToday > 0) "${formatMinutes(state.netMinutesToday)} Std." else "Kein Soll"
+
+                if (isTall) {
+                    val progress = if (state.targetMinutesToday > 0) {
+                        (state.netMinutesToday.toFloat() / state.targetMinutesToday.toFloat()).coerceIn(0f, 1f)
+                    } else 0f
+
+                    Spacer(modifier = GlanceModifier.height(10.dp))
+                    LinearProgressIndicator(
+                        progress = progress,
+                        modifier = GlanceModifier.fillMaxWidth().height(6.dp).cornerRadius(3.dp),
+                        color = GlanceTheme.colors.primary,
+                        backgroundColor = GlanceTheme.colors.surfaceVariant
+                    )
+                    Spacer(modifier = GlanceModifier.height(4.dp))
+                    val progressPercent = (progress * 100).toInt()
+                    val progressDetail = when {
+                        state.targetMinutesToday <= 0 -> {
+                            if (state.netMinutesToday > 0) {
+                                "${formatMinutes(state.netMinutesToday)} Std. (kein Soll)"
+                            } else {
+                                "Kein Tagessoll"
+                            }
+                        }
+                        state.netMinutesToday >= state.targetMinutesToday -> "$progressPercent% (Ziel erreicht)"
+                        else -> {
+                            val remaining = state.targetMinutesToday - state.netMinutesToday
+                            val endSuffix = if (state.isClockRunning && state.projectedEndTime != null) {
+                                " · Ende %02d:%02d".format(state.projectedEndTime.hour, state.projectedEndTime.minute)
+                            } else {
+                                ""
+                            }
+                            "$progressPercent% (noch ${formatMinutes(remaining)} Std.$endSuffix)"
+                        }
+                    }
+                    val displayText = if (isNarrow) {
+                        if (state.targetMinutesToday <= 0) {
+                            if (state.netMinutesToday > 0) "${formatMinutes(state.netMinutesToday)} Std." else "Kein Soll"
+                        } else {
+                            "$progressPercent%"
+                        }
                     } else {
-                        "$progressPercent%"
+                        progressDetail
                     }
-                } else {
-                    progressDetail
-                }
-                Row(
-                    modifier = GlanceModifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Tagesfortschritt",
-                        style = TextStyle(
-                            color = GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = 11.sp
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Tagesfortschritt",
+                            style = TextStyle(
+                                color = GlanceTheme.colors.onSurfaceVariant,
+                                fontSize = 11.sp
+                            )
                         )
-                    )
-                    Spacer(modifier = GlanceModifier.defaultWeight())
-                    Text(
-                        text = displayText,
-                        style = TextStyle(
-                            color = GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = 11.sp
+                        Spacer(modifier = GlanceModifier.defaultWeight())
+                        Text(
+                            text = displayText,
+                            style = TextStyle(
+                                color = GlanceTheme.colors.onSurfaceVariant,
+                                fontSize = 11.sp
+                            )
                         )
-                    )
+                    }
                 }
             }
 
-            Spacer(modifier = GlanceModifier.defaultWeight())
+            Spacer(modifier = GlanceModifier.height(6.dp))
 
             // Action Buttons Row: Modern Material 3 Pills with Vector Icons
             Row(
@@ -484,6 +648,77 @@ class FlexWidget : GlanceAppWidget() {
         val color: ColorProvider
     )
 
+    private fun dayNightColor(day: Color, night: Color): ColorProvider =
+        androidx.glance.color.ColorProvider(day = day, night = night)
+
+    @Composable
+    private fun HeroMetricCardGlance(
+        iconRes: Int,
+        title: String,
+        value: String,
+        containerColor: ColorProvider,
+        iconBgColor: ColorProvider,
+        iconTint: ColorProvider,
+        valueColor: ColorProvider = GlanceTheme.colors.onSurface,
+        modifier: GlanceModifier = GlanceModifier
+    ) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .cornerRadius(12.dp)
+                .background(containerColor)
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Circular icon container matching HomeScreen Hero in Image 2
+                Box(
+                    modifier = GlanceModifier
+                        .size(24.dp)
+                        .cornerRadius(12.dp)
+                        .background(iconBgColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        provider = ImageProvider(iconRes),
+                        contentDescription = null,
+                        modifier = GlanceModifier.size(13.dp),
+                        colorFilter = ColorFilter.tint(iconTint)
+                    )
+                }
+
+                Spacer(modifier = GlanceModifier.width(6.dp))
+
+                Column(
+                    modifier = GlanceModifier.defaultWeight(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = title,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurface,
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        maxLines = 1
+                    )
+                    Text(
+                        text = value,
+                        style = TextStyle(
+                            color = valueColor,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+    }
+
     @Composable
     private fun WidgetActionButton(
         iconRes: Int,
@@ -495,11 +730,11 @@ class FlexWidget : GlanceAppWidget() {
     ) {
         Box(
             modifier = modifier
-                .height(38.dp)
-                .cornerRadius(12.dp)
+                .height(33.dp)
+                .cornerRadius(11.dp)
                 .background(backgroundColor)
                 .clickable(onClick)
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .padding(horizontal = 6.dp, vertical = 4.dp),
             contentAlignment = Alignment.Center
         ) {
             Row(
@@ -509,15 +744,15 @@ class FlexWidget : GlanceAppWidget() {
                 Image(
                     provider = ImageProvider(iconRes),
                     contentDescription = text,
-                    modifier = GlanceModifier.size(16.dp),
+                    modifier = GlanceModifier.size(14.dp),
                     colorFilter = ColorFilter.tint(contentColor)
                 )
-                Spacer(modifier = GlanceModifier.width(6.dp))
+                Spacer(modifier = GlanceModifier.width(5.dp))
                 Text(
                     text = text,
                     style = TextStyle(
                         color = contentColor,
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     ),
                     maxLines = 1

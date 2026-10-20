@@ -18,16 +18,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Today
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -108,12 +110,23 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
     ) {
         // Header: Year Selector
         item {
-            Row(
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                tonalElevation = 2.dp
             ) {
-                    IconButton(onClick = viewModel::previousYear) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.previousYear()
+                    }) {
                         Icon(Icons.Default.ChevronLeft, contentDescription = "Vorheriges Jahr")
                     }
 
@@ -130,7 +143,10 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
                             Surface(
                                 shape = RoundedCornerShape(50),
                                 color = MaterialTheme.colorScheme.primaryContainer,
-                                onClick = { viewModel.selectYear(today.year) }
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    viewModel.selectYear(today.year)
+                                }
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -154,10 +170,14 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
                         }
                     }
 
-                    IconButton(onClick = viewModel::nextYear) {
+                    IconButton(onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.nextYear()
+                    }) {
                         Icon(Icons.Default.ChevronRight, contentDescription = "Nächstes Jahr")
                     }
                 }
+            }
         }
 
         // 1. Current Week Status Card (Only shown if selected year matches current year)
@@ -174,37 +194,25 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
 
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.DateRange,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                        DashboardCardHeader(
+                            icon = Icons.Default.DateRange,
+                            title = "Aktuelle Woche (KW ${currentWeek.weekNumber})",
+                            trailing = {
                                 Text(
-                                    text = "Aktuelle Woche (KW ${currentWeek.weekNumber})",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                                    text = "${workedH}h ${workedM}m / ${targetH}h ${if (targetM > 0) "${targetM}m" else "00m"}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            Text(
-                                text = "${workedH}h ${workedM}m / ${targetH}h ${if (targetM > 0) "${targetM}m" else "00m"}",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                        )
 
                         Spacer(modifier = Modifier.height(10.dp))
 
@@ -257,32 +265,27 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
         item {
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     // Header Row: Title & Status Badge
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                "Büro-Quote",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                    DashboardCardHeader(
+                        icon = Icons.Default.Business,
+                        title = "Büro-Quote",
+                        tooltipTitle = TOOLTIP_OFFICE_QUOTA_TITLE,
+                        tooltipText = TOOLTIP_OFFICE_QUOTA,
+                        trailing = {
+                            StatusBadge(
+                                isActualMet = state.quotaStatus.quotaMet,
+                                isProjectedMet = state.forecast?.isProjectedQuotaMet ?: state.quotaStatus.quotaMet,
+                                hasPlannedDays = (state.forecast?.plannedOfficeDays ?: 0) > 0
                             )
-                            InfoTooltip(title = TOOLTIP_OFFICE_QUOTA_TITLE, text = TOOLTIP_OFFICE_QUOTA)
                         }
-                        StatusBadge(
-                            isActualMet = state.quotaStatus.quotaMet,
-                            isProjectedMet = state.forecast?.isProjectedQuotaMet ?: state.quotaStatus.quotaMet,
-                            hasPlannedDays = (state.forecast?.plannedOfficeDays ?: 0) > 0
-                        )
-                    }
+                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -290,14 +293,17 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(
-                            onClick = viewModel::previousMonth,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.previousMonth()
+                            },
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(Icons.Default.ChevronLeft, contentDescription = "Vorheriger Monat", modifier = Modifier.size(18.dp))
@@ -308,7 +314,10 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
                             fontWeight = FontWeight.SemiBold
                         )
                         IconButton(
-                            onClick = viewModel::nextMonth,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.nextMonth()
+                            },
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(Icons.Default.ChevronRight, contentDescription = "Nächster Monat", modifier = Modifier.size(18.dp))
@@ -501,39 +510,27 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
         item {
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     // Header Row: Title & Stand
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.TrendingUp,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
+                    DashboardCardHeader(
+                        icon = Icons.AutoMirrored.Filled.TrendingUp,
+                        title = "Gleitzeit & Verlauf",
+                        tooltipTitle = TOOLTIP_FLEXTIME_TITLE,
+                        tooltipText = TOOLTIP_FLEXTIME,
+                        trailing = {
                             Text(
-                                text = "Gleitzeit & Verlauf",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                text = "Stand ${state.selectedYearMonth.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.GERMAN))}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            InfoTooltip(title = TOOLTIP_FLEXTIME_TITLE, text = TOOLTIP_FLEXTIME)
                         }
-
-                        Text(
-                            text = "Stand ${state.selectedYearMonth.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.GERMAN))}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    )
 
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -648,26 +645,17 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
         item {
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Event,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = "Demnächst",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    DashboardCardHeader(
+                        icon = Icons.Default.Event,
+                        title = "Demnächst"
+                    )
 
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -699,26 +687,19 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
             item {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Schedule,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = "Arbeitszeit-Gewohnheiten",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        DashboardCardHeader(
+                            icon = Icons.Default.Schedule,
+                            title = "Arbeitszeit-Gewohnheiten"
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text = "Durchschnittswerte in ${state.selectedYearMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN))}",
@@ -773,38 +754,35 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
 
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                "Jahresurlaub",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            InfoTooltip(title = TOOLTIP_VACATION_TITLE, text = TOOLTIP_VACATION)
+                    DashboardCardHeader(
+                        icon = Icons.Default.BeachAccess,
+                        iconTint = VacationColor,
+                        iconContainerColor = VacationColor.copy(alpha = 0.15f),
+                        title = "Jahresurlaub",
+                        tooltipTitle = TOOLTIP_VACATION_TITLE,
+                        tooltipText = TOOLTIP_VACATION,
+                        trailing = {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = VacationColor.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = "${v.remainingVacationDays} Tage übrig",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = VacationColor,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
                         }
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = VacationColor.copy(alpha = 0.15f)
-                        ) {
-                            Text(
-                                text = "${v.remainingVacationDays} Tage übrig",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = VacationColor,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
+                    )
 
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -862,13 +840,16 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
             val a = state.absenceSummary
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Text(
-                        text = "Abwesenheiten im Überblick (${state.selectedYear})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                    DashboardCardHeader(
+                        icon = Icons.Default.CalendarToday,
+                        title = "Abwesenheiten im Überblick (${state.selectedYear})"
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -916,39 +897,28 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
         item {
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Schedule,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
+                    DashboardCardHeader(
+                        icon = Icons.Default.Timer,
+                        title = "Überstunden",
+                        tooltipTitle = TOOLTIP_OVERTIME_TITLE,
+                        tooltipText = TOOLTIP_OVERTIME,
+                        trailing = {
                             Text(
-                                "Überstunden",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                text = state.flextimeBalance.formatOvertime(),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = if (state.flextimeBalance.isOvertimePositive) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.error
                             )
-                            InfoTooltip(title = TOOLTIP_OVERTIME_TITLE, text = TOOLTIP_OVERTIME)
                         }
-                        Text(
-                            text = state.flextimeBalance.formatOvertime(),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = if (state.flextimeBalance.isOvertimePositive) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.error
-                        )
-                    }
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Stand ${state.selectedYearMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN))}",
@@ -965,15 +935,20 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
             if (v.isSpecialPaidOut) {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Text(
-                            text = "Sonderurlaub ausgezahlt",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
+                        DashboardCardHeader(
+                            icon = Icons.Default.BeachAccess,
+                            iconTint = SpecialVacationColor,
+                            iconContainerColor = SpecialVacationColor.copy(alpha = 0.15f),
+                            title = "Sonderurlaub ausgezahlt"
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = "Die 5 Sonderurlaubstage für ${state.selectedYear} wurden vollständig zur Auszahlung markiert.",
                             style = MaterialTheme.typography.bodySmall,
@@ -994,34 +969,21 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
             } else if (v.remainingSpecialDays > 0) {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         val isUrgent = today.year == state.selectedYear && today.month >= Month.SEPTEMBER
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            if (isUrgent) {
-                                Icon(
-                                    Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                            Text(
-                                text = if (isUrgent)
-                                    "Achtung: Sonderurlaub verfällt bald!"
-                                else
-                                    "Sonderurlaub verfällt am 31. Oktober ${state.selectedYear}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isUrgent)
-                                    MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        DashboardCardHeader(
+                            icon = if (isUrgent) Icons.Default.Warning else Icons.Default.BeachAccess,
+                            iconTint = if (isUrgent) MaterialTheme.colorScheme.error else SpecialVacationColor,
+                            iconContainerColor = if (isUrgent) MaterialTheme.colorScheme.error.copy(alpha = 0.15f) else SpecialVacationColor.copy(alpha = 0.15f),
+                            title = if (isUrgent) "Sonderurlaub verfällt bald!" else "Sonderurlaub (${state.selectedYear})"
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
                         if (v.plannedSpecialDays > 0) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
@@ -1261,5 +1223,62 @@ private fun QuotaStatItem(
             textAlign = TextAlign.Center,
             maxLines = 1
         )
+    }
+}
+
+@Composable
+private fun DashboardCardHeader(
+    icon: ImageVector,
+    title: String,
+    modifier: Modifier = Modifier,
+    iconTint: Color = MaterialTheme.colorScheme.primary,
+    iconContainerColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+    tooltipTitle: String? = null,
+    tooltipText: String? = null,
+    trailing: @Composable (() -> Unit)? = null
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.weight(1f, fill = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(iconContainerColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (tooltipTitle != null && tooltipText != null) {
+                    InfoTooltip(title = tooltipTitle, text = tooltipText)
+                }
+            }
+        }
+        if (trailing != null) {
+            Spacer(modifier = Modifier.width(8.dp))
+            trailing()
+        }
     }
 }

@@ -55,17 +55,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Warning
 import com.flex.ui.components.EmptyStateView
+import com.flex.ui.components.TileCardHeader
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -172,13 +176,24 @@ class MutableBlockState(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
+fun MonthScreen(
+    viewModel: MonthViewModel = hiltViewModel(),
+    initialMonth: YearMonth? = null,
+    onInitialMonthConsumed: () -> Unit = {}
+) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showMonthFlextimeDetailsSheet by remember { mutableStateOf(false) }
+
+    LaunchedEffect(initialMonth) {
+        if (initialMonth != null) {
+            viewModel.selectMonth(initialMonth)
+            onInitialMonthConsumed()
+        }
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.undoEvent.collect { event ->
@@ -277,13 +292,43 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             ) {
                 Tab(
                     selected = pagerState.currentPage == 0,
-                    onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
-                    text = { Text("Kalender") }
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        scope.launch { pagerState.animateScrollToPage(0) }
+                    },
+                    text = {
+                        Text(
+                            "Kalender",
+                            fontWeight = if (pagerState.currentPage == 0) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    icon = {
+                        Icon(
+                            Icons.Default.CalendarMonth,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 )
                 Tab(
                     selected = pagerState.currentPage == 1,
-                    onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
-                    text = { Text("Einträge") }
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        scope.launch { pagerState.animateScrollToPage(1) }
+                    },
+                    text = {
+                        Text(
+                            "Einträge",
+                            fontWeight = if (pagerState.currentPage == 1) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    icon = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.List,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 )
             }
 
@@ -330,18 +375,13 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                 )
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            "Arbeitszeit & Gleitzeit",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        InfoTooltip(title = TOOLTIP_PROGNOSIS_TITLE, text = TOOLTIP_PROGNOSIS)
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    TileCardHeader(
+                        icon = Icons.Default.Schedule,
+                        title = "Arbeitszeit & Gleitzeit",
+                        tooltipTitle = TOOLTIP_PROGNOSIS_TITLE,
+                        tooltipText = TOOLTIP_PROGNOSIS
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
 
                 val isPositive = state.differenceMinutesMonth >= 0
                 val diffColor = if (isPositive) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
@@ -1018,11 +1058,6 @@ fun WorkDayListItem(
     }
 
     val badgeInfo = MonthEntriesHelper.getDayTypeBadgeInfo(workDay)
-    val accentTextColor = MonthEntriesHelper.getAccessibleBadgeTextColor(
-        dayType = workDay.dayType,
-        isOffice = badgeInfo.isOffice,
-        isDark = isDark
-    )
 
     val isWorkType = workDay.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP)
     val workBlocks = remember(workDay.timeBlocks) { workDay.timeBlocks.sortedBy { it.startTime } }
@@ -1065,58 +1100,33 @@ fun WorkDayListItem(
                 )
             }
 
-            // Linke Seite: Wochentag fett + formatiertes Datum, Tagestyp-Pill, gestempelte Zeitblöcke
+            // Linke Seite: Wochentag fett + formatiertes Datum, gestempelte Zeitblöcke
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    val (dayPrefix, dateSuffix) = MonthEntriesHelper.formatWorkDayHeaderDate(workDay.date)
-                    Text(
-                        text = buildAnnotatedString {
-                            withStyle(
-                                SpanStyle(
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            ) {
-                                append(dayPrefix)
-                            }
-                            withStyle(
-                                SpanStyle(
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            ) {
-                                append(dateSuffix)
-                            }
-                        },
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.align(Alignment.CenterVertically)
-                    )
-
-                    // Tagestyp-Pill
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = badgeInfo.accentColor.copy(alpha = if (isDark) 0.22f else 0.12f),
-                        border = BorderStroke(
-                            1.dp,
-                            badgeInfo.accentColor.copy(alpha = if (isDark) 0.45f else 0.30f)
-                        ),
-                        modifier = Modifier.align(Alignment.CenterVertically)
-                    ) {
-                        Text(
-                            text = badgeInfo.label,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = accentTextColor
-                        )
-                    }
-                }
+                val (dayPrefix, dateSuffix) = MonthEntriesHelper.formatWorkDayHeaderDate(workDay.date)
+                Text(
+                    text = buildAnnotatedString {
+                        withStyle(
+                            SpanStyle(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        ) {
+                            append(dayPrefix)
+                        }
+                        withStyle(
+                            SpanStyle(
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        ) {
+                            append(dateSuffix)
+                        }
+                    },
+                    style = MaterialTheme.typography.titleSmall
+                )
 
                 // Optional note
                 if (!workDay.note.isNullOrBlank()) {

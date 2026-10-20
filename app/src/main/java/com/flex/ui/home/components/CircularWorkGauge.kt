@@ -341,11 +341,7 @@ fun CircularWorkGauge(
                 Spacer(modifier = Modifier.height(3.dp))
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = secondaryColor.copy(alpha = 0.16f),
-                    border = androidx.compose.foundation.BorderStroke(
-                        0.5.dp,
-                        secondaryColor.copy(alpha = 0.35f)
-                    )
+                    color = secondaryColor.copy(alpha = 0.16f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
@@ -374,11 +370,7 @@ fun CircularWorkGauge(
                 val pct = (progress * 100).toInt()
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = secondaryColor.copy(alpha = 0.16f),
-                    border = androidx.compose.foundation.BorderStroke(
-                        0.5.dp,
-                        secondaryColor.copy(alpha = 0.35f)
-                    )
+                    color = secondaryColor.copy(alpha = 0.16f)
                 ) {
                     Text(
                         text = "$pct % ✓",
@@ -394,11 +386,7 @@ fun CircularWorkGauge(
                 Spacer(modifier = Modifier.height(2.dp))
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = primaryColor.copy(alpha = 0.15f),
-                    border = androidx.compose.foundation.BorderStroke(
-                        0.5.dp,
-                        primaryColor.copy(alpha = 0.35f)
-                    )
+                    color = primaryColor.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 1.5.dp),
@@ -427,11 +415,7 @@ fun CircularWorkGauge(
                 val pct = (progress * 100).toInt()
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = primaryColor.copy(alpha = 0.15f),
-                    border = androidx.compose.foundation.BorderStroke(
-                        0.5.dp,
-                        primaryColor.copy(alpha = 0.35f)
-                    )
+                    color = primaryColor.copy(alpha = 0.15f)
                 ) {
                     Text(
                         text = "$pct %",

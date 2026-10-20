@@ -2,14 +2,15 @@ package com.flex.ui.year
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,16 +20,28 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.EditCalendar
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
+import com.flex.ui.components.glowBorder
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,12 +50,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.flex.domain.model.DayType
 import com.flex.domain.model.WorkLocation
@@ -57,6 +73,8 @@ import com.flex.ui.theme.SpecialVacationColor
 import com.flex.ui.theme.VacationColor
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -88,10 +106,13 @@ private fun cellColor(entry: DayHeatmapEntry?, dailyWorkMinutes: Int, isSurface:
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun YearOverviewScreen(
-    viewModel: YearOverviewViewModel = hiltViewModel()
+    viewModel: YearOverviewViewModel = hiltViewModel(),
+    onNavigateToMonth: (YearMonth) -> Unit = {},
+    onNavigateToPlanning: (YearMonth) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val today = LocalDate.now()
+    val haptic = LocalHapticFeedback.current
 
     LazyColumn(
         modifier = Modifier
@@ -100,50 +121,691 @@ fun YearOverviewScreen(
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Year navigation header
+        // Modern Year navigation header
         item {
-            Row(
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                tonalElevation = 2.dp
             ) {
-                IconButton(onClick = viewModel::previousYear) {
-                    Icon(Icons.Default.ChevronLeft, contentDescription = "Vorheriges Jahr")
-                }
-                Text(
-                    text = state.year.toString(),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-                IconButton(onClick = viewModel::nextYear) {
-                    Icon(Icons.Default.ChevronRight, contentDescription = "Nächstes Jahr")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.previousYear()
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.ChevronLeft,
+                            contentDescription = "Vorheriges Jahr",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = state.year.toString(),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        if (state.year != today.year) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    viewModel.selectYear(today.year)
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Today,
+                                        contentDescription = "Aktuelles Jahr",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Text(
+                                        text = "Heute",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.nextYear()
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = "Nächstes Jahr",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
         }
 
-        // Heatmap
+        // Modern Heatmap Card
         item {
-            YearHeatmap(
-                year = state.year,
-                heatmapEntries = state.heatmapEntries,
-                dailyWorkMinutes = state.dailyWorkMinutes,
-                today = today
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarMonth,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Text(
+                            text = "Jahres-Heatmap",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    YearHeatmap(
+                        year = state.year,
+                        heatmapEntries = state.heatmapEntries,
+                        dailyWorkMinutes = state.dailyWorkMinutes,
+                        today = today
+                    )
+
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                        thickness = 0.5.dp
+                    )
+
+                    HeatmapLegend()
+                }
+            }
+        }
+
+        // Modern Year Summary KPI Card
+        item {
+            ModernYearSummaryCard(summary = state.summary)
+        }
+
+        // 12 Months Navigation & Breakdown
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "Monatsübersicht ${state.year}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Tippe auf einen Monat für Monatsdetails oder Planung",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // 12 Month Tiles Grid
+        items(
+            items = state.monthSummaries,
+            key = { it.yearMonth.toString() }
+        ) { monthTile ->
+            MonthOverviewTile(
+                tile = monthTile,
+                currentMonth = java.time.YearMonth.from(today),
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    if (monthTile.isFuture) {
+                        onNavigateToPlanning(monthTile.yearMonth)
+                    } else {
+                        onNavigateToMonth(monthTile.yearMonth)
+                    }
+                }
             )
-        }
-
-        // Legend
-        item {
-            HeatmapLegend()
-        }
-
-        // Summary card
-        item {
-            YearSummaryCard(summary = state.summary)
         }
 
         item {
             Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun ModernYearSummaryCard(summary: YearSummary) {
+    val totalHours = summary.totalWorkMinutes / 60
+    val totalMins = summary.totalWorkMinutes % 60
+    val totalOfficeHo = summary.officeWorkDays + summary.homeOfficeWorkDays
+    val officeRatio = if (totalOfficeHo > 0) summary.officeWorkDays.toFloat() / totalOfficeHo else 0.5f
+
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Header Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "Jahresstatistik ${summary.year}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Zusammenfassung aller erfassten Tage",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = "${summary.totalWorkDays} Arbeitstage",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            // Key KPI Metric Row
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Schedule,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Gesamtarbeitszeit",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "${totalHours}h ${totalMins}m",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "Büro / Home-Office",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(OfficeColor)
+                                )
+                                Text(
+                                    text = "${summary.officeWorkDays} T",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Text(
+                                text = "•",
+                                color = MaterialTheme.colorScheme.outlineVariant
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(HomeOfficeColor)
+                                )
+                                Text(
+                                    text = "${summary.homeOfficeWorkDays} T",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Visual distribution bar
+            if (totalOfficeHo > 0) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Büro ${(officeRatio * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = OfficeColor
+                        )
+                        Text(
+                            text = "Home-Office ${((1f - officeRatio) * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = HomeOfficeColor
+                        )
+                    }
+                    LinearProgressIndicator(
+                        progress = { officeRatio },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = OfficeColor,
+                        trackColor = HomeOfficeColor,
+                        strokeCap = ProgressIndicatorDefaults.LinearStrokeCap
+                    )
+                }
+            }
+
+            // Absences & Special days section
+            Text(
+                text = "Abwesenheiten & Freitage",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                ModernSummaryBadge(
+                    label = "Urlaub",
+                    value = "${summary.vacationDays}",
+                    color = VacationColor,
+                    modifier = Modifier.weight(1f)
+                )
+                ModernSummaryBadge(
+                    label = "Krank",
+                    value = "${summary.sickDays}",
+                    color = SickDayColor,
+                    modifier = Modifier.weight(1f)
+                )
+                ModernSummaryBadge(
+                    label = "Gleittage",
+                    value = "${summary.flexDays}",
+                    color = FlexDayColor,
+                    modifier = Modifier.weight(1f)
+                )
+                ModernSummaryBadge(
+                    label = "Feiertage",
+                    value = "${summary.publicHolidayCount}",
+                    color = PublicHolidayColor,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Secondary row: Saturday Bonus & Business Trip if applicable
+            if (summary.saturdayBonusDays > 0 || summary.businessTripDays > 0) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    if (summary.saturdayBonusDays > 0) {
+                        ModernSummaryBadge(
+                            label = "Samstag+",
+                            value = "${summary.saturdayBonusDays}",
+                            color = SaturdayBonusColor,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (summary.businessTripDays > 0) {
+                        ModernSummaryBadge(
+                            label = "Dienstreise",
+                            value = "${summary.businessTripDays}",
+                            color = BusinessTripColor,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            if (summary.specialVacationPaidOut) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = SpecialVacationColor.copy(alpha = 0.15f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(SpecialVacationColor)
+                        )
+                        Text(
+                            text = "Sonderurlaub: 5 Tage ausgezahlt",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            } else if (summary.specialVacationDays > 0) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = SpecialVacationColor.copy(alpha = 0.15f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(SpecialVacationColor)
+                        )
+                        Text(
+                            text = "Sonderurlaub: ${summary.specialVacationDays} Tage genommen",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthOverviewTile(
+    tile: YearMonthTileData,
+    currentMonth: YearMonth,
+    onClick: () -> Unit
+) {
+    val monthName = tile.yearMonth.month.getDisplayName(TextStyle.FULL, Locale.GERMAN)
+    val isCurrent = tile.yearMonth == currentMonth
+    val totalH = tile.totalWorkMinutes / 60
+    val totalM = tile.totalWorkMinutes % 60
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (isCurrent) Modifier.glowBorder(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(16.dp)
+                ) else Modifier
+            ),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isCurrent) MaterialTheme.colorScheme.surfaceContainer
+            else MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isCurrent) 2.dp else 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = monthName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    val (badgeText, badgeColor, badgeContentColor) = when {
+                        isCurrent -> Triple("Aktuell", MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary)
+                        tile.isFuture -> Triple("Zukunft", MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
+                        else -> Triple("Abgeschlossen", MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = badgeColor
+                    ) {
+                        Text(
+                            text = badgeText,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = badgeContentColor,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                // Stats line
+                if (tile.totalWorkMinutes > 0L) {
+                    Text(
+                        text = "${totalH}h ${totalM}m • ${tile.workDays} Arbeitstage",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                } else if (tile.isFuture) {
+                    Text(
+                        text = "Keine erfassten Zeiten • Zur Planung",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Text(
+                        text = "0h 00m gearbeitet",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (tile.officeDays > 0 || tile.homeOfficeDays > 0) {
+                        Text(
+                            text = "🏢 ${tile.officeDays} T   🏠 ${tile.homeOfficeDays} T",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (tile.vacationDays > 0) {
+                        Text(
+                            text = "🏖️ ${tile.vacationDays} T Urlaub",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = VacationColor
+                        )
+                    }
+                }
+            }
+
+            // Trailing action hint
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = if (tile.isFuture) Icons.Default.EditCalendar else Icons.Default.CalendarMonth,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = if (tile.isFuture) "Planen" else "Öffnen",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModernSummaryBadge(
+    label: String,
+    value: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(16.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(color)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -169,7 +831,6 @@ private fun YearHeatmap(
     val totalWeeks = (totalDays + 6) / 7
 
     val weekDayLabels = listOf("Mo", "", "Mi", "", "Fr", "", "")
-
     val lazyRowState = rememberLazyListState()
 
     Row(
@@ -311,19 +972,19 @@ private fun HeatmapLegend() {
 
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         legendItems.forEach { (label, color) ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .width(12.dp)
-                        .height(8.dp)
-                        .background(color.copy(alpha = 0.8f), shape = RoundedCornerShape(2.dp))
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(color.copy(alpha = 0.85f))
                 )
                 Text(
                     text = label,
@@ -332,201 +993,5 @@ private fun HeatmapLegend() {
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun YearSummaryCard(summary: YearSummary) {
-    val totalHours = summary.totalWorkMinutes / 60
-    val totalMins = summary.totalWorkMinutes % 60
-
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Header with total work days badge
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Jahresübersicht ${summary.year}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                ) {
-                    Text(
-                        text = "${summary.totalWorkDays} Tage",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
-                }
-            }
-
-            // Group 1: Absences
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                SummaryItem(
-                    label = "Urlaub",
-                    value = summary.vacationDays.toString(),
-                    accentColor = VacationColor,
-                    modifier = Modifier.weight(1f)
-                )
-                SummaryItem(
-                    label = "Krank",
-                    value = summary.sickDays.toString(),
-                    accentColor = SickDayColor,
-                    modifier = Modifier.weight(1f)
-                )
-                SummaryItem(
-                    label = "Gleittage",
-                    value = summary.flexDays.toString(),
-                    accentColor = FlexDayColor,
-                    modifier = Modifier.weight(1f)
-                )
-                SummaryItem(
-                    label = "Feiertage",
-                    value = summary.publicHolidayCount.toString(),
-                    accentColor = PublicHolidayColor,
-                    modifier = Modifier.weight(1f)
-                )
-                SummaryItem(
-                    label = "Samstag+",
-                    value = summary.saturdayBonusDays.toString(),
-                    accentColor = SaturdayBonusColor,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            if (summary.specialVacationPaidOut) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = SpecialVacationColor.copy(alpha = 0.15f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(SpecialVacationColor)
-                        )
-                        Text(
-                            text = "Sonderurlaub: 5 Tage ausgezahlt",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-            } else if (summary.specialVacationDays > 0) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = SpecialVacationColor.copy(alpha = 0.15f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(SpecialVacationColor)
-                        )
-                        Text(
-                            text = "Sonderurlaub: ${summary.specialVacationDays} Tage genommen",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-            }
-
-            HorizontalDivider()
-
-            // Group 2: Work breakdown
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                SummaryItem(
-                    label = "Büro",
-                    value = summary.officeWorkDays.toString(),
-                    accentColor = OfficeColor,
-                    modifier = Modifier.weight(1f)
-                )
-                SummaryItem(
-                    label = "Home-Office",
-                    value = summary.homeOfficeWorkDays.toString(),
-                    accentColor = HomeOfficeColor,
-                    modifier = Modifier.weight(1f)
-                )
-                SummaryItem(
-                    label = "Dienstgang / Dienstreise",
-                    value = summary.businessTripDays.toString(),
-                    accentColor = BusinessTripColor,
-                    modifier = Modifier.weight(1f)
-                )
-                SummaryItem(
-                    label = "Stunden",
-                    value = "${totalHours}h ${totalMins}m",
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryItem(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    accentColor: Color? = null
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        if (accentColor != null) {
-            Box(
-                modifier = Modifier
-                    .width(12.dp)
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(accentColor)
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-        }
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            maxLines = 2
-        )
     }
 }

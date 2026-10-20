@@ -11,10 +11,12 @@ import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -48,10 +50,21 @@ data class YearSummary(
     val homeOfficeWorkDays: Int = 0
 )
 
+data class YearMonthTileData(
+    val yearMonth: java.time.YearMonth,
+    val workDays: Int,
+    val totalWorkMinutes: Long,
+    val officeDays: Int,
+    val homeOfficeDays: Int,
+    val vacationDays: Int,
+    val isFuture: Boolean
+)
+
 data class YearOverviewUiState(
     val year: Int = LocalDate.now().year,
     val heatmapEntries: Map<LocalDate, DayHeatmapEntry> = emptyMap(),
     val summary: YearSummary = YearSummary(year = LocalDate.now().year),
+    val monthSummaries: List<YearMonthTileData> = emptyList(),
     val dailyWorkMinutes: Int = 426
 )
 
@@ -74,10 +87,12 @@ class YearOverviewViewModel @Inject constructor(
 
     fun previousYear() { _year.value-- }
     fun nextYear() { _year.value++ }
+    fun selectYear(year: Int) { _year.value = year }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun loadData() {
         viewModelScope.launch {
-            _year.collect { year ->
+            _year.flatMapLatest { year ->
                 val rulesFlow = settingsRepository?.getWorkTimeRules() ?: flowOf(emptyList())
                 combine(
                     workDayRepository.getWorkDaysForYear(year),
@@ -129,21 +144,7 @@ class YearOverviewViewModel @Inject constructor(
                             else calculateDayWorkTime(it.timeBlocks).netMinutes
                         }
 
-                    // Count office vs HO days
-                    var officeDays = 0
-                    var hoDays = 0
-                    actualDays.filter { it.dayType == DayType.WORK }.forEach { day ->
-                        val blocks = day.timeBlocks.filter { it.endTime != null }
-                        if (blocks.isEmpty()) {
-                            if (day.location == WorkLocation.OFFICE) officeDays++ else hoDays++
-                        } else {
-                            val offMin = blocks.filter { it.location == WorkLocation.OFFICE }
-                                .sumOf { java.time.Duration.between(it.startTime, it.endTime!!).toMinutes() }
-                            val hoMin = blocks.filter { it.location == WorkLocation.HOME_OFFICE }
-                                .sumOf { java.time.Duration.between(it.startTime, it.endTime!!).toMinutes() }
-                            if (offMin >= hoMin) officeDays++ else hoDays++
-                        }
-                    }
+                    val (officeDays, hoDays) = calculateOfficeAndHoDays(actualDays)
 
                     val summary = YearSummary(
                         year = year,
@@ -161,16 +162,61 @@ class YearOverviewViewModel @Inject constructor(
                         homeOfficeWorkDays = hoDays
                     )
 
+                    val nowMonth = java.time.YearMonth.now()
+                    val actualDaysByMonth = actualDays.groupBy { it.date.monthValue }
+                    val monthSummaries = (1..12).map { monthNum ->
+                        val ym = java.time.YearMonth.of(year, monthNum)
+                        val mDays = actualDaysByMonth[monthNum] ?: emptyList()
+                        val mWorkDaysCount = mDays.count { it.dayType == DayType.WORK }
+                        val mTotalWorkMinutes = mDays
+                            .filter { it.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP) }
+                            .sumOf {
+                                if (it.dayType == DayType.BUSINESS_TRIP) calculateDayWorkTime(it.timeBlocks, isBusinessTrip = true).netMinutes
+                                else calculateDayWorkTime(it.timeBlocks).netMinutes
+                            }
+
+                        val (mOfficeDays, mHoDays) = calculateOfficeAndHoDays(mDays)
+
+                        YearMonthTileData(
+                            yearMonth = ym,
+                            workDays = mWorkDaysCount,
+                            totalWorkMinutes = mTotalWorkMinutes,
+                            officeDays = mOfficeDays,
+                            homeOfficeDays = mHoDays,
+                            vacationDays = mDays.count { it.dayType == DayType.VACATION },
+                            isFuture = ym.isAfter(nowMonth)
+                        )
+                    }
+
                     YearOverviewUiState(
                         year = year,
                         heatmapEntries = entries,
                         summary = summary,
+                        monthSummaries = monthSummaries,
                         dailyWorkMinutes = settings.dailyWorkMinutes
                     )
-                }.collect { state ->
-                    _uiState.value = state
                 }
+            }.collect { state ->
+                _uiState.value = state
             }
         }
+    }
+
+    private fun calculateOfficeAndHoDays(days: List<com.flex.domain.model.WorkDay>): Pair<Int, Int> {
+        var officeDays = 0
+        var hoDays = 0
+        days.filter { it.dayType == DayType.WORK }.forEach { day ->
+            val blocks = day.timeBlocks.filter { it.endTime != null }
+            if (blocks.isEmpty()) {
+                if (day.location == WorkLocation.OFFICE) officeDays++ else hoDays++
+            } else {
+                val offMin = blocks.filter { it.location == WorkLocation.OFFICE }
+                    .sumOf { java.time.Duration.between(it.startTime, it.endTime!!).toMinutes() }
+                val hoMin = blocks.filter { it.location == WorkLocation.HOME_OFFICE }
+                    .sumOf { java.time.Duration.between(it.startTime, it.endTime!!).toMinutes() }
+                if (offMin >= hoMin) officeDays++ else hoDays++
+            }
+        }
+        return officeDays to hoDays
     }
 }
