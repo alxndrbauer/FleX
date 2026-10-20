@@ -110,4 +110,22 @@ class BuildPrognosisDaysUseCaseTest {
         assertThat(day.timeBlocks[0].startTime).isEqualTo(customStartTime)
         assertThat(day.timeBlocks[0].endTime).isEqualTo(customStartTime.plusMinutes(customSettings.dailyWorkMinutes.toLong()))
     }
+
+    @Test
+    fun `prognosis fills empty timeBlocks in existing BUSINESS_TRIP day`() {
+        val month = YearMonth.of(2026, 8)
+        val existing = WorkDay(
+            id = 43L,
+            date = month.atDay(4),
+            location = WorkLocation.OFFICE,
+            dayType = DayType.BUSINESS_TRIP,
+            timeBlocks = emptyList()
+        )
+
+        val result = useCase(month, listOf(existing), settings)
+        val day = result.first { it.date == existing.date }
+
+        assertThat(day.timeBlocks).hasSize(1)
+        assertThat(day.dayType).isEqualTo(DayType.BUSINESS_TRIP)
+    }
 }

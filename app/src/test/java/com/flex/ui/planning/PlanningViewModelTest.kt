@@ -37,6 +37,8 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.atLeastOnce
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.isNull
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.DayOfWeek
@@ -323,6 +325,43 @@ class PlanningViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.canSyncPlannedDays).isTrue()
+    }
+
+    @Test
+    fun `flextime breakdown reflects actual balance and planned contribution`() = runTest {
+        val selectedMonth = YearMonth.now().plusMonths(1)
+        val actualDay = WorkDay(
+            id = 1L,
+            date = selectedMonth.minusMonths(1).atDay(15),
+            dayType = DayType.WORK,
+            isPlanned = false
+        )
+        val plannedDay = WorkDay(
+            id = 2L,
+            date = selectedMonth.atDay(5),
+            dayType = DayType.FLEX_DAY,
+            isPlanned = true
+        )
+
+        whenever(workDayRepository.getWorkDaysForYear(selectedMonth.year)).thenReturn(flowOf(listOf(actualDay)))
+        whenever(getMonthWorkDays(selectedMonth)).thenReturn(flowOf(listOf(plannedDay)))
+
+        // When calculateFlextime is called for prognosis (previous + prognosis): return totalMinutes = 60
+        // When calculateFlextime is called for actual (previous + actual of this month): return totalMinutes = 120
+        whenever(calculateFlextime(any(), any(), eq(selectedMonth), any())).thenReturn(
+            FlextimeBalance(totalMinutes = 60)
+        )
+        whenever(calculateFlextime(any(), any(), isNull(), any())).thenReturn(
+            FlextimeBalance(totalMinutes = 120)
+        )
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertThat(state.flextimeBalance.totalMinutes).isEqualTo(60L)
+        assertThat(state.actualFlextimeMinutes).isEqualTo(120L)
+        assertThat(state.plannedContributionMinutes).isEqualTo(-60L)
     }
 }
 

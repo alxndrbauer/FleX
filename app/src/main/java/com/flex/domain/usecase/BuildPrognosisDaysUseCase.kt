@@ -37,7 +37,7 @@ class BuildPrognosisDaysUseCase @Inject constructor() {
 
             if (existing != null) {
                 if (existing.timeBlocks.isEmpty() &&
-                    existing.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS)
+                    existing.dayType in listOf(DayType.WORK, DayType.BUSINESS_TRIP, DayType.SATURDAY_BONUS)
                 ) {
                     val start = settings.defaultStartTime
                     val end = start.plusMinutes(dailyTarget.toLong())

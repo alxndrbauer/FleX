@@ -69,7 +69,9 @@ class FlexWidgetDataProvider @Inject constructor(
         isPaused: Boolean
     ): WidgetState {
         val rule = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)
-        val targetMinutesToday = if (rule != null) {
+        val targetMinutesToday = if (workDay?.dayType == DayType.SATURDAY_BONUS) {
+            0L
+        } else if (rule != null) {
             if (today.dayOfWeek in rule.workDays) rule.dailyWorkMinutes.toLong() else 0L
         } else {
             settings.dailyWorkMinutes.toLong()
@@ -109,7 +111,7 @@ class FlexWidgetDataProvider @Inject constructor(
 
         // Flextime Balance calculation (year days including live today)
         val todayWithNow = (workDay ?: WorkDay(date = today, location = currentLocation, dayType = DayType.WORK))
-            .copy(timeBlocks = blocksForCalc)
+            .copy(dayType = workDay?.dayType ?: DayType.WORK, timeBlocks = blocksForCalc)
         val liveYearDays = yearDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
         val flextimeBalance = calculateFlextime(
             liveYearDays,

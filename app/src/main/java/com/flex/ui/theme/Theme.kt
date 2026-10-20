@@ -13,10 +13,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
+import android.os.Build
+
 private val Blue = Color(0xFF1A73E8)
 private val BlueLight = Color(0xFF4DA3FF)
 private val Green = Color(0xFF34A853)
 private val Orange = Color(0xFFFF9800)
+private val OrangeDark = Color(0xFF8D4E00) // WCAG AA compliant on light surfaces (>5:1)
 private val Yellow = Color(0xFFFFC107)
 
 val OfficeColor = Color(0xFF1A73E8)
@@ -32,8 +35,17 @@ val BusinessTripColor = Color(0xFF00897B)
 
 private val LightColorScheme = lightColorScheme(
     primary = Blue,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFD6E3FF),
+    onPrimaryContainer = Color(0xFF001B3E),
     secondary = Green,
-    tertiary = Orange,
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFD4E8D1),
+    onSecondaryContainer = Color(0xFF0A200B),
+    tertiary = OrangeDark,
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFFDDB8),
+    onTertiaryContainer = Color(0xFF2B1700),
     surface = Color(0xFFFAF9FD),
     onSurface = Color(0xFF1A1C1E),
     surfaceVariant = Color(0xFFE1E2EC),
@@ -49,8 +61,17 @@ private val LightColorScheme = lightColorScheme(
 
 private val DarkColorScheme = darkColorScheme(
     primary = BlueLight,
+    onPrimary = Color(0xFF003258),
+    primaryContainer = Color(0xFF004881),
+    onPrimaryContainer = Color(0xFFD6E3FF),
     secondary = Green,
+    onSecondary = Color(0xFF003912),
+    secondaryContainer = Color(0xFF1E4E2B),
+    onSecondaryContainer = Color(0xFFB8F5BC),
     tertiary = Orange,
+    onTertiary = Color(0xFF492900),
+    tertiaryContainer = Color(0xFF673B00),
+    onTertiaryContainer = Color(0xFFFFDDB8),
     surface = Color(0xFF121316),
     onSurface = Color(0xFFE2E2E6),
     surfaceVariant = Color(0xFF44474F),
@@ -67,9 +88,16 @@ private val DarkColorScheme = darkColorScheme(
 private val AmoledColorScheme = darkColorScheme(
     primary = BlueLight,
     onPrimary = Color.Black,
+    primaryContainer = Color(0xFF002244),
+    onPrimaryContainer = Color(0xFFD6E3FF),
     secondary = Green,
     onSecondary = Color.Black,
+    secondaryContainer = Color(0xFF0E2814),
+    onSecondaryContainer = Color(0xFFB8F5BC),
     tertiary = Orange,
+    onTertiary = Color.Black,
+    tertiaryContainer = Color(0xFF331E00),
+    onTertiaryContainer = Color(0xFFFFDDB8),
     background = Color.Black,
     onBackground = Color(0xFFE2E2E6),
     surface = Color.Black,
@@ -102,7 +130,7 @@ fun FlexTheme(
 ) {
     val colorScheme = when {
         amoled -> AmoledColorScheme
-        dynamicColor -> {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }

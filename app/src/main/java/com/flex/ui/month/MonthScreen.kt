@@ -19,8 +19,11 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -76,6 +79,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
@@ -83,6 +87,7 @@ import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -103,10 +108,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -116,6 +125,7 @@ import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.usecase.CheckTimeBlockOverlapUseCase
+import com.flex.ui.components.FlexSnackbarHost
 import com.flex.ui.components.InfoTooltip
 import com.flex.ui.components.OfficeQuotaCard
 import com.flex.ui.components.TOOLTIP_OFFICE_QUOTA
@@ -137,6 +147,7 @@ import com.flex.ui.theme.VacationColor
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
@@ -167,6 +178,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
     val haptic = LocalHapticFeedback.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    var showMonthFlextimeDetailsSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.undoEvent.collect { event ->
@@ -331,29 +343,25 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                     }
                     Spacer(modifier = Modifier.height(8.dp))
 
-                val actualHours = state.actualWorkedMinutesMonth / 60
-                val actualMinutes = state.actualWorkedMinutesMonth % 60
-                val workedHours = state.workedMinutesMonth / 60
-                val workedMinutes = state.workedMinutesMonth % 60
-                val targetHours = state.targetMinutesMonth / 60
-                val targetMinutes = state.targetMinutesMonth % 60
-                val sign = if (state.differenceMinutesMonth >= 0) "+" else ""
-                val diffHours = kotlin.math.abs(state.differenceMinutesMonth) / 60
-                val diffMinutes = kotlin.math.abs(state.differenceMinutesMonth) % 60
                 val isPositive = state.differenceMinutesMonth >= 0
                 val diffColor = if (isPositive) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
 
-                // Prominent Monthly Flextime Card
+                // Prominent Monthly Flextime Card with robust M3 colors and interactive sheet trigger
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = diffColor.copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, diffColor.copy(alpha = 0.3f)),
-                    modifier = Modifier.fillMaxWidth()
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            showMonthFlextimeDetailsSheet = true
+                        }
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -363,31 +371,43 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(34.dp)
+                                    .size(36.dp)
                                     .clip(CircleShape)
-                                    .background(diffColor.copy(alpha = 0.2f)),
+                                    .background(
+                                        if (isPositive) MaterialTheme.colorScheme.tertiaryContainer
+                                        else MaterialTheme.colorScheme.errorContainer
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = if (isPositive) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
                                     contentDescription = null,
-                                    tint = diffColor,
+                                    tint = if (isPositive) MaterialTheme.colorScheme.onTertiaryContainer
+                                           else MaterialTheme.colorScheme.onErrorContainer,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
                             Column {
-                                Text(
-                                    "Gleitzeit Monat",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        "Gleitzeit Monat",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronRight,
+                                        contentDescription = "Details anzeigen",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
                                 val totalFlexMin = state.prognosisFlextime.totalMinutes
-                                val totalSign = if (totalFlexMin >= 0) "+" else "-"
-                                val totH = kotlin.math.abs(totalFlexMin) / 60
-                                val totM = kotlin.math.abs(totalFlexMin) % 60
                                 Text(
-                                    "Gesamt-Saldo: $totalSign${totH}h ${totM}m",
+                                    "Gesamt-Saldo: ${formatFlextimeBalance(totalFlexMin)}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -395,7 +415,7 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                         }
 
                         Text(
-                            text = "$sign${diffHours}h ${diffMinutes}m",
+                            text = formatFlextimeBalance(state.differenceMinutesMonth),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = diffColor
@@ -412,19 +432,19 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
                 ) {
                     MetricMiniTile(
                         title = "Geleistet",
-                        value = "${actualHours}h ${actualMinutes}m",
+                        value = formatWorkTime(state.actualWorkedMinutesMonth),
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     MetricMiniTile(
                         title = "Angerechnet",
-                        value = "${workedHours}h ${workedMinutes}m",
+                        value = formatWorkTime(state.workedMinutesMonth),
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     MetricMiniTile(
                         title = "Soll (Monat)",
-                        value = "${targetHours}h ${targetMinutes}m",
+                        value = formatWorkTime(state.targetMinutesMonth),
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -589,57 +609,141 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             } // end page == 0
 
             if (page == 1) {
+                var selectedFilter by remember { mutableStateOf(MonthEntriesFilter.ALL) }
+                val filteredWorkDays = remember(state.workDays, selectedFilter) {
+                    MonthEntriesHelper.filterWorkDays(state.workDays, selectedFilter)
+                }
+
                 Column(modifier = Modifier.fillMaxSize()) {
                     Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Einträge", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(
-                    "${state.workDays.size} Einträge",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
 
-            if (state.workDays.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    EmptyStateView(
-                        icon = Icons.Default.CalendarToday,
-                        title = "Keine Einträge",
-                        description = "In diesem Monat wurden bisher keine Arbeitstage erfasst."
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 16.dp),
-                    contentPadding = PaddingValues(bottom = 100.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(state.workDays.sortedBy { it.date }) { workDay ->
-                        WorkDayListItem(
-                            workDay = workDay,
-                            netMinutes = state.netMinutesByDate[workDay.date] ?: 0,
-                            dailyFlextime = state.dailyFlextimeByDate[workDay.date],
-                            flextime = state.flextimeByDate[workDay.date],
-                            hasOverlap = state.overlappingDates.contains(workDay.date),
-                            onClick = { viewModel.selectDay(workDay.date) }
-                        )
+                    // Modern M3 Header with Quick-Stats & Filters
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Title + Compact Summary
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Einträge",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            val totalFilteredNetMinutes = if (selectedFilter == MonthEntriesFilter.ALL) {
+                                state.actualWorkedMinutesMonth
+                            } else {
+                                filteredWorkDays.sumOf { state.netMinutesByDate[it.date] ?: 0L }
+                            }
+                            val summary = MonthEntriesHelper.formatMonthEntriesSummary(
+                                count = filteredWorkDays.size,
+                                totalNetMinutes = totalFilteredNetMinutes
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                            ) {
+                                Text(
+                                    text = summary,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        // Filter Chips
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            MonthEntriesFilter.entries.forEach { filter ->
+                                val selected = selectedFilter == filter
+                                FilterChip(
+                                    selected = selected,
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        selectedFilter = filter
+                                    },
+                                    label = {
+                                        Text(
+                                            text = filter.label,
+                                            style = MaterialTheme.typography.labelMedium
+                                        )
+                                    },
+                                    leadingIcon = if (selected) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    } else null
+                                )
+                            }
+                        }
                     }
-                }
-            }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (state.workDays.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            EmptyStateView(
+                                icon = Icons.Default.CalendarToday,
+                                title = "Keine Einträge",
+                                description = "In diesem Monat wurden bisher keine Arbeitstage erfasst."
+                            )
+                        }
+                    } else if (filteredWorkDays.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            EmptyStateView(
+                                icon = Icons.Default.CalendarToday,
+                                title = "Keine passenden Einträge",
+                                description = "Für den Filter „${selectedFilter.label}“ liegen keine Einträge vor."
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 16.dp),
+                            contentPadding = PaddingValues(bottom = 100.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(filteredWorkDays, key = { it.id.takeIf { id -> id != 0L } ?: it.date.toEpochDay() }) { workDay ->
+                                WorkDayListItem(
+                                    workDay = workDay,
+                                    netMinutes = state.netMinutesByDate[workDay.date] ?: 0,
+                                    dailyFlextime = state.dailyFlextimeByDate[workDay.date],
+                                    flextime = state.flextimeByDate[workDay.date],
+                                    hasOverlap = state.overlappingDates.contains(workDay.date),
+                                    onClick = { viewModel.selectDay(workDay.date) }
+                                )
+                            }
+                        }
+                    }
                 } // end Column for page 1
             } // end page == 1
 
@@ -733,7 +837,14 @@ fun MonthScreen(viewModel: MonthViewModel = hiltViewModel()) {
             } else null
         )
     }
-    SnackbarHost(
+    if (showMonthFlextimeDetailsSheet) {
+        MonthFlextimeDetailsSheet(
+            state = state,
+            onDismiss = { showMonthFlextimeDetailsSheet = false }
+        )
+    }
+
+    FlexSnackbarHost(
         hostState = snackbarHostState,
         modifier = Modifier.align(Alignment.BottomCenter)
     )
@@ -901,202 +1012,259 @@ fun WorkDayListItem(
     hasOverlap: Boolean = false,
     onClick: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    val isDark = MaterialTheme.colorScheme.surface.let {
+        (it.red * 0.299f + it.green * 0.587f + it.blue * 0.114f) < 0.5f
+    }
+
+    val badgeInfo = MonthEntriesHelper.getDayTypeBadgeInfo(workDay)
+    val accentTextColor = MonthEntriesHelper.getAccessibleBadgeTextColor(
+        dayType = workDay.dayType,
+        isOffice = badgeInfo.isOffice,
+        isDark = isDark
+    )
+
     val isWorkType = workDay.dayType in listOf(DayType.WORK, DayType.SATURDAY_BONUS, DayType.BUSINESS_TRIP)
-    val workBlocks = workDay.timeBlocks.filter { it.endTime != null }
+    val workBlocks = remember(workDay.timeBlocks) { workDay.timeBlocks.sortedBy { it.startTime } }
 
-    // Compute office/HO split once for both accentColor and typeLabel
-    var officeMin = 0L
-    var hoMin = 0L
-    if (isWorkType && workBlocks.isNotEmpty()) {
-        for (b in workBlocks) {
-            val min = java.time.Duration.between(b.startTime, b.endTime!!).toMinutes()
-            if (b.location == WorkLocation.OFFICE) officeMin += min else hoMin += min
-        }
-    }
-
-    val accentColor = when (workDay.dayType) {
-        DayType.VACATION -> VacationColor
-        DayType.SPECIAL_VACATION -> SpecialVacationColor
-        DayType.FLEX_DAY -> FlexDayColor
-        DayType.SICK_DAY -> SickDayColor
-        DayType.BUSINESS_TRIP -> BusinessTripColor
-        else -> when {
-            workBlocks.isEmpty() -> if (workDay.location == WorkLocation.OFFICE) OfficeColor else HomeOfficeColor
-            officeMin >= hoMin -> OfficeColor
-            else -> HomeOfficeColor
-        }
-    }
-
-    val typeLabel = when (workDay.dayType) {
-        DayType.WORK, DayType.SATURDAY_BONUS -> {
-            if (workBlocks.isEmpty()) {
-                if (workDay.location == WorkLocation.OFFICE) "Büro" else "HO"
-            } else {
-                when {
-                    officeMin > 0 && hoMin > 0 -> "Gemischt"
-                    officeMin > 0 -> "Büro"
-                    else -> "HO"
-                }
-            }
-        }
-        DayType.BUSINESS_TRIP -> "Dienstgang"
-        DayType.VACATION -> "Urlaub"
-        DayType.SPECIAL_VACATION -> "Sonderurlaub"
-        DayType.FLEX_DAY -> "Gleittag"
-        DayType.SICK_DAY -> "Krank"
-        DayType.OVERTIME_DAY -> "Überstundentag"
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
+    Surface(
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onClick()
+        },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        shadowElevation = 1.dp
     ) {
-        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-            // Left accent strip indicating day type
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            // Prägnantes Icon-Badge für den Tagestyp (42dp x 42dp)
             Box(
                 modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(accentColor)
-            )
-            Row(
-                modifier = Modifier
-                    .padding(12.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(badgeInfo.accentColor.copy(alpha = if (isDark) 0.20f else 0.12f))
+                    .border(
+                        1.dp,
+                        badgeInfo.accentColor.copy(alpha = if (isDark) 0.40f else 0.25f),
+                        RoundedCornerShape(12.dp)
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                // Left Column: Date, type badge, and time blocks
-                Column(modifier = Modifier.weight(1f)) {
-                    val dayName = workDay.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.GERMAN)
-                    val dateStr = workDay.date.format(DateTimeFormatter.ofPattern("d. MMM"))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                Text(
+                    text = badgeInfo.icon,
+                    fontSize = if (MonthEntriesHelper.isCompoundBadgeIcon(badgeInfo.icon)) 13.sp else 20.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            // Linke Seite: Wochentag fett + formatiertes Datum, Tagestyp-Pill, gestempelte Zeitblöcke
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val (dayPrefix, dateSuffix) = MonthEntriesHelper.formatWorkDayHeaderDate(workDay.date)
+                    Text(
+                        text = buildAnnotatedString {
+                            withStyle(
+                                SpanStyle(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            ) {
+                                append(dayPrefix)
+                            }
+                            withStyle(
+                                SpanStyle(
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            ) {
+                                append(dateSuffix)
+                            }
+                        },
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.align(Alignment.CenterVertically)
+                    )
+
+                    // Tagestyp-Pill
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = badgeInfo.accentColor.copy(alpha = if (isDark) 0.22f else 0.12f),
+                        border = BorderStroke(
+                            1.dp,
+                            badgeInfo.accentColor.copy(alpha = if (isDark) 0.45f else 0.30f)
+                        ),
+                        modifier = Modifier.align(Alignment.CenterVertically)
                     ) {
                         Text(
-                            "$dayName, $dateStr",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.align(Alignment.CenterVertically)
+                            text = badgeInfo.label,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = accentTextColor
                         )
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = accentColor.copy(alpha = 0.15f),
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        ) {
-                            Text(
-                                typeLabel,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = accentColor
-                            )
-                        }
                     }
+                }
 
-                    // Show individual time blocks for work days
-                    if (isWorkType && workBlocks.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
+                // Optional note
+                if (!workDay.note.isNullOrBlank()) {
+                    Text(
+                        text = workDay.note,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // Gestempelte Zeitblöcke als kompakte abgerundete M3-Pills
+                if (isWorkType && workBlocks.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         workBlocks.forEach { block ->
                             val startStr = block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
-                            val endStr = block.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))
+                            val endStr = block.endTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "jetzt"
                             val locationLabel = if (block.location == WorkLocation.OFFICE) "Büro" else "HO"
-                            val locationColor =
-                                if (block.location == WorkLocation.OFFICE) OfficeColor else HomeOfficeColor
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            val locationDotColor = if (block.location == WorkLocation.OFFICE) OfficeColor else HomeOfficeColor
+                            val locationTextColor = MonthEntriesHelper.getAccessibleLocationTextColor(
+                                location = block.location,
+                                isDark = isDark
+                            )
+
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                border = BorderStroke(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                                )
                             ) {
-                                Text(
-                                    "$startStr – $endStr",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(3.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                                alpha = 0.4f
-                                            )
-                                        )
-                                )
-                                Text(
-                                    locationLabel,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = locationColor.copy(alpha = 0.8f)
-                                )
-                                if (block.isDuration) {
-                                    Icon(
-                                        imageVector = Icons.Default.Timer,
-                                        contentDescription = "Gesamtzeit (Ungerundet)",
-                                        modifier = Modifier.size(12.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(locationDotColor)
                                     )
+                                    Text(
+                                        text = "$startStr – $endStr",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = locationLabel,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = locationTextColor
+                                    )
+                                    if (block.isDuration) {
+                                        Icon(
+                                            imageVector = Icons.Default.Timer,
+                                            contentDescription = "Gesamtzeit (Ungerundet)",
+                                            modifier = Modifier.size(12.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                // Right Column: Total time, flextime, and overlap warning
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    modifier = Modifier.padding(start = 12.dp)
-                ) {
-                    if (netMinutes > 0) {
+            // Rechte Seite: Große Nettoarbeitszeit, Tages-Differenz Chip, Kumulierter Saldo, Warnung
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Große Nettoarbeitszeit (z. B. 7h 30m)
+                val netFormatted = MonthEntriesHelper.formatNetWorkTime(netMinutes)
+                if (netFormatted.isNotEmpty()) {
+                    Text(
+                        text = netFormatted,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
+                    )
+                }
+
+                // Tages-Differenz als farbiger Chip (tertiary für Plus, error für Minus) mit zweistelligen Minuten
+                if (dailyFlextime != null && (isWorkType || workDay.dayType == DayType.FLEX_DAY || dailyFlextime != 0L)) {
+                    val isPositive = dailyFlextime >= 0
+                    val diffText = MonthEntriesHelper.formatDailyFlextime(dailyFlextime)
+
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = if (isPositive) MaterialTheme.colorScheme.tertiaryContainer
+                                else MaterialTheme.colorScheme.errorContainer
+                    ) {
                         Text(
-                            "${netMinutes / 60}h ${netMinutes % 60}min",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (dailyFlextime != null && (isWorkType || workDay.dayType == DayType.FLEX_DAY || dailyFlextime != 0L)) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        val signDaily = if (dailyFlextime > 0) "+" else if (dailyFlextime < 0) "-" else ""
-                        val absDaily = Math.abs(dailyFlextime)
-                        val colorDaily = if (dailyFlextime < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                        Text(
-                            "Tag: $signDaily${absDaily / 60}h ${absDaily % 60}m",
+                            text = diffText,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
-                            color = colorDaily
+                            fontWeight = FontWeight.Bold,
+                            color = if (isPositive) MaterialTheme.colorScheme.onTertiaryContainer
+                                   else MaterialTheme.colorScheme.onErrorContainer,
+                            maxLines = 1
                         )
                     }
-                    if (flextime != null) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        val signFlex = if (flextime > 0) "+" else if (flextime < 0) "-" else ""
-                        val absFlex = Math.abs(flextime)
-                        val colorFlex = if (flextime < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                        Text(
-                            "Gesamt: $signFlex${absFlex / 60}h ${absFlex % 60}m",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colorFlex
-                        )
-                    }
-                    if (hasOverlap) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = MaterialTheme.colorScheme.errorContainer
+                }
+
+                // Kumulierter Saldo dezent formatiert (Stand: +21h 32m)
+                if (flextime != null) {
+                    val saldoText = MonthEntriesHelper.formatCumulativeFlextime(flextime)
+                    Text(
+                        text = saldoText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+
+                // Overlap warning
+                if (hasOverlap) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.errorContainer
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                Text(
-                                    "Überlappung",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                            }
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                "Überlappung",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                maxLines = 1
+                            )
                         }
                     }
                 }
@@ -1466,7 +1634,7 @@ private fun MetricMiniTile(
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier
     ) {
         Column(
@@ -1489,3 +1657,359 @@ private fun MetricMiniTile(
         }
     }
 }
+
+private fun formatFlextimeBalance(minutes: Long): String {
+    val absM = kotlin.math.abs(minutes)
+    val h = absM / 60
+    val m = absM % 60
+    val sign = if (minutes >= 0L) "+" else "-"
+    val mStr = if (m < 10) "0$m" else "$m"
+    return "$sign${h}h ${mStr}m"
+}
+
+private fun formatWorkTime(minutes: Long): String {
+    val absM = kotlin.math.abs(minutes)
+    val h = absM / 60
+    val m = absM % 60
+    val mStr = if (m < 10) "0$m" else "$m"
+    return "${h}h ${mStr}m"
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MonthFlextimeDetailsSheet(
+    state: MonthUiState,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val monthName = state.yearMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN))
+
+    val baseMin = state.baseFlextimeMinutes
+    val diffMin = state.differenceMinutesMonth
+    val totalMin = state.prognosisFlextime.totalMinutes
+    val isTotalPos = totalMin >= 0L
+    val isDiffPos = diffMin >= 0L
+    val diffColor = if (isDiffPos) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+    val totalColor = if (isTotalPos) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+
+    val isPastMonth = state.yearMonth.isBefore(YearMonth.now())
+    val isCurrentMonth = state.yearMonth == YearMonth.now()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isDiffPos) MaterialTheme.colorScheme.tertiaryContainer
+                            else MaterialTheme.colorScheme.errorContainer
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isDiffPos) Icons.AutoMirrored.Filled.TrendingUp
+                        else Icons.AutoMirrored.Filled.TrendingDown,
+                        contentDescription = null,
+                        tint = if (isDiffPos) MaterialTheme.colorScheme.onTertiaryContainer
+                        else MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Monats-Gleitzeit",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Aufschlüsselung für $monthName",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Card 1: Übertrag aus Vormonaten (Basis-Saldo vor Monatsbeginn)
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Übertrag aus Vormonaten",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Basis-Saldo vor Monatsbeginn",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    val isBasePos = baseMin >= 0L
+                    Text(
+                        text = formatFlextimeBalance(baseMin),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isBasePos) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
+            // Card 2: Monatsergebnis: Geleistete/Angerechnete Stunden vs. Monatssoll = Monats-Differenz
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    val cardHeader = when {
+                        isPastMonth -> "Monatsergebnis ($monthName)"
+                        isCurrentMonth -> "Monatsergebnis bisher ($monthName)"
+                        else -> "Monatsplanung ($monthName)"
+                    }
+                    Text(
+                        text = cardHeader,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    // Side-by-side metric tiles: Geleistet & Angerechnet
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    text = if (isCurrentMonth) "Geleistet (Netto bisher)" else "Geleistet (Netto)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = formatWorkTime(state.actualWorkedMinutesMonth),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    text = if (isCurrentMonth) "Angerechnet (bisher)" else "Angerechnet",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = formatWorkTime(state.workedMinutesMonth),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+
+                    // Calculation Row: Angerechnet vs. Soll = Differenz
+                    val workedText = formatWorkTime(state.workedMinutesMonth)
+                    val targetText = if (isCurrentMonth) formatWorkTime(state.targetMinutesToDate) else formatWorkTime(state.targetMinutesMonth)
+                    val targetLabel = if (isCurrentMonth) "Soll (bisher)" else "Monatssoll"
+                    val diffLabel = if (isCurrentMonth) "Diff. (bisher)" else "Monats-Diff."
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Angerechnet",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = workedText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        Text(
+                            text = "vs.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Column {
+                            Text(
+                                text = targetLabel,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = targetText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        Text(
+                            text = "=",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = diffLabel,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = formatFlextimeBalance(diffMin),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = diffColor
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        thickness = 0.8.dp
+                    )
+
+                    val diffExplanation = if (isCurrentMonth) {
+                        "$workedText (Angerechnet) − $targetText (Soll bisher) = ${formatFlextimeBalance(diffMin)}"
+                    } else if (isPastMonth) {
+                        "$workedText (Angerechnet) − $targetText (Monatssoll) = ${formatFlextimeBalance(diffMin)}"
+                    } else {
+                        "Monatssoll: ${formatWorkTime(state.targetMinutesMonth)} · Geplante Abweichung: ${formatFlextimeBalance(diffMin)}"
+                    }
+
+                    Text(
+                        text = diffExplanation,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    if (isCurrentMonth) {
+                        Text(
+                            text = "Monatssoll gesamt: ${formatWorkTime(state.targetMinutesMonth)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+            }
+
+            // Card 3: Prognostizierter Gesamtsaldo zum Monatsende
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                border = BorderStroke(1.dp, totalColor.copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (isPastMonth) "Gesamtsaldo nach diesem Monat" else "Prognostizierter Gesamtsaldo",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Text(
+                            text = formatFlextimeBalance(totalMin),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = totalColor
+                        )
+                    }
+
+                    val remainingDelta = totalMin - (baseMin + diffMin)
+                    val formulaText = when {
+                        isPastMonth ->
+                            "${formatFlextimeBalance(baseMin)} (Übertrag) + (${formatFlextimeBalance(diffMin)}) ($monthName) = ${formatFlextimeBalance(totalMin)}"
+                        isCurrentMonth && remainingDelta != 0L ->
+                            "${formatFlextimeBalance(baseMin)} (Übertrag) + (${formatFlextimeBalance(diffMin)}) (bisher) + (${formatFlextimeBalance(remainingDelta)}) (Planung) = ${formatFlextimeBalance(totalMin)}"
+                        isCurrentMonth ->
+                            "${formatFlextimeBalance(baseMin)} (Übertrag) + (${formatFlextimeBalance(diffMin)}) (bisher) = ${formatFlextimeBalance(totalMin)}"
+                        else ->
+                            "${formatFlextimeBalance(baseMin)} (Übertrag) + (${formatFlextimeBalance(diffMin)}) (Planung $monthName) = ${formatFlextimeBalance(totalMin)}"
+                    }
+
+                    Text(
+                        text = formulaText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+

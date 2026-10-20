@@ -70,6 +70,8 @@ data class HomeUiState(
     val baseDayNetMinutes: Long = 0,
     val liveFlextimeDelta: Long = 0,
     val flextimeBalance: FlextimeBalance = FlextimeBalance(),
+    val baseFlextimeBalance: FlextimeBalance = FlextimeBalance(),
+    val selectedDateFlextimeBalance: FlextimeBalance = FlextimeBalance(),
     val monthlyFlextimeBalance: FlextimeBalance = FlextimeBalance(),
     val liveFlextimeBalance: FlextimeBalance? = null,
     val liveMonthlyFlextimeBalance: FlextimeBalance? = null,
@@ -135,7 +137,9 @@ class HomeViewModel @Inject constructor(
         val isBusinessTrip = state.selectedDayType == DayType.BUSINESS_TRIP
         val result = if (isBusinessTrip) calculateDayWorkTime(blocksForCalc, isBusinessTrip = true) else calculateDayWorkTime(blocksForCalc)
         val rule = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)
-        val dailyTarget = if (rule != null) {
+        val dailyTarget = if (state.selectedDayType == DayType.SATURDAY_BONUS) {
+            0
+        } else if (rule != null) {
             if (today.dayOfWeek in rule.workDays) rule.dailyWorkMinutes else 0
         } else {
             state.settings.dailyWorkMinutes
@@ -147,7 +151,9 @@ class HomeViewModel @Inject constructor(
         val today = LocalDate.now()
         if (!state.isClockRunning || state.selectedDate != today || state.timeBlocks.isEmpty()) return null
         val rule = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)
-        val dailyTarget = if (rule != null) {
+        val dailyTarget = if (state.selectedDayType == DayType.SATURDAY_BONUS) {
+            0
+        } else if (rule != null) {
             if (today.dayOfWeek in rule.workDays) rule.dailyWorkMinutes else 0
         } else {
             state.settings.dailyWorkMinutes
@@ -216,7 +222,8 @@ class HomeViewModel @Inject constructor(
                 else checkBreakViolation(blocksForCalc)
             } else BreakCheckResult(emptyList(), skipped = false)
 
-            val todayWithNow = (state.workDay ?: WorkDay(date = today, location = state.selectedLocation, dayType = state.selectedDayType)).copy(timeBlocks = blocksForCalc)
+            val todayWithNow = (state.workDay ?: WorkDay(date = today, location = state.selectedLocation, dayType = state.selectedDayType))
+                .copy(dayType = state.selectedDayType, timeBlocks = blocksForCalc)
             val todayYearMonth = YearMonth.from(today)
             val selectedYearMonth = YearMonth.from(state.selectedDate)
             val liveMonthDays = cachedMonthDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
@@ -232,6 +239,7 @@ class HomeViewModel @Inject constructor(
                     breakCheckResult = liveBreakCheck,
                     liveFlextimeBalance = liveFlextime,
                     liveMonthlyFlextimeBalance = liveMonthlyFlextime,
+                    selectedDateFlextimeBalance = if (it.selectedDate == today) liveFlextime ?: it.selectedDateFlextimeBalance else it.selectedDateFlextimeBalance,
                     hasTimeBlockOverlap = liveOverlap,
                     projectedEndTime = computeProjectedEndTime(it)
                 )
@@ -328,7 +336,7 @@ class HomeViewModel @Inject constructor(
                         // (running blocks count as 0 min, empty entries from auto-clockin etc.
                         // would wrongly deduct the full daily target before the day is over).
                         fun hasCompletedBlocks(day: WorkDay) = day.timeBlocks.any { it.endTime != null }
-                        fun isWorkLike(dayType: DayType) = dayType == DayType.WORK || dayType == DayType.BUSINESS_TRIP
+                        fun isWorkLike(dayType: DayType) = dayType == DayType.WORK || dayType == DayType.BUSINESS_TRIP || dayType == DayType.SATURDAY_BONUS
                         val actualMonthDays = monthDays.filter { !it.isPlanned }.mapNotNull { day ->
                             val resolved = if (day.date == today && workDay != null && date == today) workDay else day
                             if (resolved.date == today && isWorkLike(resolved.dayType) && !hasCompletedBlocks(resolved)) null
@@ -345,14 +353,17 @@ class HomeViewModel @Inject constructor(
                         cachedMonthDays = monthDays
                         cachedYearDays = yearDays
 
+                        val baseYDays = yearDays.filter { !it.isPlanned && it.date.isBefore(date) }
+                        val baseFlextime = calculateFlextime(baseYDays, settings, todayYearMonth, workTimeRules)
+
                         val (flextime, monthlyFlextime, liveFlextime, liveMonthlyFlextime) = if (isRunning && isToday) {
-                            val todayWithNow = (workDay ?: WorkDay(date = today, location = workDay?.location ?: WorkLocation.OFFICE, dayType = selectedDayType)).copy(timeBlocks = blocksForCalc)
+                            val todayWithNow = (workDay ?: WorkDay(date = today, location = workDay?.location ?: WorkLocation.OFFICE, dayType = selectedDayType))
+                                .copy(dayType = selectedDayType, timeBlocks = blocksForCalc)
                             val liveMDays = monthDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
                             val liveYDays = yearDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
                             val baseMDays = monthDays.filter { !it.isPlanned && it.date.isBefore(today) }
-                            val baseYDays = yearDays.filter { !it.isPlanned && it.date.isBefore(today) }
                             listOf(
-                                calculateFlextime(baseYDays, settings, todayYearMonth, workTimeRules),
+                                baseFlextime,
                                 calculateFlextime(baseMDays, settings, yearMonth, workTimeRules),
                                 calculateFlextime(liveYDays, settings, todayYearMonth, workTimeRules),
                                 calculateFlextime(liveMDays, settings, yearMonth, workTimeRules)
@@ -364,6 +375,17 @@ class HomeViewModel @Inject constructor(
                                 null,
                                 null
                             )
+                        }
+
+                        val daysThroughSelectedDate = yearDays.filter { !it.isPlanned && !it.date.isAfter(date) }.mapNotNull { day ->
+                            val resolved = if (day.date == today && workDay != null && date == today) workDay else day
+                            if (resolved.date == today && isWorkLike(resolved.dayType) && !hasCompletedBlocks(resolved)) null
+                            else resolved
+                        }
+                        val selectedDateFlextime = if (date == today) {
+                            if (isRunning) liveFlextime ?: baseFlextime else flextime ?: FlextimeBalance()
+                        } else {
+                            calculateFlextime(daysThroughSelectedDate, settings, todayYearMonth, workTimeRules)
                         }
 
                         val quota = calculateQuota(actualMonthDays, settings, yearMonth, qPercent, qDays, workTimeRules)
@@ -381,7 +403,10 @@ class HomeViewModel @Inject constructor(
                         val requiredMin = (totalMin * qPercent / 100.0).toLong()
 
                         val ruleForDate = settingsRepository.getWorkTimeRuleForDate(date, workTimeRules)
-                        val dailyTarget = if (ruleForDate != null) {
+                        val nonWorkTargetTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY, DayType.OVERTIME_DAY, DayType.SATURDAY_BONUS)
+                        val dailyTarget = if (selectedDayType in nonWorkTargetTypes) {
+                            0
+                        } else if (ruleForDate != null) {
                             if (date.dayOfWeek in ruleForDate.workDays) ruleForDate.dailyWorkMinutes else 0
                         } else {
                             settings.dailyWorkMinutes
@@ -421,6 +446,8 @@ class HomeViewModel @Inject constructor(
                                 baseDayNetMinutes = baseDayResult.netMinutes,
                                 liveFlextimeDelta = initialLiveDelta,
                                 flextimeBalance = flextime ?: FlextimeBalance(),
+                                baseFlextimeBalance = baseFlextime,
+                                selectedDateFlextimeBalance = selectedDateFlextime,
                                 monthlyFlextimeBalance = monthlyFlextime ?: FlextimeBalance(),
                                 liveFlextimeBalance = liveFlextime,
                                 liveMonthlyFlextimeBalance = liveMonthlyFlextime,
@@ -513,7 +540,8 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val state = _uiState.value
             val now = LocalTime.now().withSecond(0).withNano(0)
-            val isBT = state.selectedDayType == DayType.BUSINESS_TRIP
+            val currentDayType = state.workDay?.dayType ?: DayType.WORK
+            val isBT = currentDayType == DayType.BUSINESS_TRIP
             val effectiveLocation = if (isBT) WorkLocation.OFFICE else state.selectedLocation
 
             val workDayId = if (state.workDay == null) {
@@ -521,18 +549,16 @@ class HomeViewModel @Inject constructor(
                     WorkDay(
                         date = state.selectedDate,
                         location = effectiveLocation,
-                        dayType = state.selectedDayType
+                        dayType = DayType.WORK
                     )
                 )
             } else {
                 val needsUpdate = state.workDay.isPlanned ||
-                    state.workDay.dayType != state.selectedDayType ||
                     state.workDay.location != effectiveLocation
                 if (needsUpdate) {
                     workDayRepository.saveWorkDay(
                         state.workDay.copy(
                             isPlanned = false,
-                            dayType = state.selectedDayType,
                             location = effectiveLocation
                         )
                     )
@@ -546,7 +572,7 @@ class HomeViewModel @Inject constructor(
             workDayRepository.saveTimeBlock(
                 TimeBlock(workDayId = workDayId, startTime = now, location = effectiveLocation)
             )
-            if (state.settings.breakWarningEnabled) {
+            if (state.settings.breakWarningEnabled && !isBT) {
                 breakWarningScheduler.scheduleWarning(now)
             }
             if (state.settings.workTimerNotificationEnabled) {
@@ -858,14 +884,47 @@ class HomeViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            workDayRepository.saveWorkDay(
+            val isBT = dayType == DayType.BUSINESS_TRIP
+            val effectiveLoc = if (isBT) WorkLocation.OFFICE else state.selectedLocation
+            val existing = state.workDay
+            if (existing != null && existing.timeBlocks.isEmpty() && dayType == DayType.WORK) {
+                workDayRepository.deleteWorkDay(existing)
+                _localDayTypeOverride.value = null
+                return@launch
+            }
+            val updated = if (existing != null) {
+                existing.copy(dayType = dayType, location = effectiveLoc, isPlanned = false)
+            } else {
                 WorkDay(
-                    id = state.workDay?.id ?: 0,
+                    id = 0,
                     date = state.selectedDate,
-                    location = state.selectedLocation,
-                    dayType = dayType
+                    location = effectiveLoc,
+                    dayType = dayType,
+                    isPlanned = false
                 )
-            )
+            }
+            workDayRepository.saveWorkDay(updated)
+            if (isBT && existing != null) {
+                existing.timeBlocks.forEach { block ->
+                    if (block.location != WorkLocation.OFFICE) {
+                        workDayRepository.saveTimeBlock(block.copy(location = WorkLocation.OFFICE))
+                    }
+                }
+            }
+            if (state.isClockRunning) {
+                if (isBT) {
+                    breakWarningScheduler.cancelWarning()
+                } else if (state.settings.breakWarningEnabled) {
+                    val runningBlock = state.timeBlocks.find { it.endTime == null }
+                    if (runningBlock != null) {
+                        breakWarningScheduler.scheduleWarning(runningBlock.startTime)
+                    }
+                }
+                val intent = Intent(context, WorkTimerService::class.java).apply {
+                    action = WorkTimerService.ACTION_UPDATE
+                }
+                context.startForegroundService(intent)
+            }
             _localDayTypeOverride.value = null
         }
     }

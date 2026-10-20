@@ -26,6 +26,11 @@ class AutoClockInUseCase @Inject constructor(
                 WorkDay(date = today, location = WorkLocation.OFFICE, dayType = DayType.WORK)
             )
         } else {
+            if (existingDay.isPlanned) {
+                workDayRepository.saveWorkDay(
+                    existingDay.copy(isPlanned = false)
+                )
+            }
             existingDay.id
         }
 

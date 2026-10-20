@@ -33,6 +33,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,12 +47,27 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+private fun Color.toVibrantOverlap(): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.RGBToHSV(
+        (red * 255).toInt().coerceIn(0, 255),
+        (green * 255).toInt().coerceIn(0, 255),
+        (blue * 255).toInt().coerceIn(0, 255),
+        hsv
+    )
+    // Make the overlap arc noticeably brighter and vibrant within the exact same hue family
+    hsv[2] = (hsv[2] + 0.35f).coerceIn(0f, 1f)
+    hsv[1] = (hsv[1] * 0.70f).coerceIn(0f, 1f)
+    return Color(android.graphics.Color.HSVToColor((alpha * 255).toInt().coerceIn(0, 255), hsv))
+}
+
 @Composable
 fun MiniProgressRing(
     progress: Float,
     color: Color,
     modifier: Modifier = Modifier,
     trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    overlapColor: Color? = null,
     strokeWidthDp: Float = 2.5f
 ) {
     val animatedProgress by animateFloatAsState(
@@ -63,12 +79,19 @@ fun MiniProgressRing(
         label = "mini_ring_progress"
     )
 
+    // Dynamically derive the overlap color from the bar's own color, keeping it 100% harmonious with the design
+    val effectiveOverlapColor = remember(color, overlapColor) {
+        overlapColor ?: color.toVibrantOverlap()
+    }
+    val outlineColor = MaterialTheme.colorScheme.surface
+
     Box(
         modifier = modifier.size(24.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize().padding(1.5.dp)) {
             val strokePx = strokeWidthDp.dp.toPx()
+            val borderPx = strokePx + 1.2.dp.toPx()
             val diameter = size.minDimension - strokePx
             val topLeft = Offset(strokePx / 2f, strokePx / 2f)
             val arcSize = Size(diameter, diameter)
@@ -105,14 +128,26 @@ fun MiniProgressRing(
             if (animatedProgress > 1f) {
                 val excessSweep = ((animatedProgress - 1f).coerceIn(0f, 1f)) * 360f
                 if (excessSweep > 0.5f) {
+                    // Crisp outline for rounded cap separation
                     drawArc(
-                        color = Color.White.copy(alpha = 0.9f),
+                        color = outlineColor,
                         startAngle = -90f,
                         sweepAngle = excessSweep,
                         useCenter = false,
                         topLeft = topLeft,
                         size = arcSize,
-                        style = Stroke(width = strokePx * 0.9f, cap = StrokeCap.Round)
+                        style = Stroke(width = borderPx, cap = StrokeCap.Round)
+                    )
+
+                    // Core overlap arc in vibrant accent color derived from base color
+                    drawArc(
+                        color = effectiveOverlapColor,
+                        startAngle = -90f,
+                        sweepAngle = excessSweep,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = strokePx, cap = StrokeCap.Round)
                     )
                 }
             }

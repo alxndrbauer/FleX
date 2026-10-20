@@ -22,10 +22,15 @@ class ClockInUseCase @Inject constructor(
 
         pausePreferences.clearPause()
 
-        val location = locationOverride
-            ?: existingDay?.timeBlocks?.lastOrNull()?.location
-            ?: existingDay?.location
-            ?: WorkLocation.OFFICE
+        val isBT = existingDay?.dayType == DayType.BUSINESS_TRIP
+        val location = if (isBT) {
+            WorkLocation.OFFICE
+        } else {
+            locationOverride
+                ?: existingDay?.timeBlocks?.lastOrNull()?.location
+                ?: existingDay?.location
+                ?: WorkLocation.OFFICE
+        }
         val now = LocalTime.now().withSecond(0).withNano(0)
 
         val workDayId = if (existingDay == null) {

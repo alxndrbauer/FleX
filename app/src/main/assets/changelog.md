@@ -17,6 +17,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Add quick actions widget and modernize dashboard widget
 - Add projected end-of-work time display across app, widgets, and notification
 - Modernize app design with floating navigation and unified quota cards
+- Redesign Material 3
 
 ### Bugfixes
 

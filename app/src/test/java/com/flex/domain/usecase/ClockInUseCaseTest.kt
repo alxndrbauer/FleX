@@ -130,4 +130,46 @@ class ClockInUseCaseTest {
         verify(workDayRepository).saveTimeBlock(timeBlockCaptor.capture())
         assertThat(timeBlockCaptor.firstValue.location).isEqualTo(WorkLocation.HOME_OFFICE)
     }
+
+    @Test
+    fun `clock in on planned vacation day retains dayType and un-plans day`() = runTest {
+        val existingDay = WorkDay(
+            id = 7L,
+            date = today,
+            location = WorkLocation.HOME_OFFICE,
+            dayType = DayType.VACATION,
+            isPlanned = true,
+            timeBlocks = emptyList()
+        )
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(existingDay))
+
+        val result = useCase()
+
+        assertThat(result).isTrue()
+        val workDayCaptor = argumentCaptor<WorkDay>()
+        verify(workDayRepository).saveWorkDay(workDayCaptor.capture())
+        assertThat(workDayCaptor.firstValue.id).isEqualTo(7L)
+        assertThat(workDayCaptor.firstValue.dayType).isEqualTo(DayType.VACATION)
+        assertThat(workDayCaptor.firstValue.isPlanned).isFalse()
+    }
+
+    @Test
+    fun `clock in on business trip day enforces OFFICE location and retains BUSINESS_TRIP`() = runTest {
+        val existingDay = WorkDay(
+            id = 8L,
+            date = today,
+            location = WorkLocation.OFFICE,
+            dayType = DayType.BUSINESS_TRIP,
+            isPlanned = false,
+            timeBlocks = emptyList()
+        )
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(existingDay))
+
+        val result = useCase(WorkLocation.HOME_OFFICE) // Attempting HOME_OFFICE should be overridden to OFFICE
+
+        assertThat(result).isTrue()
+        val timeBlockCaptor = argumentCaptor<TimeBlock>()
+        verify(workDayRepository).saveTimeBlock(timeBlockCaptor.capture())
+        assertThat(timeBlockCaptor.firstValue.location).isEqualTo(WorkLocation.OFFICE)
+    }
 }

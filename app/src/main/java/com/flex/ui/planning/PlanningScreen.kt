@@ -5,6 +5,7 @@ import com.flex.domain.model.getRuleForDate
 
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -26,9 +27,12 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
@@ -39,6 +43,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
@@ -83,6 +88,7 @@ import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import java.time.LocalDate
+import com.flex.ui.components.FlexSnackbarHost
 import com.flex.ui.components.InfoTooltip
 import com.flex.ui.components.OfficeQuotaCard
 import com.flex.ui.components.TOOLTIP_FLEXTIME_PROGNOSIS
@@ -412,37 +418,222 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             )
         }
 
-        // Flextime preview — Soll-Wert aus Titel in Untertitel
+        // Gleitzeit-Prognose Card
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            val isPositive = state.flextimeBalance.isPositive
+            val saldoColor = if (isPositive) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                )
+            ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    // Header Row: Title + InfoTooltip
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            "Gleitzeit-Prognose",
+                            text = "Gleitzeit-Prognose",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         InfoTooltip(
                             title = TOOLTIP_FLEXTIME_PROGNOSIS_TITLE,
                             text = TOOLTIP_FLEXTIME_PROGNOSIS
                         )
                     }
-                    Text(
-                        "Soll: ${state.flextimeBalance.formatTarget()}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = state.flextimeBalance.formatDisplay(),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = if (state.flextimeBalance.isPositive) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.error
-                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Prominente Kachel mit dynamischem Icon & Border
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        border = BorderStroke(1.dp, saldoColor.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (isPositive) MaterialTheme.colorScheme.tertiaryContainer
+                                            else MaterialTheme.colorScheme.errorContainer
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (isPositive) Icons.AutoMirrored.Filled.TrendingUp
+                                        else Icons.AutoMirrored.Filled.TrendingDown,
+                                        contentDescription = null,
+                                        tint = if (isPositive) MaterialTheme.colorScheme.onTertiaryContainer
+                                        else MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = "Prognostizierter Saldo",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = if (isPositive) "Voraussichtliches Plus" else "Voraussichtliches Minus",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Text(
+                                text = formatFlextimeBalance(state.flextimeBalance.totalMinutes),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = saldoColor
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Klare Aufschlüsselung: Ist-Stand, Geplante Tage, Monatssoll
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // 1. Ist-Stand (bereits erfasster Saldo)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Ist-Stand",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Bereits erfasster Saldo",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                val istPos = state.actualFlextimeMinutes >= 0L
+                                Text(
+                                    text = formatFlextimeBalance(state.actualFlextimeMinutes),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (istPos) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
+                                )
+                            }
+
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                thickness = 0.5.dp
+                            )
+
+                            // 2. Geplante Tage (Anzahl geplanter Tage und deren Beitrag zur Prognose)
+                            val plannedCount = state.workDays.count { it.isPlanned }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Geplante Tage",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    val daysLabel = when (plannedCount) {
+                                        0 -> "Keine Tage geplant"
+                                        1 -> "1 Tag geplant"
+                                        else -> "$plannedCount Tage geplant"
+                                    }
+                                    Text(
+                                        text = daysLabel,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                val contrib = state.plannedContributionMinutes
+                                val contribColor = when {
+                                    contrib > 0L -> MaterialTheme.colorScheme.tertiary
+                                    contrib < 0L -> MaterialTheme.colorScheme.error
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                                val contribText = when {
+                                    contrib > 0L -> "+${formatWorkTime(contrib)}"
+                                    contrib < 0L -> "-${formatWorkTime(-contrib)}"
+                                    else -> "±0m"
+                                }
+                                Text(
+                                    text = contribText,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = contribColor
+                                )
+                            }
+
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                thickness = 0.5.dp
+                            )
+
+                            // 3. Monatssoll / Arbeitszeit-Ziel
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Monatssoll",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Arbeitszeit-Ziel",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Text(
+                                    text = formatWorkTime(state.flextimeBalance.targetMinutes),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -576,7 +767,7 @@ fun PlanningScreen(viewModel: PlanningViewModel = hiltViewModel()) {
             onConfirm = { totalMinutes -> viewModel.savePlannedHours(date, totalMinutes) }
         )
     }
-    SnackbarHost(
+    FlexSnackbarHost(
         hostState = snackbarHostState,
         modifier = Modifier.align(Alignment.BottomCenter)
     )
@@ -780,4 +971,21 @@ internal fun getPlanningDayCellColor(
     isWeekend: Boolean,
     isHoliday: Boolean = PublicHolidays.isHoliday(date)
 ): Color = getDayCellBackgroundColor(date, workDay, isWeekend)
+
+private fun formatFlextimeBalance(minutes: Long): String {
+    val absM = kotlin.math.abs(minutes)
+    val h = absM / 60
+    val m = absM % 60
+    val sign = if (minutes >= 0L) "+" else "-"
+    val mStr = if (m < 10) "0$m" else "$m"
+    return "$sign${h}h ${mStr}m"
+}
+
+private fun formatWorkTime(minutes: Long): String {
+    val absM = kotlin.math.abs(minutes)
+    val h = absM / 60
+    val m = absM % 60
+    val mStr = if (m < 10) "0$m" else "$m"
+    return "${h}h ${mStr}m"
+}
 

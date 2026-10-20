@@ -60,6 +60,7 @@ data class MonthUiState(
     val editingTimeBlocks: List<TimeBlock> = emptyList(),
     val prognosisQuota: QuotaStatus = QuotaStatus(),
     val prognosisFlextime: FlextimeBalance = FlextimeBalance(),
+    val baseFlextimeMinutes: Long = 0L,
     val effectiveQuotaPercent: Int = 40,
     val effectiveQuotaMinDays: Int = 8,
     val officeMinutes: Long = 0,
@@ -72,6 +73,7 @@ data class MonthUiState(
     val actualWorkedMinutesMonth: Long = 0,
     val workedMinutesMonth: Long = 0,
     val targetMinutesMonth: Long = 0,
+    val targetMinutesToDate: Long = 0,
     val differenceMinutesMonth: Long = 0,
     val showExportDialog: Boolean = false,
     val exportMessage: String? = null,
@@ -215,7 +217,8 @@ private data class MonthConfig(
 
                 val flexByDate = mutableMapOf<LocalDate, Long>()
                 val dailyFlexByDate = mutableMapOf<LocalDate, Long>()
-                var currentFlex = calculateFlextime(previousMonthsDays, settings, null, workTimeRules).totalMinutes
+                val baseFlextimeMinutes = calculateFlextime(previousMonthsDays, settings, null, workTimeRules).totalMinutes
+                var currentFlex = baseFlextimeMinutes
                 for (day in prognosisDays.sortedBy { it.date }) {
                     val singleDayEarned = calculateFlextime(listOf(day), settings.copy(initialFlextimeMinutes = 0), null, workTimeRules).totalMinutes
                     dailyFlexByDate[day.date] = singleDayEarned
@@ -223,7 +226,7 @@ private data class MonthConfig(
                     flexByDate[day.date] = currentFlex
                 }
 
-                val netByDate = days.filter { !it.isPlanned || !isCurrentOrPast }.associate { day ->
+                val netByDate = resolvedDays.filter { !it.isPlanned || !isCurrentOrPast }.associate { day ->
                     val isBT = day.dayType == DayType.BUSINESS_TRIP
                     val net = if (isBT) calculateDayWorkTime(day.timeBlocks, isBusinessTrip = true).netMinutes else calculateDayWorkTime(day.timeBlocks).netMinutes
                     day.date to net
@@ -278,13 +281,17 @@ private data class MonthConfig(
 
                 // Calculate target work days for the month (active workDays per rule, including holidays)
                 var targetMinutesMonth = 0L
+                var targetMinutesToDate = 0L
                 for (day in 1..month.lengthOfMonth()) {
                     val date = month.atDay(day)
                     val ruleForDate = workTimeRules.getRuleForDate(date)
                     val activeWorkDays = ruleForDate?.workDays ?: DEFAULT_WORK_DAYS
                     if (date.dayOfWeek in activeWorkDays) {
-                        val dailyTarget = ruleForDate?.dailyWorkMinutes ?: settings.dailyWorkMinutes
+                        val dailyTarget = (ruleForDate?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
                         targetMinutesMonth += dailyTarget
+                        if (isCurrentOrPast && !date.isAfter(today)) {
+                            targetMinutesToDate += dailyTarget
+                        }
                     }
                 }
 
@@ -299,6 +306,7 @@ private data class MonthConfig(
                     workTimeRules = workTimeRules,
                     prognosisQuota = quota,
                     prognosisFlextime = flextime,
+                    baseFlextimeMinutes = baseFlextimeMinutes,
                     effectiveQuotaPercent = qPercent,
                     effectiveQuotaMinDays = qDays,
                     officeMinutes = officeMin,
@@ -311,6 +319,7 @@ private data class MonthConfig(
                     actualWorkedMinutesMonth = actualWorkedMinutesMonth,
                     workedMinutesMonth = totalWorkMinutesMonth,
                     targetMinutesMonth = targetMinutesMonth,
+                    targetMinutesToDate = targetMinutesToDate,
                     differenceMinutesMonth = differenceMinutesMonth,
                     breakViolationDates = violationDates,
                     overlappingDates = overlappingDates

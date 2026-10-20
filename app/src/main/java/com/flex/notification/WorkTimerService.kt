@@ -13,6 +13,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import com.flex.MainActivity
 import com.flex.R
+import com.flex.domain.model.DayType
 import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.ProjectedEndTime
@@ -172,7 +173,9 @@ class WorkTimerService : Service() {
                     val rule = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)
                     val activeWorkDays = rule?.workDays ?: DEFAULT_WORK_DAYS
                     val isScheduledWorkDay = today.dayOfWeek in activeWorkDays
-                    val targetMinutes = if (isScheduledWorkDay) {
+                    val targetMinutes = if (workDay?.dayType == DayType.SATURDAY_BONUS) {
+                        0L
+                    } else if (isScheduledWorkDay) {
                         (rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
                     } else {
                         0L
@@ -185,13 +188,18 @@ class WorkTimerService : Service() {
 
                         // Net work time across ALL blocks for today (completed + running)
                         val blocksForCalc = allBlocks.map { if (it.endTime == null) it.copy(endTime = now) else it }
-                        val workTimeResult = calculateDayWorkTime(blocksForCalc)
+                        val isBusinessTrip = workDay?.dayType == DayType.BUSINESS_TRIP
+                        val workTimeResult = calculateDayWorkTime(blocksForCalc, isBusinessTrip = isBusinessTrip)
                         val netMinutes = workTimeResult.netMinutes
                         val flexDelta = netMinutes - targetMinutes
 
-                        val locationLabel = when (runningBlock.location) {
-                            WorkLocation.OFFICE -> "Büro"
-                            WorkLocation.HOME_OFFICE -> "Home-Office"
+                        val locationLabel = if (isBusinessTrip) {
+                            "Dienstreise"
+                        } else {
+                            when (runningBlock.location) {
+                                WorkLocation.OFFICE -> "Büro"
+                                WorkLocation.HOME_OFFICE -> "Home-Office"
+                            }
                         }
 
                         val breakMinutes = workTimeResult.breakMinutes

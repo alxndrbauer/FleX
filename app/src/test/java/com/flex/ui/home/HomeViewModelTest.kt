@@ -389,6 +389,74 @@ class HomeViewModelTest : BaseUnitTest() {
     }
 
     @Test
+    fun `initial state loads baseFlextimeBalance from calculation of days before selected date`() = runTest {
+        val today = LocalDate.now()
+        val yesterday = today.minusDays(1)
+        val day1 = WorkDay(id = 1, date = yesterday, dayType = DayType.WORK)
+        val day2 = WorkDay(id = 2, date = today, dayType = DayType.WORK, timeBlocks = listOf(
+            TimeBlock(id = 10, workDayId = 2, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 0))
+        ))
+        whenever(workDayRepository.getWorkDaysForYear(today.year)).thenReturn(flowOf(listOf(day1, day2)))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(day2))
+
+        val baseFlextime = FlextimeBalance(
+            initialMinutes = 0,
+            earnedMinutes = 100,
+            totalMinutes = 100
+        )
+        val overallFlextime = FlextimeBalance(
+            initialMinutes = 0,
+            earnedMinutes = 160,
+            totalMinutes = 160
+        )
+        whenever(calculateFlextime(any(), any(), any(), any())).thenAnswer { invocation ->
+            val days = invocation.arguments[0] as List<WorkDay>
+            if (days.size == 1 && days[0].date == yesterday) baseFlextime else overallFlextime
+        }
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.baseFlextimeBalance).isEqualTo(baseFlextime)
+        assertThat(viewModel.uiState.value.flextimeBalance).isEqualTo(overallFlextime)
+    }
+
+    @Test
+    fun `navigateToDate updates baseFlextimeBalance and selectedDateFlextimeBalance for past date`() = runTest {
+        val today = LocalDate.now()
+        val twoDaysAgo = today.minusDays(2)
+        val yesterday = today.minusDays(1)
+
+        val day0 = WorkDay(id = 1, date = twoDaysAgo, dayType = DayType.WORK)
+        val day1 = WorkDay(id = 2, date = yesterday, dayType = DayType.WORK)
+        val day2 = WorkDay(id = 3, date = today, dayType = DayType.WORK)
+        whenever(workDayRepository.getWorkDaysForYear(today.year)).thenReturn(flowOf(listOf(day0, day1, day2)))
+
+        val baseForYesterday = FlextimeBalance(totalMinutes = 50)
+        val throughYesterday = FlextimeBalance(totalMinutes = 110)
+        val overallFlextime = FlextimeBalance(totalMinutes = 200)
+
+        whenever(calculateFlextime(any(), any(), any(), any())).thenAnswer { invocation ->
+            val days = invocation.arguments[0] as List<WorkDay>
+            when {
+                days.size == 1 && days[0].date == twoDaysAgo -> baseForYesterday
+                days.size == 2 && days.any { it.date == yesterday } -> throughYesterday
+                else -> overallFlextime
+            }
+        }
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.navigateToDate(yesterday)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.selectedDate).isEqualTo(yesterday)
+        assertThat(viewModel.uiState.value.baseFlextimeBalance).isEqualTo(baseForYesterday)
+        assertThat(viewModel.uiState.value.selectedDateFlextimeBalance).isEqualTo(throughYesterday)
+    }
+
+    @Test
     fun `initial state loads quotaStatus from calculation`() = runTest {
         // Given: Calculate quota returns specific result
         val expectedQuota = QuotaStatus(
@@ -1063,6 +1131,86 @@ class HomeViewModelTest : BaseUnitTest() {
         verify(workDayRepository).saveWorkDay(any())
     }
 
+    @Test
+    fun `setDayType updates selectedDayType in uiState before saving`() = runTest {
+        whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.setDayType(DayType.VACATION)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.selectedDayType).isEqualTo(DayType.VACATION)
+    }
+
+    @Test
+    fun `saveDayType un-plans planned day when saving`() = runTest {
+        val today = LocalDate.now()
+        val plannedDay = WorkDay(id = 5, date = today, dayType = DayType.WORK, isPlanned = true)
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.saveDayType(DayType.VACATION)
+        advanceUntilIdle()
+
+        val captor = org.mockito.kotlin.argumentCaptor<WorkDay>()
+        verify(workDayRepository).saveWorkDay(captor.capture())
+        assertThat(captor.firstValue.dayType).isEqualTo(DayType.VACATION)
+        assertThat(captor.firstValue.isPlanned).isFalse()
+    }
+
+    @Test
+    fun `clockIn creates WORK day even if uncommitted dayType selection is VACATION`() = runTest {
+        val today = LocalDate.now()
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(null))
+        whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.setDayType(DayType.VACATION)
+        advanceUntilIdle()
+
+        viewModel.clockIn()
+        advanceUntilIdle()
+
+        val captor = org.mockito.kotlin.argumentCaptor<WorkDay>()
+        verify(workDayRepository).saveWorkDay(captor.capture())
+        assertThat(captor.firstValue.dayType).isEqualTo(DayType.WORK)
+    }
+
+    @Test
+    fun `saveDayType with DayType WORK deletes workDay when timeBlocks is empty`() = runTest {
+        val today = LocalDate.now()
+        val vacationDay = WorkDay(id = 10, date = today, dayType = DayType.VACATION, timeBlocks = emptyList())
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(vacationDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.saveDayType(DayType.WORK)
+        advanceUntilIdle()
+
+        verify(workDayRepository).deleteWorkDay(vacationDay)
+        verify(workDayRepository, never()).saveWorkDay(any())
+    }
+
+    @Test
+    fun `dailyTargetMinutes is 0 when selectedDayType is VACATION`() = runTest {
+        whenever(workDayRepository.getWorkDay(any())).thenReturn(flowOf(null))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.setDayType(DayType.VACATION)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.dailyTargetMinutes).isEqualTo(0)
+    }
+
     // ========== Edge Cases ==========
 
     @Test
@@ -1341,6 +1489,135 @@ class HomeViewModelTest : BaseUnitTest() {
 
         assertThat(viewModel.uiState.value.projectedEndTime).isNull()
     }
+
+    @Test
+    fun `clockIn retains dayType on existing planned vacation day and un-plans it`() = runTest {
+        val today = LocalDate.now()
+        val plannedVacation = WorkDay(
+            id = 42L,
+            date = today,
+            location = WorkLocation.OFFICE,
+            dayType = DayType.VACATION,
+            isPlanned = true,
+            timeBlocks = emptyList()
+        )
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedVacation))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.clockIn()
+        advanceUntilIdle()
+
+        val captor = org.mockito.kotlin.argumentCaptor<WorkDay>()
+        verify(workDayRepository).saveWorkDay(captor.capture())
+        assertThat(captor.firstValue.id).isEqualTo(42L)
+        assertThat(captor.firstValue.dayType).isEqualTo(DayType.VACATION)
+        assertThat(captor.firstValue.isPlanned).isFalse()
+    }
+
+    @Test
+    fun `clockIn on business trip suppresses break warning scheduler`() = runTest {
+        val today = LocalDate.now()
+        val businessTrip = WorkDay(
+            id = 43L,
+            date = today,
+            location = WorkLocation.OFFICE,
+            dayType = DayType.BUSINESS_TRIP,
+            isPlanned = false,
+            timeBlocks = emptyList()
+        )
+        val settings = Settings(breakWarningEnabled = true)
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(businessTrip))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.clockIn()
+        advanceUntilIdle()
+
+        verify(breakWarningScheduler, never()).scheduleWarning(any())
+    }
+
+    @Test
+    fun `saveDayType preserves existing workDay and enforces OFFICE for BUSINESS_TRIP`() = runTest {
+        val today = LocalDate.now()
+        val block = TimeBlock(id = 1L, workDayId = 44L, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 0), location = WorkLocation.HOME_OFFICE)
+        val existing = WorkDay(
+            id = 44L,
+            date = today,
+            location = WorkLocation.HOME_OFFICE,
+            dayType = DayType.WORK,
+            isPlanned = false,
+            timeBlocks = listOf(block)
+        )
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(existing))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.saveDayType(DayType.BUSINESS_TRIP)
+        advanceUntilIdle()
+
+        val dayCaptor = org.mockito.kotlin.argumentCaptor<WorkDay>()
+        verify(workDayRepository).saveWorkDay(dayCaptor.capture())
+        assertThat(dayCaptor.firstValue.id).isEqualTo(44L)
+        assertThat(dayCaptor.firstValue.dayType).isEqualTo(DayType.BUSINESS_TRIP)
+        assertThat(dayCaptor.firstValue.location).isEqualTo(WorkLocation.OFFICE)
+
+        val blockCaptor = org.mockito.kotlin.argumentCaptor<TimeBlock>()
+        verify(workDayRepository).saveTimeBlock(blockCaptor.capture())
+        assertThat(blockCaptor.firstValue.location).isEqualTo(WorkLocation.OFFICE)
+    }
+
+    @Test
+    fun `SATURDAY_BONUS has zero daily target and zero remaining minutes`() = runTest {
+        val today = LocalDate.now()
+        val saturdayBonus = WorkDay(
+            id = 50L,
+            date = today,
+            location = WorkLocation.OFFICE,
+            dayType = DayType.SATURDAY_BONUS,
+            isPlanned = false,
+            timeBlocks = listOf(
+                TimeBlock(id = 1L, workDayId = 50L, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(12, 0), location = WorkLocation.OFFICE)
+            )
+        )
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(saturdayBonus))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.dailyTargetMinutes).isEqualTo(0)
+        assertThat(viewModel.remainingMinutes.value).isEqualTo(0)
+    }
+
+    @Test
+    fun `saveDayType to BUSINESS_TRIP while timer is running cancels break warning`() = runTest {
+        val today = LocalDate.now()
+        val runningBlock = TimeBlock(id = 1L, workDayId = 55L, startTime = LocalTime.of(8, 0), endTime = null, location = WorkLocation.OFFICE)
+        val runningWorkDay = WorkDay(
+            id = 55L,
+            date = today,
+            location = WorkLocation.OFFICE,
+            dayType = DayType.WORK,
+            isPlanned = false,
+            timeBlocks = listOf(runningBlock)
+        )
+        val settings = Settings(breakWarningEnabled = true)
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(runningWorkDay))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.saveDayType(DayType.BUSINESS_TRIP)
+        advanceUntilIdle()
+
+        verify(breakWarningScheduler).cancelWarning()
+    }
 }
+
 
 

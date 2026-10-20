@@ -38,6 +38,8 @@ import com.flex.notification.ExportNotificationHelper
 import org.mockito.Mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.isNull
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -787,6 +789,52 @@ class MonthViewModelTest : BaseUnitTest() {
         assertThat(viewModel.uiState.value.dailyFlextimeByDate[date2]).isEqualTo(99L)
         assertThat(viewModel.uiState.value.flextimeByDate[date1]).isEqualTo(19L)
         assertThat(viewModel.uiState.value.flextimeByDate[date2]).isEqualTo(118L)
+    }
+
+    @Test
+    fun `baseFlextimeMinutes represents balance from previous months`() = runTest {
+        val selectedMonth = YearMonth.now()
+        val priorMonthDay = WorkDay(
+            id = 1L,
+            date = selectedMonth.minusMonths(1).atDay(10),
+            dayType = DayType.WORK,
+            isPlanned = false
+        )
+
+        whenever(workDayRepository.getWorkDaysForYear(selectedMonth.year)).thenReturn(flowOf(listOf(priorMonthDay)))
+        whenever(calculateFlextime(eq(listOf(priorMonthDay)), any(), isNull(), any())).thenReturn(
+            FlextimeBalance(totalMinutes = 240L)
+        )
+
+        viewModel = MonthViewModel(
+            getMonthWorkDays, getSettings, workDayRepository,
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.baseFlextimeMinutes).isEqualTo(240L)
+    }
+
+    @Test
+    fun `targetMinutesToDate matches targetMinutesMonth for past month and calculates differenceMinutesMonth`() = runTest {
+        val pastMonth = YearMonth.now().minusMonths(2)
+        whenever(workDayRepository.getWorkDaysForYear(pastMonth.year)).thenReturn(flowOf(emptyList()))
+        whenever(getMonthWorkDays(pastMonth)).thenReturn(flowOf(emptyList()))
+        whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(FlextimeBalance(totalMinutes = 0L))
+
+        viewModel = MonthViewModel(
+            getMonthWorkDays, getSettings, workDayRepository,
+            settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+        )
+        viewModel.selectMonth(pastMonth)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertThat(state.yearMonth).isEqualTo(pastMonth)
+        assertThat(state.targetMinutesToDate).isEqualTo(state.targetMinutesMonth)
+        assertThat(state.targetMinutesMonth).isGreaterThan(0L)
     }
 }
 

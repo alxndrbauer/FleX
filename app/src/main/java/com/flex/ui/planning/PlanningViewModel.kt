@@ -89,6 +89,8 @@ data class PlanningUiState(
     val workTimeRules: List<com.flex.domain.model.WorkTimeRule> = emptyList(),
     val quotaStatus: QuotaStatus = QuotaStatus(),
     val flextimeBalance: FlextimeBalance = FlextimeBalance(),
+    val actualFlextimeMinutes: Long = 0L,
+    val plannedContributionMinutes: Long = 0L,
     val officeHours: OfficeHoursDetail = OfficeHoursDetail(),
     val selectedPlanType: PlanType = PlanType.OFFICE,
     val editingDate: LocalDate? = null,
@@ -181,6 +183,12 @@ private data class PlanningConfig(
                     }
                     val flextimeDays = previousMonthsDays + prognosisDays
                     val flextime = calculateFlextime(flextimeDays, settings, month, workTimeRules)
+
+                    val actualRecordedDays = previousMonthsDays + days.filter { !it.isPlanned }
+                    val actualFlextime = calculateFlextime(actualRecordedDays, settings, null, workTimeRules)
+                    val actualMinutes = actualFlextime.totalMinutes
+                    val plannedContribution = flextime.totalMinutes - actualMinutes
+
                     val officeHours = calculateOfficeHours(prognosisDays, qPercent, settings, workTimeRules, month)
                     val isSpecialVacationBlocked = settings.specialVacationPaidOut && settings.settingsYear == month.year
                     val currentSelectedType = _uiState.value.selectedPlanType
@@ -197,6 +205,8 @@ private data class PlanningConfig(
                         workTimeRules = workTimeRules,
                         quotaStatus = quota,
                         flextimeBalance = flextime,
+                        actualFlextimeMinutes = actualMinutes,
+                        plannedContributionMinutes = plannedContribution,
                         officeHours = officeHours,
                         selectedPlanType = selectedType,
                         canSyncPlannedDays = canSync
