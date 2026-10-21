@@ -457,6 +457,82 @@ class HomeViewModelTest : BaseUnitTest() {
     }
 
     @Test
+    fun `daily target is zero on a weekend without a work time rule`() = runTest {
+        val saturday = LocalDate.of(2025, 1, 4)
+        whenever(getSettings()).thenReturn(flowOf(Settings(dailyWorkMinutes = 480)))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.navigateToDate(saturday)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.dailyTargetMinutes).isEqualTo(0)
+    }
+
+    @Test
+    fun `selected date flextime uses work days from the selected year`() = runTest {
+        val selectedDate = LocalDate.of(LocalDate.now().year - 1, 12, 30)
+        val selectedYearWorkDay = WorkDay(id = 42L, date = selectedDate, dayType = DayType.WORK)
+        val expectedBalance = FlextimeBalance(totalMinutes = 777)
+        whenever(workDayRepository.getWorkDaysForYear(selectedDate.year))
+            .thenReturn(flowOf(listOf(selectedYearWorkDay)))
+        whenever(calculateFlextime(any(), any(), any(), any())).thenAnswer { invocation ->
+            val days = invocation.getArgument<List<WorkDay>>(0)
+            if (days.any { it.date == selectedDate }) expectedBalance else FlextimeBalance()
+        }
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.navigateToDate(selectedDate)
+        advanceUntilIdle()
+
+        verify(workDayRepository).getWorkDaysForYear(selectedDate.year)
+        assertThat(viewModel.uiState.value.selectedDateFlextimeBalance).isEqualTo(expectedBalance)
+    }
+
+    @Test
+    fun `viewing another year keeps current and selected date flextime balances separate`() = runTest {
+        val today = LocalDate.now()
+        val selectedDate = LocalDate.of(today.year - 1, 12, 30)
+        val currentYearDay = WorkDay(
+            id = 101L,
+            date = today,
+            dayType = DayType.WORK,
+            timeBlocks = listOf(
+                TimeBlock(
+                    id = 101L,
+                    workDayId = 101L,
+                    startTime = LocalTime.of(8, 0),
+                    endTime = LocalTime.of(16, 0)
+                )
+            )
+        )
+        val selectedYearDay = WorkDay(id = 202L, date = selectedDate, dayType = DayType.WORK)
+        val currentBalance = FlextimeBalance(totalMinutes = 900)
+        val historicalBalance = FlextimeBalance(totalMinutes = 400)
+        whenever(workDayRepository.getWorkDaysForYear(today.year)).thenReturn(flowOf(listOf(currentYearDay)))
+        whenever(workDayRepository.getWorkDaysForYear(selectedDate.year)).thenReturn(flowOf(listOf(selectedYearDay)))
+        whenever(calculateFlextime(any(), any(), any(), any())).thenAnswer { invocation ->
+            val days = invocation.getArgument<List<WorkDay>>(0)
+            when {
+                days.any { it.id == currentYearDay.id } -> currentBalance
+                days.any { it.id == selectedYearDay.id } -> historicalBalance
+                else -> FlextimeBalance()
+            }
+        }
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        viewModel.navigateToDate(selectedDate)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.flextimeBalance).isEqualTo(currentBalance)
+        assertThat(viewModel.uiState.value.selectedDateFlextimeBalance).isEqualTo(historicalBalance)
+    }
+
+    @Test
     fun `initial state loads quotaStatus from calculation`() = runTest {
         // Given: Calculate quota returns specific result
         val expectedQuota = QuotaStatus(

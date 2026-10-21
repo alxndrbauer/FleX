@@ -1,6 +1,7 @@
 package com.flex.domain.usecase
 
 import com.flex.data.local.GeofencePreferences
+import com.flex.domain.model.AutoClockInPlannedDaySnapshot
 import com.flex.domain.model.DayType
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
@@ -21,6 +22,24 @@ class AutoClockInUseCase @Inject constructor(
         if (existingDay?.timeBlocks?.any { it.endTime == null } == true) return null
 
         val now = LocalTime.now().withSecond(0).withNano(0)
+        val plannedDurationBlocks = existingDay
+            ?.takeIf { it.isPlanned }
+            ?.timeBlocks
+            ?.filter { it.isDuration }
+            .orEmpty()
+
+        geofencePreferences.lastAutoClockInPlannedDaySnapshot = existingDay
+            ?.takeIf { it.isPlanned }
+            ?.let {
+                AutoClockInPlannedDaySnapshot(
+                    workDayId = it.id,
+                    date = it.date,
+                    wasPlanned = it.isPlanned,
+                    durationBlocks = plannedDurationBlocks
+                )
+            }
+        plannedDurationBlocks.forEach { workDayRepository.deleteTimeBlock(it) }
+
         val workDayId = if (existingDay == null) {
             workDayRepository.saveWorkDay(
                 WorkDay(date = today, location = WorkLocation.OFFICE, dayType = DayType.WORK)

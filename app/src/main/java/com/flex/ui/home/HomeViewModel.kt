@@ -12,7 +12,7 @@ import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
-import com.flex.domain.model.DEFAULT_WORK_DAYS
+import com.flex.domain.model.getDailyWorkTargetMinutes
 import com.flex.domain.model.ProjectedEndTime
 import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.repository.SettingsRepository
@@ -137,13 +137,12 @@ class HomeViewModel @Inject constructor(
         val isBusinessTrip = state.selectedDayType == DayType.BUSINESS_TRIP
         val result = if (isBusinessTrip) calculateDayWorkTime(blocksForCalc, isBusinessTrip = true) else calculateDayWorkTime(blocksForCalc)
         val rule = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)
-        val dailyTarget = if (state.selectedDayType == DayType.SATURDAY_BONUS) {
-            0
-        } else if (rule != null) {
-            if (today.dayOfWeek in rule.workDays) rule.dailyWorkMinutes else 0
-        } else {
-            state.settings.dailyWorkMinutes
-        }
+        val dailyTarget = getDailyWorkTargetMinutes(
+            today,
+            state.selectedDayType,
+            state.settings.dailyWorkMinutes,
+            rule
+        )
         return (dailyTarget - result.netMinutes).toInt().coerceAtLeast(0)
     }
 
@@ -151,13 +150,12 @@ class HomeViewModel @Inject constructor(
         val today = LocalDate.now()
         if (!state.isClockRunning || state.selectedDate != today || state.timeBlocks.isEmpty()) return null
         val rule = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)
-        val dailyTarget = if (state.selectedDayType == DayType.SATURDAY_BONUS) {
-            0
-        } else if (rule != null) {
-            if (today.dayOfWeek in rule.workDays) rule.dailyWorkMinutes else 0
-        } else {
-            state.settings.dailyWorkMinutes
-        }
+        val dailyTarget = getDailyWorkTargetMinutes(
+            today,
+            state.selectedDayType,
+            state.settings.dailyWorkMinutes,
+            rule
+        )
         if (dailyTarget <= 0) return null
         return calculateProjectedEndTime(
             timeBlocks = state.timeBlocks,
@@ -271,12 +269,19 @@ class HomeViewModel @Inject constructor(
                     val today = LocalDate.now()
                     val yearMonth = YearMonth.from(date)
                     val todayYearMonth = YearMonth.from(today)
+                    val currentYearDaysFlow = workDayRepository.getWorkDaysForYear(today.year)
+                    val selectedYearDaysFlow = if (date.year == today.year) {
+                        currentYearDaysFlow
+                    } else {
+                        workDayRepository.getWorkDaysForYear(date.year)
+                    }
                     combine(
                         workDayRepository.getWorkDay(date),
                         getSettings(),
                         getMonthWorkDays(yearMonth),
                         settingsRepository.getQuotaRules(),
-                        workDayRepository.getWorkDaysForYear(today.year),
+                        currentYearDaysFlow,
+                        selectedYearDaysFlow,
                         settingsRepository.getWorkTimeRules()
                     ) { arr ->
                         val workDay = arr[0] as WorkDay?
@@ -286,9 +291,11 @@ class HomeViewModel @Inject constructor(
                         @Suppress("UNCHECKED_CAST")
                         val rules = arr[3] as List<com.flex.domain.model.QuotaRule>
                         @Suppress("UNCHECKED_CAST")
-                        val yearDays = arr[4] as List<WorkDay>
+                        val currentYearDays = arr[4] as List<WorkDay>
                         @Suppress("UNCHECKED_CAST")
-                        val workTimeRules = arr[5] as List<com.flex.domain.model.WorkTimeRule>
+                        val yearDays = arr[5] as List<WorkDay>
+                        @Suppress("UNCHECKED_CAST")
+                        val workTimeRules = arr[6] as List<com.flex.domain.model.WorkTimeRule>
 
                         val rule = settingsRepository.getQuotaRuleForMonth(yearMonth, rules)
                         val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
@@ -344,23 +351,23 @@ class HomeViewModel @Inject constructor(
                         }
 
                         // Cumulative flextime: all year's actual days (not planned), with today replaced
-                        val actualYearDays = yearDays.filter { !it.isPlanned }.mapNotNull { day ->
+                        val actualYearDays = currentYearDays.filter { !it.isPlanned }.mapNotNull { day ->
                             val resolved = if (day.date == today && workDay != null && date == today) workDay else day
                             if (resolved.date == today && isWorkLike(resolved.dayType) && !hasCompletedBlocks(resolved)) null
                             else resolved
                         }
                         cachedWorkTimeRules = workTimeRules
                         cachedMonthDays = monthDays
-                        cachedYearDays = yearDays
+                        cachedYearDays = currentYearDays
 
                         val baseYDays = yearDays.filter { !it.isPlanned && it.date.isBefore(date) }
-                        val baseFlextime = calculateFlextime(baseYDays, settings, todayYearMonth, workTimeRules)
+                        val baseFlextime = calculateFlextime(baseYDays, settings, yearMonth, workTimeRules)
 
                         val (flextime, monthlyFlextime, liveFlextime, liveMonthlyFlextime) = if (isRunning && isToday) {
                             val todayWithNow = (workDay ?: WorkDay(date = today, location = workDay?.location ?: WorkLocation.OFFICE, dayType = selectedDayType))
                                 .copy(dayType = selectedDayType, timeBlocks = blocksForCalc)
                             val liveMDays = monthDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
-                            val liveYDays = yearDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
+                            val liveYDays = currentYearDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
                             val baseMDays = monthDays.filter { !it.isPlanned && it.date.isBefore(today) }
                             listOf(
                                 baseFlextime,
@@ -385,7 +392,7 @@ class HomeViewModel @Inject constructor(
                         val selectedDateFlextime = if (date == today) {
                             if (isRunning) liveFlextime ?: baseFlextime else flextime ?: FlextimeBalance()
                         } else {
-                            calculateFlextime(daysThroughSelectedDate, settings, todayYearMonth, workTimeRules)
+                            calculateFlextime(daysThroughSelectedDate, settings, yearMonth, workTimeRules)
                         }
 
                         val quota = calculateQuota(actualMonthDays, settings, yearMonth, qPercent, qDays, workTimeRules)
@@ -403,14 +410,12 @@ class HomeViewModel @Inject constructor(
                         val requiredMin = (totalMin * qPercent / 100.0).toLong()
 
                         val ruleForDate = settingsRepository.getWorkTimeRuleForDate(date, workTimeRules)
-                        val nonWorkTargetTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY, DayType.OVERTIME_DAY, DayType.SATURDAY_BONUS)
-                        val dailyTarget = if (selectedDayType in nonWorkTargetTypes) {
-                            0
-                        } else if (ruleForDate != null) {
-                            if (date.dayOfWeek in ruleForDate.workDays) ruleForDate.dailyWorkMinutes else 0
-                        } else {
-                            settings.dailyWorkMinutes
-                        }
+                        val dailyTarget = getDailyWorkTargetMinutes(
+                            date,
+                            selectedDayType,
+                            settings.dailyWorkMinutes,
+                            ruleForDate
+                        )
 
                         val workingDays = actualMonthDays.filter { it.dayType !in neutralTypes }
                         var officeMin = 0L

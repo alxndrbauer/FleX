@@ -54,7 +54,7 @@ class GeofenceManager @Inject constructor(
         client.removeGeofences(listOf("office")).addOnCompleteListener {
             client.addGeofences(request, pendingIntent)
                 .addOnSuccessListener {
-                    Log.d("GeofenceManager", "Geofence registered: lat=$lat, lon=$lon, radius=$radiusMeters")
+                    Log.d("GeofenceManager", "Geofence registered: radius=$radiusMeters")
                     onSuccess()
                 }
                 .addOnFailureListener { e ->

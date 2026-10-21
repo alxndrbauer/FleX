@@ -13,6 +13,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -102,6 +103,57 @@ class AutoClockInBehaviorSpec : BehaviorSpec({
             Then("wird die neue Block-ID 202L gemerkt und zurückgegeben") {
                 generatedBlockId shouldBe 202L
                 verify { geofencePreferences.lastAutoTimeBlockId = 202L }
+            }
+        }
+    }
+
+    Given("ein geplanter Tag mit einem Dauer-Platzhalter") {
+        val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
+        val geofencePreferences = mockk<GeofencePreferences>(relaxed = true)
+        val autoClockIn = AutoClockInUseCase(workDayRepository, geofencePreferences)
+
+        val plannedBlock = TimeBlock(
+            id = 60L,
+            workDayId = 105L,
+            startTime = LocalTime.of(8, 0),
+            endTime = LocalTime.of(16, 0),
+            isDuration = true,
+            location = WorkLocation.HOME_OFFICE
+        )
+        val plannedDay = WorkDay(
+            id = 105L,
+            date = today,
+            location = WorkLocation.HOME_OFFICE,
+            dayType = DayType.VACATION,
+            isPlanned = true,
+            timeBlocks = listOf(plannedBlock)
+        )
+        coEvery { workDayRepository.getWorkDay(today) } returns flowOf(plannedDay)
+        coEvery { workDayRepository.saveTimeBlock(any()) } returns 203L
+
+        When("ein Geofence- oder WLAN-Event eintrifft") {
+            val generatedBlockId = autoClockIn()
+
+            Then("wird der Dauer-Platzhalter vor dem neuen laufenden Block gelöscht") {
+                coVerifyOrder {
+                    workDayRepository.deleteTimeBlock(plannedBlock)
+                    workDayRepository.saveTimeBlock(match {
+                        it.workDayId == plannedDay.id && !it.isDuration && it.endTime == null
+                    })
+                }
+            }
+
+            Then("bleiben dayType und Standort des geplanten Tages erhalten") {
+                val daySlot = slot<WorkDay>()
+                coVerify { workDayRepository.saveWorkDay(capture(daySlot)) }
+                daySlot.captured.dayType shouldBe DayType.VACATION
+                daySlot.captured.location shouldBe WorkLocation.HOME_OFFICE
+                daySlot.captured.isPlanned shouldBe false
+            }
+
+            Then("wird die neue Block-ID weiterhin für Undo gespeichert") {
+                generatedBlockId shouldBe 203L
+                verify { geofencePreferences.lastAutoTimeBlockId = 203L }
             }
         }
     }

@@ -158,6 +158,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -206,6 +207,10 @@ import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+// The black/white luminance cutoff keeps the opaque category fills above WCAG AA 4.5:1.
+internal fun dayTypeSaveButtonContentColor(backgroundColor: Color): Color =
+    if (backgroundColor.luminance() > 0.179f) Color.Black else Color.White
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -777,7 +782,7 @@ fun HomeScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = typeColor,
-                                        contentColor = Color.White
+                                        contentColor = dayTypeSaveButtonContentColor(typeColor)
                                     )
                                 ) {
                                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))

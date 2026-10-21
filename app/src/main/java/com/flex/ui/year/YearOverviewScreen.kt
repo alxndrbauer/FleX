@@ -45,6 +45,7 @@ import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -66,6 +67,7 @@ import com.flex.ui.theme.BusinessTripColor
 import com.flex.ui.theme.FlexDayColor
 import com.flex.ui.theme.HomeOfficeColor
 import com.flex.ui.theme.OfficeColor
+import com.flex.ui.theme.OvertimeDayColor
 import com.flex.ui.theme.PublicHolidayColor
 import com.flex.ui.theme.SaturdayBonusColor
 import com.flex.ui.theme.SickDayColor
@@ -83,7 +85,7 @@ private val CELL_SPACING = 2.dp
 private val WEEKDAY_LABEL_WIDTH = 28.dp
 private val MONTH_LABEL_HEIGHT = 18.dp
 
-private fun cellColor(entry: DayHeatmapEntry?, dailyWorkMinutes: Int, isSurface: Boolean): Color {
+internal fun cellColor(entry: DayHeatmapEntry?, dailyWorkMinutes: Int, isSurface: Boolean): Color {
     if (entry == null) return Color.Transparent
     return when {
         entry.isPublicHoliday -> PublicHolidayColor.copy(alpha = 0.8f)
@@ -93,6 +95,7 @@ private fun cellColor(entry: DayHeatmapEntry?, dailyWorkMinutes: Int, isSurface:
         entry.dayType == DayType.SICK_DAY -> SickDayColor.copy(alpha = 0.8f)
         entry.dayType == DayType.SATURDAY_BONUS -> SaturdayBonusColor.copy(alpha = 0.8f)
         entry.dayType == DayType.BUSINESS_TRIP -> BusinessTripColor.copy(alpha = 0.8f)
+        entry.dayType == DayType.OVERTIME_DAY -> OvertimeDayColor.copy(alpha = 0.8f)
         entry.dayType == DayType.WORK -> {
             val intensity = (entry.netMinutes.toFloat() / (dailyWorkMinutes * 1.2f)).coerceIn(0.15f, 1.0f)
             val base = if (entry.location == WorkLocation.OFFICE) OfficeColor else HomeOfficeColor
@@ -331,10 +334,11 @@ private fun ModernYearSummaryCard(summary: YearSummary) {
             // Header Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -352,17 +356,21 @@ private fun ModernYearSummaryCard(summary: YearSummary) {
                             modifier = Modifier.size(18.dp)
                         )
                     }
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Jahresstatistik ${summary.year}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = "Zusammenfassung aller erfassten Tage",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -376,7 +384,10 @@ private fun ModernYearSummaryCard(summary: YearSummary) {
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -831,7 +842,23 @@ private fun YearHeatmap(
     val totalWeeks = (totalDays + 6) / 7
 
     val weekDayLabels = listOf("Mo", "", "Mi", "", "Fr", "", "")
-    val lazyRowState = rememberLazyListState()
+    val currentMonthWeekIndex = if (year == today.year) {
+        val currentMonthStart = LocalDate.of(year, today.month, 1)
+        val currentMonthWeekStart = currentMonthStart.with(
+            java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)
+        )
+        java.time.temporal.ChronoUnit.WEEKS
+            .between(startDay, currentMonthWeekStart)
+            .toInt()
+            .coerceIn(0, totalWeeks - 1)
+    } else {
+        0
+    }
+    val lazyRowState = rememberLazyListState(initialFirstVisibleItemIndex = currentMonthWeekIndex)
+
+    LaunchedEffect(year, today.year, today.month) {
+        lazyRowState.scrollToItem(currentMonthWeekIndex)
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -967,6 +994,7 @@ private fun HeatmapLegend() {
         "Gleittag" to FlexDayColor,
         "Krank" to SickDayColor,
         "Samstag+" to SaturdayBonusColor,
+        "Überstunden" to OvertimeDayColor,
         "Feiertag" to PublicHolidayColor
     )
 

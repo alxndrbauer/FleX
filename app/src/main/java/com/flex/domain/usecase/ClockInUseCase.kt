@@ -33,6 +33,12 @@ class ClockInUseCase @Inject constructor(
         }
         val now = LocalTime.now().withSecond(0).withNano(0)
 
+        existingDay
+            ?.takeIf { it.isPlanned }
+            ?.timeBlocks
+            ?.filter { it.isDuration }
+            ?.forEach { workDayRepository.deleteTimeBlock(it) }
+
         val workDayId = if (existingDay == null) {
             workDayRepository.saveWorkDay(
                 WorkDay(date = today, location = location, dayType = DayType.WORK)

@@ -73,7 +73,7 @@ class FlexApplication : Application(), Configuration.Provider {
                     )
                 }
                 if (settings.wifiAutoStampEnabled && settings.wifiSsid.isNotBlank()) {
-                    Log.d("FlexApplication", "Registering WiFi monitor for SSID: ${settings.wifiSsid}")
+                    Log.d("FlexApplication", "Registering WiFi monitor")
                     wifiMonitor.register(settings.wifiSsid)
                 }
             } catch (e: Exception) {

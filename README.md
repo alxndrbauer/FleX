@@ -74,18 +74,18 @@ Eine Android-App zur Erfassung von Arbeitszeiten mit Fokus auf Büro/Home-Office
 
 ### 🎨 Design
 - Material 3
-- Dark Mode / Light Mode / System-Modus umschaltbar
+- Hell-, Dunkel-, System- und AMOLED-Modus
 
 ## Tech Stack
 
-- **Language**: Kotlin 2.3.10
+- **Language**: Kotlin 2.4.20
 - **UI**: Jetpack Compose + Material 3
 - **Architecture**: MVVM + Clean Architecture
-- **Database**: Room 2.8.4
-- **DI**: Hilt 2.59.2
-- **Location**: Google Play Services Location 21.3.0
-- **Charts**: Vico 3.0.3
-- **Build**: Gradle 9.4.0, AGP 9.1.0
+- **Database**: Room 2.8.5
+- **DI**: Hilt 2.60.1
+- **Location**: Google Play Services Location 21.4.0
+- **Charts**: Vico 3.3.1
+- **Build**: Gradle 9.8.0, AGP 9.4.1
 
 ## Installation
 
@@ -133,11 +133,11 @@ Das `deploy.sh` Skript baut und installiert APKs direkt auf verbundene Geräte v
 
 ## CI/CD
 
-GitHub Actions baut automatisch bei jedem Push auf `main`:
+Der Build-Workflow läuft bei Pushes auf `main`, wenn überwachte Quell- oder Build-Dateien geändert wurden:
 - ✅ Unit Tests
-- 📦 Release-Build mit Keystore-Signing
-- 🏷️ GitHub Release mit `flex-vX.Y.Z.apk`
-- ⚠️ Release wird nur erstellt wenn Build erfolgreich
+- 📦 Release-APK-Build mit Keystore-Signing und Upload als GitHub Actions Artifact
+
+Ein GitHub Release mit `flex-vX.Y.Z.apk` wird separat bei einem Push eines `v*`-Tags oder durch manuellen Start des Release-Workflows erstellt. Dabei müssen Build und Unit Tests erfolgreich sein.
 
 Releases: https://github.com/alxndrbauer/FleX/releases
 
@@ -159,6 +159,12 @@ Releases: https://github.com/alxndrbauer/FleX/releases
 | 12 | Settings: Kalender-Sync (`calendarSyncEnabled`, `calendarId`, Typ-/Ort-Filter) + `calendar_events` Tabelle |
 | 13 | Settings: `calendarEventPrefix` |
 | 14 | Settings: `calendarEventNoAlarm` |
+| 15 | Settings: `federalState` |
+| 16 | Tabelle `holiday_cache` |
+| 17 | Tabelle `work_time_rules` |
+| 18 | `workDays` für Arbeitszeitregeln |
+| 19 | Settings: `defaultStartTime` |
+| 20 | Settings: `specialVacationPaidOut` |
 
 ## Entwicklung
 

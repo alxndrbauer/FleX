@@ -55,12 +55,12 @@ Für komplexe Aufgaben wird folgende Strategie verwendet:
 ## Projektspezifisch
 
 ### Tech Stack
-- **Language:** Kotlin 2.3.10
+- **Language:** Kotlin 2.4.20
 - **UI:** Jetpack Compose + Material 3
 - **Architecture:** MVVM + Clean Architecture
-- **Database:** Room 2.8.4
-- **DI:** Hilt 2.57.1
-- **Build:** Gradle 9.4.0, AGP 9.1.0
+- **Database:** Room 2.8.5
+- **DI:** Hilt 2.60.1
+- **Build:** Gradle 9.8.0, AGP 9.4.1
 - **Version Catalog:** `gradle/libs.versions.toml`
 
 ### Key Patterns
@@ -72,8 +72,9 @@ Für komplexe Aufgaben wird folgende Strategie verwendet:
 ### Build & Release
 - Debug: `./gradlew assembleDebug`
 - Release: `./gradlew assembleRelease` (signiert mit Keystore)
-- Beide Builds müssen erfolgreich sein vor Merge
-- GitHub Actions: Auto-Build & Release auf Push zu main
+- PR-Check (`.github/workflows/pr-check.yml`): Unit Tests und Debug-Build
+- Build-Workflow (`.github/workflows/build.yml`): path-gefilterter Push zu `main`, Unit Tests und Release-APK als Artifact
+- GitHub Release (`.github/workflows/release.yml`): nur bei `v*`-Tag oder manuellem Workflow-Start
 
 ### Important Files
 - `gradle/libs.versions.toml` - Version Catalog (alle Dependency-Versionen zentral)

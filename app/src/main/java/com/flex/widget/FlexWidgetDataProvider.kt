@@ -7,6 +7,7 @@ import com.flex.domain.model.Settings
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.WorkTimeRule
+import com.flex.domain.model.getDailyWorkTargetMinutes
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
@@ -69,13 +70,12 @@ class FlexWidgetDataProvider @Inject constructor(
         isPaused: Boolean
     ): WidgetState {
         val rule = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)
-        val targetMinutesToday = if (workDay?.dayType == DayType.SATURDAY_BONUS) {
-            0L
-        } else if (rule != null) {
-            if (today.dayOfWeek in rule.workDays) rule.dailyWorkMinutes.toLong() else 0L
-        } else {
-            settings.dailyWorkMinutes.toLong()
-        }
+        val targetMinutesToday = getDailyWorkTargetMinutes(
+            today,
+            workDay?.dayType,
+            settings.dailyWorkMinutes,
+            rule
+        ).toLong()
 
         val allBlocks = workDay?.timeBlocks ?: emptyList()
         val runningBlock = allBlocks.find { it.endTime == null }

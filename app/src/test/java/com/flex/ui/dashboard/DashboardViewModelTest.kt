@@ -257,6 +257,35 @@ class DashboardViewModelTest : BaseUnitTest() {
     }
 
     @Test
+    fun `planned Saturday bonus retains its scheduled work duration in projected quota`() = runTest {
+        val month = YearMonth.of(2025, 1)
+        val plannedSaturdayBonus = WorkDay(
+            id = 17L,
+            date = LocalDate.of(2025, 1, 4),
+            dayType = DayType.SATURDAY_BONUS,
+            location = com.flex.domain.model.WorkLocation.OFFICE,
+            isPlanned = true
+        )
+        whenever(getSettings()).thenReturn(flowOf(Settings(dailyWorkMinutes = 480)))
+        whenever(getMonthWorkDays(month)).thenReturn(flowOf(listOf(plannedSaturdayBonus)))
+
+        var preparedBonusDay: WorkDay? = null
+        whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenAnswer { invocation ->
+            val days = invocation.getArgument<List<WorkDay>>(0)
+            preparedBonusDay = days.find { it.id == plannedSaturdayBonus.id && it.isPlanned }
+            QuotaStatus()
+        }
+
+        viewModel = createViewModel()
+        viewModel.selectMonth(month)
+        advanceUntilIdle()
+
+        val preparedBlock = preparedBonusDay?.timeBlocks?.single()
+        assertThat(preparedBlock).isNotNull()
+        assertThat(preparedBlock?.endTime).isEqualTo(LocalDate.of(2025, 1, 4).atTime(16, 0).toLocalTime())
+    }
+
+    @Test
     fun `calculateFlextime and currentWeekStatus receive workTimeRules when available`() = runTest {
         val rule = com.flex.domain.model.WorkTimeRule(
             id = 1,

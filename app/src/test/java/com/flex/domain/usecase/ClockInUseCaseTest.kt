@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
@@ -151,6 +152,46 @@ class ClockInUseCaseTest {
         assertThat(workDayCaptor.firstValue.id).isEqualTo(7L)
         assertThat(workDayCaptor.firstValue.dayType).isEqualTo(DayType.VACATION)
         assertThat(workDayCaptor.firstValue.isPlanned).isFalse()
+    }
+
+    @Test
+    fun `clock in deletes planned duration blocks before adding a running block`() = runTest {
+        val plannedBlock = TimeBlock(
+            id = 70L,
+            workDayId = 9L,
+            startTime = LocalTime.of(8, 30),
+            endTime = LocalTime.of(17, 30),
+            isDuration = true,
+            location = WorkLocation.HOME_OFFICE
+        )
+        val plannedDay = WorkDay(
+            id = 9L,
+            date = today,
+            location = WorkLocation.HOME_OFFICE,
+            dayType = DayType.VACATION,
+            isPlanned = true,
+            timeBlocks = listOf(plannedBlock)
+        )
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedDay))
+
+        val result = useCase()
+
+        assertThat(result).isTrue()
+        verify(workDayRepository).deleteTimeBlock(plannedBlock)
+
+        val savedDay = argumentCaptor<WorkDay>()
+        verify(workDayRepository).saveWorkDay(savedDay.capture())
+        assertThat(savedDay.firstValue.dayType).isEqualTo(DayType.VACATION)
+        assertThat(savedDay.firstValue.isPlanned).isFalse()
+
+        val runningBlock = argumentCaptor<TimeBlock>()
+        val repositoryOrder = inOrder(workDayRepository)
+        repositoryOrder.verify(workDayRepository).deleteTimeBlock(plannedBlock)
+        repositoryOrder.verify(workDayRepository).saveTimeBlock(runningBlock.capture())
+        assertThat(runningBlock.firstValue.isDuration).isFalse()
+        assertThat(runningBlock.firstValue.endTime).isNull()
+        assertThat(runningBlock.firstValue.workDayId).isEqualTo(plannedDay.id)
+        assertThat(runningBlock.firstValue.location).isEqualTo(WorkLocation.HOME_OFFICE)
     }
 
     @Test

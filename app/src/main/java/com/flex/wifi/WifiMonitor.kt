@@ -48,7 +48,7 @@ class WifiMonitor @Inject constructor(
 
     fun register(targetSsid: String) {
         unregister()
-        Log.d("WifiMonitor", "Registering WiFi monitor for SSID: $targetSsid")
+        Log.d("WifiMonitor", "Registering WiFi monitor")
         networkCallback = buildNetworkCallback(targetSsid)
         try {
             val request = NetworkRequest.Builder()
@@ -65,7 +65,7 @@ class WifiMonitor @Inject constructor(
         return object : ConnectivityManager.NetworkCallback() {
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
                 val ssid = getSsidFromCapabilities(capabilities)
-                Log.d("WifiMonitor", "onCapabilitiesChanged: ssid=$ssid target=$targetSsid connected=${wifiPreferences.wasConnectedToTarget}")
+                Log.d("WifiMonitor", "WiFi network capabilities changed")
                 if (ssid == targetSsid) {
                     // Cancel any pending clock-out — WiFi is (re)connected to target
                     clockOutJob?.cancel()

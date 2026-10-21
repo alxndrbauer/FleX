@@ -85,7 +85,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             getSettings().collect { s ->
                 _settings.value = s
-                Log.d("GeoDebug", "Settings loaded: enabled=${s.geofenceEnabled}, lat=${s.geofenceLat}, lon=${s.geofenceLon}, status=${_geofenceStatus.value}")
+                Log.d("GeoDebug", "Settings loaded: enabled=${s.geofenceEnabled}, status=${_geofenceStatus.value}")
                 if (_geofenceStatus.value == GeofenceStatus.UNKNOWN &&
                     s.geofenceEnabled && s.geofenceLat != 0.0 && s.geofenceLon != 0.0
                 ) {
@@ -323,7 +323,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun saveGeofenceSettings(enabled: Boolean, lat: Double, lon: Double, radius: Float, address: String = "") {
-        Log.d("GeoDebug", "saveGeofenceSettings called: enabled=$enabled, lat=$lat, lon=$lon")
+        Log.d("GeoDebug", "saveGeofenceSettings called: enabled=$enabled, radius=$radius")
         viewModelScope.launch {
             settingsRepository.saveSettings(
                 _settings.value.copy(
@@ -347,7 +347,7 @@ class SettingsViewModel @Inject constructor(
                     }
                 )
             } else {
-                Log.d("GeoDebug", "saveGeofenceSettings: else branch (lat=$lat, lon=$lon) → UNKNOWN")
+                Log.d("GeoDebug", "saveGeofenceSettings: disabled or location unset → UNKNOWN")
                 geofenceManager.removeGeofence()
                 _geofenceStatus.value = GeofenceStatus.UNKNOWN
             }

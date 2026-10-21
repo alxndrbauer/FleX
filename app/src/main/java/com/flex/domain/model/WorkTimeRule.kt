@@ -17,6 +17,20 @@ data class WorkTimeRule(
     val workDays: Set<DayOfWeek> = DEFAULT_WORK_DAYS
 )
 
+fun getDailyWorkTargetMinutes(
+    date: LocalDate,
+    dayType: DayType?,
+    defaultDailyWorkMinutes: Int,
+    rule: WorkTimeRule?
+): Int {
+    if (dayType != null && dayType !in setOf(DayType.WORK, DayType.BUSINESS_TRIP)) return 0
+
+    val workDays = rule?.workDays ?: DEFAULT_WORK_DAYS
+    if (date.dayOfWeek !in workDays) return 0
+
+    return rule?.dailyWorkMinutes ?: defaultDailyWorkMinutes
+}
+
 fun List<WorkTimeRule>.getRuleForDate(date: LocalDate): WorkTimeRule? {
     val ym = YearMonth.from(date)
     return filter { !it.validFrom.isAfter(ym) }.maxByOrNull { it.validFrom }
