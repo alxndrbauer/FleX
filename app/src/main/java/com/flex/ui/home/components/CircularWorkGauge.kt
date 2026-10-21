@@ -35,19 +35,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.flex.R
+
+/** Stroke width of the work ring. */
+private val strokeWidthDp = 17.5.dp
+/** Width of the overtime band as a share of the ring width; it is centred on the ring, inset evenly from both edges. */
+private val overtimeBandRatio = 0.6f
+/** Dark outline on both edges of the light ring over the overtime part, wrapping around its rounded tip. */
+private val overtimeOutlineColor = Color(0xFF1B1F1C)
+private val overtimeOutlineWidth = 3.dp
 
 /**
  * Modern circular progress gauge inspired by Google Health / Fitbit styling.
@@ -98,27 +105,12 @@ fun CircularWorkGauge(
         )
     }
 
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val secondaryColor = MaterialTheme.colorScheme.secondary
-    val tertiaryColor = MaterialTheme.colorScheme.tertiary
-    val trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-    val cardBgColor = MaterialTheme.colorScheme.surfaceContainerLow
-
-    // Google Health styled colors:
-    val healthGoalReachedColor = Color(0xFF0F9D58) // Deep emerald green
-    val healthOvertimeColor = Color(0xFF25D366)    // Vibrant neon mint green
-    val healthOvertimeEndColor = Color(0xFF34D399) // Smooth mint transition
-    val innerBgColor = if (dailyGoalReached) {
-        Color(0xFF0F9D58).copy(alpha = 0.12f)
-    } else {
-        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.50f)
-    }
-
-    val arcColors = if (dailyGoalReached) {
-        listOf(healthGoalReachedColor, healthGoalReachedColor)
-    } else {
-        listOf(primaryColor, tertiaryColor)
-    }
+    // Fixed palette matching the Google Health reference: light ring, dark overtime band, dark green centre
+    val ringColor = Color(0xFF55D26F)
+    val overtimeBandColor = Color(0xFF178A36)
+    val centerColor = Color(0xFF00502B)
+    val trackColor = Color(0xFF0A3D22)
+    val textColor = Color(0xFFE8F5EA)
 
     val otTextPaint = remember {
         Paint().apply {
@@ -134,20 +126,15 @@ fun CircularWorkGauge(
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.size(sizeDp.dp)) {
-            // Normal ring and overlapping ring have the exact same stroke width
-            val strokeWidth = 17.5.dp.toPx()
-            val borderWidth = strokeWidth + 2.5.dp.toPx()
-            val cutoutWidth = borderWidth + 2.dp.toPx()
-
-            // Diameter matches outer dimension so ring touches top and bottom line of cards exactly
+            val strokeWidth = strokeWidthDp.toPx()
+            // Ring fills the layout box, so its outer edge touches the box edges
             val diameter = size.minDimension - strokeWidth
             val topLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
             val arcSize = Size(diameter, diameter)
-            val overtimeSweep = (overtimeProgress * 360f).coerceAtMost(360f)
 
-            // Inner circle subtle background fill
+            // Inner circle: dark green centre
             drawCircle(
-                color = innerBgColor,
+                color = centerColor,
                 radius = (diameter - strokeWidth) / 2f - 1.dp.toPx(),
                 center = center
             )
@@ -166,7 +153,7 @@ fun CircularWorkGauge(
             // Pulsing glow when running and not yet reached goal
             if (isClockRunning && baseProgress > 0f && !dailyGoalReached) {
                 drawArc(
-                    color = primaryColor.copy(alpha = pulseAlpha * 0.35f),
+                    color = ringColor.copy(alpha = pulseAlpha * 0.35f),
                     startAngle = -90f,
                     sweepAngle = (baseProgress * 360f).coerceAtLeast(4f),
                     useCenter = false,
@@ -176,90 +163,101 @@ fun CircularWorkGauge(
                 )
             }
 
-            // Base Progress Arc (starts at 12 o'clock = -90°)
+            // Base progress arc: solid ring colour, starts at 12 o'clock = -90°
             if (baseProgress > 0.005f) {
-                if (dailyGoalReached) {
-                    // Full 360° closed emerald ring
-                    drawArc(
-                        color = healthGoalReachedColor,
-                        startAngle = -90f,
-                        sweepAngle = 360f,
-                        useCenter = false,
-                        topLeft = topLeft,
-                        size = arcSize,
-                        style = Stroke(width = strokeWidth)
-                    )
-                } else {
-                    val brush = Brush.sweepGradient(
-                        0.0f to arcColors.first(),
-                        0.85f to arcColors.last(),
-                        1.0f to arcColors.last(),
-                        center = center
-                    )
-                    rotate(degrees = -90f, pivot = center) {
-                        drawArc(
-                            brush = brush,
-                            startAngle = 0f,
-                            sweepAngle = baseProgress * 360f,
-                            useCenter = false,
-                            topLeft = topLeft,
-                            size = arcSize,
-                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                        )
-                    }
-                }
+                drawArc(
+                    color = ringColor,
+                    startAngle = -90f,
+                    sweepAngle = baseProgress * 360f,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                )
             }
 
-            // Overtime Overlapping Arc (Layer 2: exact same width as normal ring + crisp border & cutout)
+            // Overtime band: solid dark green, centred on the ring, starts at 12 o'clock and runs clockwise
             if (overtimeProgress > 0.005f || overtimeMinutes > 0) {
                 val sweep = (overtimeProgress * 360f).coerceIn(42f, 360f)
-                val start = -105f
+                // 12 o'clock in Compose angles (-90° = top); a positive sweep runs clockwise
+                val start = -90f
+                val bandWidth = strokeWidth * overtimeBandRatio
+                val bandCenterRadius = diameter / 2f
+                val outlineWidth = overtimeOutlineWidth.toPx()
 
-                // 1. Cutout layer in card background color (separates overlapping ring from base ring with a gap)
-                drawArc(
-                    color = cardBgColor,
-                    startAngle = start,
-                    sweepAngle = sweep,
-                    useCenter = false,
-                    topLeft = topLeft,
-                    size = arcSize,
-                    style = Stroke(width = cutoutWidth, cap = StrokeCap.Round)
-                )
+                // Round caps extend half the band width past each end; shorten the drawn arc so the rounded ends
+                // sit exactly on the nominal start and end angles. Outline and band use the same drawn range.
+                val capSweep = Math.toDegrees((bandWidth / 2f / bandCenterRadius).toDouble()).toFloat()
+                val drawStart = start + capSweep
+                val drawSweep = sweep - 2f * capSweep
 
-                // 2. Crisp border outline (Rahmen um das Bogen-Ende und die Kanten)
-                drawArc(
-                    color = Color.White.copy(alpha = 0.95f),
-                    startAngle = start,
-                    sweepAngle = sweep,
-                    useCenter = false,
-                    topLeft = topLeft,
-                    size = arcSize,
-                    style = Stroke(width = borderWidth, cap = StrokeCap.Round)
-                )
+                // Dark outline: outer edge of the light ring over the overtime part plus its rounded tip (open at 12 o'clock),
+                // and a full circle on the inner edge of the light ring.
+                val ringHalf = strokeWidth / 2f
+                val outerRadius = bandCenterRadius + ringHalf
+                val innerRadius = bandCenterRadius - ringHalf
+                val tipAngle = start + sweep
+                val tipRad = Math.toRadians(tipAngle.toDouble())
+                val tipX = center.x + bandCenterRadius * Math.cos(tipRad).toFloat()
+                val tipY = center.y + bandCenterRadius * Math.sin(tipRad).toFloat()
+                // Tapered outer edge: width grows linearly from 0.1 px at 12 o'clock to the full outline width at the tip.
+                // The band is centred on the outer ring edge, so it spans outerRadius ± width / 2.
+                val taperSteps = 120
+                val startWidthPx = 0.1f
+                val taperPath = androidx.compose.ui.graphics.Path()
+                for (i in 0..taperSteps) {
+                    val t = i / taperSteps.toFloat()
+                    val w = (outlineWidth * t).coerceAtLeast(startWidthPx)
+                    val rad = Math.toRadians((start + sweep * t).toDouble())
+                    val cos = Math.cos(rad).toFloat()
+                    val sin = Math.sin(rad).toFloat()
+                    val outX = center.x + (outerRadius + w / 2f) * cos
+                    val outY = center.y + (outerRadius + w / 2f) * sin
+                    if (i == 0) taperPath.moveTo(outX, outY) else taperPath.lineTo(outX, outY)
+                }
+                for (i in taperSteps downTo 0) {
+                    val t = i / taperSteps.toFloat()
+                    val w = (outlineWidth * t).coerceAtLeast(startWidthPx)
+                    val rad = Math.toRadians((start + sweep * t).toDouble())
+                    val cos = Math.cos(rad).toFloat()
+                    val sin = Math.sin(rad).toFloat()
+                    taperPath.lineTo(center.x + (outerRadius - w / 2f) * cos, center.y + (outerRadius - w / 2f) * sin)
+                }
+                taperPath.close()
+                drawPath(path = taperPath, color = overtimeOutlineColor)
 
-                // 3. Core overtime arc (exact same width as base ring)
-                val overtimeBrush = Brush.sweepGradient(
-                    0.0f to healthOvertimeColor,
-                    0.6f to healthOvertimeEndColor,
-                    1.0f to healthOvertimeColor,
-                    center = center
-                )
-                rotate(degrees = start, pivot = center) {
-                    drawArc(
-                        brush = overtimeBrush,
-                        startAngle = 0f,
-                        sweepAngle = sweep,
-                        useCenter = false,
-                        topLeft = topLeft,
-                        size = arcSize,
-                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                // Rounded tip cap at the clockwise end, full outline width
+                val tipCapPath = androidx.compose.ui.graphics.Path().apply {
+                    arcTo(
+                        Rect(tipX - ringHalf, tipY - ringHalf, tipX + ringHalf, tipY + ringHalf),
+                        tipAngle, 180f, forceMoveTo = true
                     )
                 }
+                drawPath(
+                    path = tipCapPath,
+                    color = overtimeOutlineColor,
+                    style = Stroke(width = outlineWidth, cap = StrokeCap.Butt)
+                )
+                drawCircle(
+                    color = overtimeOutlineColor,
+                    radius = innerRadius,
+                    center = center,
+                    style = Stroke(width = outlineWidth)
+                )
+                drawArc(
+                    color = overtimeBandColor,
+                    startAngle = drawStart,
+                    sweepAngle = drawSweep,
+                    useCenter = false,
+                    topLeft = Offset(center.x - bandCenterRadius, center.y - bandCenterRadius),
+                    size = Size(bandCenterRadius * 2f, bandCenterRadius * 2f),
+                    style = Stroke(width = bandWidth, cap = StrokeCap.Round)
+                )
 
-                // 4. Subtle live pulse at tip if running in overtime
+                // Subtle live pulse on the band while running
                 if (isClockRunning) {
                     drawArc(
-                        color = healthOvertimeColor.copy(alpha = pulseAlpha * 0.35f),
+                        color = overtimeBandColor.copy(alpha = pulseAlpha * 0.35f),
                         startAngle = start,
                         sweepAngle = sweep,
                         useCenter = false,
@@ -269,23 +267,23 @@ fun CircularWorkGauge(
                     )
                 }
 
-                // 5. Overtime text: curved inside Layer 2 along the stroke centerline (strictly 2 layers, no extra badge)
+                // Overtime text: on the band's centreline, centred on the band, reading counter-clockwise
                 if (overtimeMinutes > 0) {
                     val otH = overtimeMinutes / 60
                     val otM = overtimeMinutes % 60
                     val otText = if (otH > 0) "+${otH}h ${otM}m" else "+${otM}m"
                     otTextPaint.textSize = 10.sp.toPx()
-                    otTextPaint.color = android.graphics.Color.parseColor("#063319") // High-contrast dark emerald on vibrant mint
+                    otTextPaint.color = android.graphics.Color.parseColor("#E8F5EA")
                     otTextPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                     otTextPaint.textAlign = Paint.Align.LEFT
 
-                    // Center text at the top of the ring (~12 o'clock, -88°)
-                    val centerAngle = -88f
+                    // Path runs counter-clockwise over 90° centred on the band's middle, so the text reads upright
+                    val bandMiddle = start + sweep / 2f
                     val textArcPath = Path().apply {
                         addArc(
                             topLeft.x, topLeft.y,
                             topLeft.x + diameter, topLeft.y + diameter,
-                            centerAngle - 45f, 90f
+                            bandMiddle + 45f, -90f
                         )
                     }
                     val arcLen = (90f / 360f) * (Math.PI.toFloat() * diameter)
@@ -321,7 +319,7 @@ fun CircularWorkGauge(
                     fontSize = 19.sp,
                     letterSpacing = (-0.5f).sp
                 ),
-                color = MaterialTheme.colorScheme.onSurface
+                color = textColor
             )
 
             // Target subtitle
@@ -332,7 +330,7 @@ fun CircularWorkGauge(
                         fontSize = 10.5.sp,
                         fontWeight = FontWeight.SemiBold
                     ),
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = textColor
                 )
             }
 
@@ -341,7 +339,7 @@ fun CircularWorkGauge(
                 Spacer(modifier = Modifier.height(3.dp))
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = secondaryColor.copy(alpha = 0.16f)
+                    color = ringColor.copy(alpha = 0.16f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
@@ -352,7 +350,7 @@ fun CircularWorkGauge(
                             painter = painterResource(R.drawable.ic_sunset),
                             contentDescription = null,
                             modifier = Modifier.size(11.dp),
-                            tint = secondaryColor
+                            tint = ringColor
                         )
                         Spacer(modifier = Modifier.width(3.dp))
                         Text(
@@ -361,7 +359,7 @@ fun CircularWorkGauge(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 10.sp
                             ),
-                            color = secondaryColor
+                            color = ringColor
                         )
                     }
                 }
@@ -370,7 +368,7 @@ fun CircularWorkGauge(
                 val pct = (progress * 100).toInt()
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = secondaryColor.copy(alpha = 0.16f)
+                    color = ringColor.copy(alpha = 0.16f)
                 ) {
                     Text(
                         text = "$pct % ✓",
@@ -378,7 +376,7 @@ fun CircularWorkGauge(
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp
                         ),
-                        color = secondaryColor,
+                        color = ringColor,
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 1.5.dp)
                     )
                 }
@@ -386,7 +384,7 @@ fun CircularWorkGauge(
                 Spacer(modifier = Modifier.height(2.dp))
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = primaryColor.copy(alpha = 0.15f)
+                    color = ringColor.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 1.5.dp),
@@ -397,7 +395,7 @@ fun CircularWorkGauge(
                             modifier = Modifier
                                 .size(5.dp)
                                 .clip(CircleShape)
-                                .background(primaryColor)
+                                .background(ringColor)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
@@ -406,7 +404,7 @@ fun CircularWorkGauge(
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             ),
-                            color = primaryColor
+                            color = ringColor
                         )
                     }
                 }
@@ -415,7 +413,7 @@ fun CircularWorkGauge(
                 val pct = (progress * 100).toInt()
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = primaryColor.copy(alpha = 0.15f)
+                    color = ringColor.copy(alpha = 0.15f)
                 ) {
                     Text(
                         text = "$pct %",
@@ -423,7 +421,7 @@ fun CircularWorkGauge(
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp
                         ),
-                        color = primaryColor,
+                        color = ringColor,
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 1.5.dp)
                     )
                 }

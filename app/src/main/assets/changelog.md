@@ -20,6 +20,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Redesign Material 3
 - Modernize UI across settings, screens and app widget
 - Polish layouts and day handling
+- Match work gauge overtime band to reference
 
 ### Bugfixes
 
