@@ -917,7 +917,7 @@ private fun HeroCard(
     val dayTypeChanged = state.selectedDayType != currentEffectiveType
     val isNonWorkSelected = state.selectedDayType in nonWorkSaveTypes
     val needsSave = dayTypeChanged || (state.workDay?.isPlanned == true && isNonWorkSelected)
-    val isSavedNonWork = savedDayType in nonWorkSaveTypes && state.selectedDayType == savedDayType && state.workDay?.isPlanned != true
+    val isSavedNonWork = savedDayType in nonWorkSaveTypes && state.selectedDayType == savedDayType && state.workDay.isPlanned != true
 
     val dayTypes = listOf(
         DayType.WORK             to Triple("Arbeitstag",    Icons.Default.Work,          MaterialTheme.colorScheme.primary),

@@ -237,7 +237,7 @@ class HomeViewModel @Inject constructor(
                     breakCheckResult = liveBreakCheck,
                     liveFlextimeBalance = liveFlextime,
                     liveMonthlyFlextimeBalance = liveMonthlyFlextime,
-                    selectedDateFlextimeBalance = if (it.selectedDate == today) liveFlextime ?: it.selectedDateFlextimeBalance else it.selectedDateFlextimeBalance,
+                    selectedDateFlextimeBalance = if (it.selectedDate == today) liveFlextime else it.selectedDateFlextimeBalance,
                     hasTimeBlockOverlap = liveOverlap,
                     projectedEndTime = computeProjectedEndTime(it)
                 )

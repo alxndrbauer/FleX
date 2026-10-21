@@ -29,6 +29,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Respect WorkTimeRule targets and work days across views and widgets
 - Fix active home office contrast and enlarge time text in quick actions widget
 - Align tracking and year overview
+- Remove redundant null checks in home screen
 
 ## [1.8.2] - 2026-10-08
 
