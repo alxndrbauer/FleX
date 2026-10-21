@@ -11,22 +11,27 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
+ * Colours of the gauge as ARGB ints. The caller resolves them from the theme (GlanceTheme),
+ * mirroring the roles used in CircularWorkGauge (Compose).
+ */
+data class GaugeColors(
+    val ring: Int,
+    val overtimeBand: Int,
+    val center: Int,
+    val track: Int,
+    val text: Int,
+    val outline: Int,
+    val overtimeText: Int,
+)
+
+/**
  * Renders the work gauge as a bitmap for the home widget.
- * Mirrors CircularWorkGauge (Compose): light ring, dark overtime band from 12 o'clock clockwise,
- * dark outline on the outer edge (tapering from 0.1 px to full width) with a rounded tip,
+ * Mirrors CircularWorkGauge (Compose): light ring, overtime band from 12 o'clock clockwise,
+ * outline on the outer edge (tapering from 0.1 px to full width) with a rounded tip,
  * a full inner circle outline, and the overtime label on the band.
- * Colours are fixed to the reference and do not follow the theme.
  * isDark, isClockRunning and dailyGoalReached are kept for the existing call sites; the design does not use them.
  */
 object CircularWorkGaugeBitmapRenderer {
-
-    // Fixed palette, same values as CircularWorkGauge.kt
-    private val ringColor = Color.rgb(0x55, 0xD2, 0x6F)
-    private val overtimeBandColor = Color.rgb(0x17, 0x8A, 0x36)
-    private val centerColor = Color.rgb(0x00, 0x50, 0x2B)
-    private val trackColor = Color.rgb(0x0A, 0x3D, 0x22)
-    private val textColor = Color.rgb(0xE8, 0xF5, 0xEA)
-    private val outlineColor = Color.rgb(0x1B, 0x1F, 0x1C)
 
     // Proportions of the 152 dp in-app gauge (CircularWorkGauge sizeDp default)
     private const val REFERENCE_SIZE_DP = 152f
@@ -46,8 +51,17 @@ object CircularWorkGaugeBitmapRenderer {
         dailyGoalReached: Boolean,
         isDark: Boolean,
         sizePx: Int = 280,
-        overtimeText: String? = null
+        overtimeText: String? = null,
+        colors: GaugeColors
     ): Bitmap {
+        val ringColor = colors.ring
+        val overtimeBandColor = colors.overtimeBand
+        val centerColor = colors.center
+        val trackColor = colors.track
+        val textColor = colors.text
+        val outlineColor = colors.outline
+        val overtimeTextColor = colors.overtimeText
+
         val dpScale = sizePx / REFERENCE_SIZE_DP
         val strokeWidth = STROKE_DP * dpScale
         val outlineWidth = OUTLINE_DP * dpScale
@@ -161,7 +175,7 @@ object CircularWorkGaugeBitmapRenderer {
             // 7. Overtime label on the band's centreline, same placement as the in-app gauge
             if (overtimeText != null) {
                 val otPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = textColor
+                    color = overtimeTextColor
                     textSize = OVERTIME_TEXT_DP * dpScale
                     typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                     textAlign = Paint.Align.LEFT
@@ -222,7 +236,7 @@ object CircularWorkGaugeBitmapRenderer {
             )
             canvas.drawRoundRect(pillRect, pillHeight / 2f, pillHeight / 2f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 style = Paint.Style.FILL
-                color = Color.argb(35, 0x66, 0xD2, 0x6F)
+                color = (ringColor and 0x00FFFFFF) or (35 shl 24)
             })
             val fontMetrics = pillTextPaint.fontMetrics
             val textBaselineY = pillRect.centerY() - (fontMetrics.ascent + fontMetrics.descent) / 2f

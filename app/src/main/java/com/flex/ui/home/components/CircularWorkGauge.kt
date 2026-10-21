@@ -39,6 +39,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
@@ -52,8 +53,7 @@ import com.flex.R
 private val strokeWidthDp = 24.dp
 /** Width of the overtime band as a share of the ring width; it is centred on the ring, inset evenly from both edges. */
 private val overtimeBandRatio = 0.6f
-/** Dark outline on both edges of the light ring over the overtime part, wrapping around its rounded tip. */
-private val overtimeOutlineColor = Color(0xFF1B1F1C)
+/** Outline on both edges of the light ring over the overtime part, wrapping around its rounded tip. */
 private val overtimeOutlineWidth = 3.dp
 
 /**
@@ -105,12 +105,15 @@ fun CircularWorkGauge(
         )
     }
 
-    // Fixed palette matching the Google Health reference: light ring, dark overtime band, dark green centre
-    val ringColor = Color(0xFF55D26F)
-    val overtimeBandColor = Color(0xFF178A36)
-    val centerColor = Color(0xFF00502B)
-    val trackColor = Color(0xFF0A3D22)
-    val textColor = Color(0xFFE8F5EA)
+    // Theme palette: primary ring, tertiary overtime band (contrasts with primary), primaryContainer centre
+    val colors = MaterialTheme.colorScheme
+    val ringColor = colors.primary
+    val overtimeBandColor = colors.tertiary
+    val overtimeOutlineColor = colors.surface
+    val centerColor = colors.primaryContainer
+    val trackColor = colors.surfaceContainerHighest
+    val textColor = colors.onPrimaryContainer
+    val overtimeTextColor = colors.onTertiary
 
     val otTextPaint = remember {
         Paint().apply {
@@ -273,7 +276,7 @@ fun CircularWorkGauge(
                     val otM = overtimeMinutes % 60
                     val otText = if (otH > 0) "+${otH}h ${otM}m" else "+${otM}m"
                     otTextPaint.textSize = 10.sp.toPx()
-                    otTextPaint.color = android.graphics.Color.parseColor("#E8F5EA")
+                    otTextPaint.color = overtimeTextColor.toArgb()
                     otTextPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                     otTextPaint.textAlign = Paint.Align.LEFT
 

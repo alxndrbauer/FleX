@@ -7,6 +7,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -235,6 +236,16 @@ class FlexWidget : GlanceAppWidget() {
 
                     val context = LocalContext.current
                     val isDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+                    // Gauge colours follow GlanceTheme (same roles as CircularWorkGauge in the app)
+                    val gaugeColors = GaugeColors(
+                        ring = GlanceTheme.colors.primary.getColor(context).toArgb(),
+                        overtimeBand = GlanceTheme.colors.tertiary.getColor(context).toArgb(),
+                        center = GlanceTheme.colors.primaryContainer.getColor(context).toArgb(),
+                        track = GlanceTheme.colors.surfaceVariant.getColor(context).toArgb(),
+                        text = GlanceTheme.colors.onPrimaryContainer.getColor(context).toArgb(),
+                        outline = GlanceTheme.colors.surface.getColor(context).toArgb(),
+                        overtimeText = GlanceTheme.colors.onTertiary.getColor(context).toArgb(),
+                    )
                     val gaugeSize = minOf(
                         136.dp,
                         maxOf(102.dp, width * 0.34f),
@@ -260,7 +271,8 @@ class FlexWidget : GlanceAppWidget() {
                         overtimeText,
                         state.isClockRunning,
                         isGoalReached,
-                        isDark
+                        isDark,
+                        gaugeColors
                     ) {
                         CircularWorkGaugeBitmapRenderer.renderGauge(
                             netTimeText = netTimeFormatted,
@@ -271,7 +283,8 @@ class FlexWidget : GlanceAppWidget() {
                             isClockRunning = state.isClockRunning,
                             dailyGoalReached = isGoalReached,
                             isDark = isDark,
-                            overtimeText = overtimeText
+                            overtimeText = overtimeText,
+                            colors = gaugeColors
                         )
                     }
 
