@@ -94,7 +94,6 @@ import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -404,43 +403,40 @@ fun HomeScreen(
                         .padding(vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = if (isToday) "Heute" else state.selectedDate.format(DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = state.selectedDate.format(DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                    if (!isToday) {
-                        Surface(
-                            onClick = { viewModel.goToToday() },
-                            shape = RoundedCornerShape(50),
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier
-                                .padding(top = 4.dp)
-                                .glowBorder(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    shape = RoundedCornerShape(50)
-                                )
-                        ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = if (isToday) "Heute" else state.selectedDate.format(DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        if (!isToday) {
+                            val todayButtonShape = RoundedCornerShape(50)
                             Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                                modifier = Modifier
+                                    .clip(todayButtonShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                    .border(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                        todayButtonShape
+                                    )
+                                    .clickable(role = Role.Button) { viewModel.goToToday() }
+                                    .padding(horizontal = 7.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
                             ) {
                                 Icon(
-                                    Icons.Default.Today,
+                                    imageVector = Icons.Default.CalendarToday,
                                     contentDescription = null,
-                                    modifier = Modifier.size(12.dp),
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(12.dp)
                                 )
                                 Text(
-                                    "Zurück zu Heute",
+                                    text = "Heute",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     fontWeight = FontWeight.SemiBold
@@ -448,6 +444,12 @@ fun HomeScreen(
                             }
                         }
                     }
+                    Text(
+                        text = state.selectedDate.format(DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
                 }
                 IconButton(onClick = { viewModel.goToNextDay() }) {
                     Icon(Icons.Default.ChevronRight, contentDescription = "Nächster Tag")
@@ -563,6 +565,32 @@ fun HomeScreen(
                 }
             }
 
+            // Saturday bonus info banner
+            if (state.selectedDayType == DayType.SATURDAY_BONUS) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = SaturdayBonusColor.copy(alpha = 0.12f)
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Samstag+",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = SaturdayBonusColor
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Samstagsarbeit: Jede geleistete Stunde wird + 50% auf das Überstundenkonto angerechnet.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
             // Compact quota card
             item {
                 CompactQuotaCard(state = state)
@@ -611,6 +639,7 @@ fun HomeScreen(
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 showManualEntry = true
                             },
+                            enabled = holidayName == null,
                             shape = RoundedCornerShape(50),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
@@ -648,7 +677,7 @@ fun HomeScreen(
                 val currentWorkDay = state.workDay
                 val nonWorkDayTypes = setOf(
                     DayType.VACATION, DayType.SPECIAL_VACATION,
-                    DayType.FLEX_DAY, DayType.SATURDAY_BONUS, DayType.SICK_DAY, DayType.OVERTIME_DAY
+                    DayType.FLEX_DAY, DayType.SICK_DAY, DayType.OVERTIME_DAY
                 )
                 state.selectedDayType in nonWorkDayTypes || (currentWorkDay != null && currentWorkDay.dayType in nonWorkDayTypes)
             }) {
@@ -656,7 +685,7 @@ fun HomeScreen(
                     val currentWorkDay = state.workDay
                     val nonWorkDayTypes = setOf(
                         DayType.VACATION, DayType.SPECIAL_VACATION,
-                        DayType.FLEX_DAY, DayType.SATURDAY_BONUS, DayType.SICK_DAY, DayType.OVERTIME_DAY
+                        DayType.FLEX_DAY, DayType.SICK_DAY, DayType.OVERTIME_DAY
                     )
                     val activeType = if (state.selectedDayType in nonWorkDayTypes) {
                         state.selectedDayType
@@ -782,6 +811,7 @@ fun HomeScreen(
                         description = if (isToday) "Starte die Zeiterfassung mit dem Stempel-Button oder trage Zeiten manuell nach."
                             else "Für diesen Tag wurden noch keine Arbeitszeiten erfasst.",
                         actionLabel = "Zeit manuell eintragen",
+                        actionEnabled = holidayName == null,
                         onAction = { showManualEntry = true }
                     )
                 }
@@ -875,7 +905,7 @@ private fun HeroCard(
 
     val nonWorkSaveTypes = setOf(
         DayType.VACATION, DayType.SPECIAL_VACATION,
-        DayType.FLEX_DAY, DayType.SATURDAY_BONUS, DayType.SICK_DAY, DayType.OVERTIME_DAY
+        DayType.FLEX_DAY, DayType.SICK_DAY, DayType.OVERTIME_DAY
     )
     val savedDayType = state.workDay?.dayType
     val currentEffectiveType = savedDayType ?: DayType.WORK
@@ -1105,6 +1135,7 @@ private fun HeroCard(
                         valueColor = if (isPos) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error,
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f),
                         isLive = isLiveFlextime,
+                        liveColor = if (isPos) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             showFlextimeDetailsSheet = true
@@ -1171,6 +1202,7 @@ private fun HeroCard(
                             haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                             onSaveDayType(state.selectedDayType)
                         },
+                        enabled = holidayName == null,
                         shape = RoundedCornerShape(50),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                         modifier = Modifier.weight(1f)
@@ -1200,6 +1232,7 @@ private fun HeroCard(
                 } else {
                     FilledTonalButton(
                         onClick = onManualEntryClick,
+                        enabled = holidayName == null,
                         shape = RoundedCornerShape(50),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                         modifier = Modifier.weight(1f)
@@ -1211,9 +1244,14 @@ private fun HeroCard(
                 }
 
                 // Starten / Stoppen
-                if (isToday && holidayName == null) {
+                if (isToday) {
+                    val clockEnabled = holidayName == null && state.selectedDayType !in setOf(
+                        DayType.VACATION, DayType.SPECIAL_VACATION,
+                        DayType.FLEX_DAY, DayType.SICK_DAY, DayType.OVERTIME_DAY
+                    )
                     FilledTonalButton(
                         onClick = onClockToggle,
+                        enabled = clockEnabled,
                         shape = RoundedCornerShape(50),
                         colors = ButtonDefaults.filledTonalButtonColors(
                             containerColor = if (state.isClockRunning) MaterialTheme.colorScheme.errorContainer
@@ -1239,13 +1277,21 @@ private fun HeroCard(
                 }
 
                 // Location toggle button (Office / Home-Office)
-                if (state.selectedDayType != DayType.BUSINESS_TRIP) {
-                    val isOffice = state.selectedLocation == WorkLocation.OFFICE
+                run {
+                    val locationNotApplicable = state.selectedDayType in setOf(
+                        DayType.VACATION, DayType.SPECIAL_VACATION,
+                        DayType.FLEX_DAY, DayType.SICK_DAY, DayType.OVERTIME_DAY
+                    )
+                    val locationFixed = state.selectedDayType == DayType.BUSINESS_TRIP
+                    val locationButtonEnabled = !locationNotApplicable && !locationFixed
+                    val effectiveLocation = if (locationFixed) WorkLocation.OFFICE else state.selectedLocation
+                    val isOffice = effectiveLocation == WorkLocation.OFFICE
                     FilledTonalIconButton(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onLocationChange(if (isOffice) WorkLocation.HOME_OFFICE else WorkLocation.OFFICE)
                         },
+                        enabled = locationButtonEnabled,
                         shape = CircleShape,
                         colors = IconButtonDefaults.filledTonalIconButtonColors(
                             containerColor = (if (isOffice) OfficeColor else HomeOfficeColor).copy(alpha = 0.16f),
@@ -1338,11 +1384,12 @@ private fun HeroMetricCard(
     borderGlowColor: Color? = null,
     subtitle: String? = null,
     isLive: Boolean = false,
-    liveColor: Color = iconTint,
+    liveColor: Color? = null,
     onClick: (() -> Unit)? = null
 ) {
     val cardShape = RoundedCornerShape(14.dp)
     val glowColor = borderGlowColor ?: iconTint
+    val resolvedLiveColor = liveColor ?: borderGlowColor ?: MaterialTheme.colorScheme.primary
 
     Surface(
         shape = cardShape,
@@ -1400,7 +1447,7 @@ private fun HeroMetricCard(
                     if (isLive) {
                         val infiniteTransition = rememberInfiniteTransition(label = "pulse_hero_live")
                         val pulseAlpha by infiniteTransition.animateFloat(
-                            initialValue = 0.35f,
+                            initialValue = 0.4f,
                             targetValue = 1f,
                             animationSpec = infiniteRepeatable(
                                 animation = tween(850, easing = FastOutSlowInEasing),
@@ -1408,25 +1455,32 @@ private fun HeroMetricCard(
                             ),
                             label = "pulse_hero_live_alpha"
                         )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = resolvedLiveColor.copy(alpha = 0.20f)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                .size(5.dp)
-                                .clip(CircleShape)
-                                .background(liveColor.copy(alpha = pulseAlpha))
-                            )
-                            Text(
-                                text = "LIVE",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 8.5.sp,
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = liveColor,
-                                maxLines = 1
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(5.dp)
+                                        .clip(CircleShape)
+                                        .background(resolvedLiveColor.copy(alpha = pulseAlpha))
+                                )
+                                Text(
+                                    text = "LIVE",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 8.5.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = 0.5.sp
+                                    ),
+                                    color = resolvedLiveColor,
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }
@@ -1712,7 +1766,11 @@ private fun FlextimeDetailsSheet(
                         state.selectedDayType in setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY) ->
                             "${getDayTypeLabel(state.selectedDayType)}: Neutral für den Gleitzeitsaldo (keine Differenz)."
                         state.selectedDayType == DayType.SATURDAY_BONUS ->
-                            "Samstagsarbeit: Gesamte Arbeitszeit (+${formatWorkTime(netMin)}) wird der Gleitzeit gutgeschrieben."
+                            if (netMin > 0) {
+                                "Samstagsarbeit: ${formatWorkTime(netMin)} Netto + 50% Bonus (${formatWorkTime((netMin * 0.5).toLong())}) = ${formatWorkTime((netMin * 1.5).toLong())} auf Überstundenkonto."
+                            } else {
+                                "Samstagsarbeit: Arbeitszeit wird + 50% auf das Überstundenkonto angerechnet."
+                            }
                         targetMin == 0L && netMin > 0L ->
                             "Arbeitsfreier Tag: Gesamte Arbeitszeit (+${formatWorkTime(netMin)}) wird als Gleitzeit verbucht."
                         targetMin == 0L ->

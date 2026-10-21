@@ -1183,6 +1183,55 @@ class HomeViewModelTest : BaseUnitTest() {
     }
 
     @Test
+    fun `clockIn creates SATURDAY_BONUS day when uncommitted dayType selection is SATURDAY_BONUS`() = runTest {
+        val today = LocalDate.now()
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(null))
+        whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.setDayType(DayType.SATURDAY_BONUS)
+        advanceUntilIdle()
+
+        viewModel.clockIn()
+        advanceUntilIdle()
+
+        val captor = org.mockito.kotlin.argumentCaptor<WorkDay>()
+        verify(workDayRepository).saveWorkDay(captor.capture())
+        assertThat(captor.firstValue.dayType).isEqualTo(DayType.SATURDAY_BONUS)
+    }
+
+    @Test
+    fun `clockIn updates existing WORK day to SATURDAY_BONUS when uncommitted dayType selection is SATURDAY_BONUS`() = runTest {
+        val today = LocalDate.now()
+        val existingWorkDay = WorkDay(
+            id = 10L,
+            date = today,
+            location = WorkLocation.OFFICE,
+            dayType = DayType.WORK,
+            isPlanned = false,
+            timeBlocks = emptyList()
+        )
+        whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(existingWorkDay))
+        whenever(workDayRepository.saveWorkDay(any())).thenReturn(10L)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.setDayType(DayType.SATURDAY_BONUS)
+        advanceUntilIdle()
+
+        viewModel.clockIn()
+        advanceUntilIdle()
+
+        val captor = org.mockito.kotlin.argumentCaptor<WorkDay>()
+        verify(workDayRepository).saveWorkDay(captor.capture())
+        assertThat(captor.firstValue.id).isEqualTo(10L)
+        assertThat(captor.firstValue.dayType).isEqualTo(DayType.SATURDAY_BONUS)
+    }
+
+    @Test
     fun `saveDayType with DayType WORK deletes workDay when timeBlocks is empty`() = runTest {
         val today = LocalDate.now()
         val vacationDay = WorkDay(id = 10, date = today, dayType = DayType.VACATION, timeBlocks = emptyList())

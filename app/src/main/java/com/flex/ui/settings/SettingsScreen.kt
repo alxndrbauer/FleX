@@ -88,6 +88,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -608,7 +609,12 @@ fun SettingsScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.secondary
                     )
-                    Text("Bundesland")
+                    Text(
+                        text = "Bundesland",
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             },
             text = {
@@ -658,7 +664,12 @@ fun SettingsScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Text("Design")
+                    Text(
+                        text = "Design",
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             },
             text = {
@@ -706,7 +717,12 @@ fun SettingsScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Text("App-Symbol & Name")
+                    Text(
+                        text = "App-Symbol & Name",
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             },
             text = {
@@ -786,7 +802,12 @@ fun SettingsScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.tertiary
                     )
-                    Text("Standard-Startzeit")
+                    Text(
+                        text = "Standard-Startzeit",
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             },
             text = { TimePicker(state = timePickerState) },
@@ -1116,7 +1137,12 @@ private fun WorkTimeDialog(
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
-                Text(title)
+                Text(
+                    text = title,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         },
         text = {
@@ -1127,7 +1153,7 @@ private fun WorkTimeDialog(
                 // Total duration banner
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -1138,7 +1164,7 @@ private fun WorkTimeDialog(
                         Text(
                             text = "Gesamtdauer:",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         val displayH = totalMinutes / 60
                         val displayM = totalMinutes % 60
@@ -1146,7 +1172,7 @@ private fun WorkTimeDialog(
                             text = "${displayH}h ${displayM.toString().padStart(2, '0')}min",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -1312,10 +1338,6 @@ private fun BalanceDialog(
     val isValid = isHoursValid && isMinutesValid
 
     val isPlus = sign == "+"
-    val bannerContainerColor = if (isPlus) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f)
-                               else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
-    val bannerTextColor = if (isPlus) MaterialTheme.colorScheme.onTertiaryContainer
-                          else MaterialTheme.colorScheme.onErrorContainer
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1329,7 +1351,13 @@ private fun BalanceDialog(
                     contentDescription = null,
                     tint = if (isPlus) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                 )
-                Text(title)
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         },
         text = {
@@ -1340,7 +1368,7 @@ private fun BalanceDialog(
                 // Live preview badge
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = bannerContainerColor,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -1351,13 +1379,13 @@ private fun BalanceDialog(
                         Text(
                             text = "Saldo-Vorschau:",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "$sign${parsedHours}h ${parsedMinutes.toString().padStart(2, '0')}min",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = bannerTextColor
+                            color = if (isPlus) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -1388,7 +1416,7 @@ private fun BalanceDialog(
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = null,
-                                tint = if (isPlus) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = if (isPlus) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(Modifier.width(6.dp))
@@ -1423,7 +1451,7 @@ private fun BalanceDialog(
                             Icon(
                                 imageVector = Icons.Default.Remove,
                                 contentDescription = null,
-                                tint = if (isMinus) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = if (isMinus) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(Modifier.width(6.dp))
@@ -1560,7 +1588,7 @@ private fun QuotaDialog(
     val parsedPercent = percent.toIntOrNull()
     val parsedMinDays = minDays.toIntOrNull()
     val isPercentValid = parsedPercent != null && parsedPercent in 0..100
-    val isMinDaysValid = parsedMinDays != null && parsedMinDays in 0..7
+    val isMinDaysValid = parsedMinDays != null && parsedMinDays in 0..31
     val isValid = isPercentValid && isMinDaysValid
 
     val presetPercentages = listOf(20, 40, 50, 60, 80)
@@ -1578,7 +1606,12 @@ private fun QuotaDialog(
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
-                Text("Büro-Quote (Standard)")
+                Text(
+                    text = "Büro-Quote (Standard)",
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         },
         text = {
@@ -1589,7 +1622,7 @@ private fun QuotaDialog(
                 // Summary preview banner
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -1600,13 +1633,13 @@ private fun QuotaDialog(
                         Text(
                             text = "Ziel-Quote:",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "${parsedPercent ?: 0}% · ${parsedMinDays ?: 0} Tage min.",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -1672,7 +1705,7 @@ private fun QuotaDialog(
                         singleLine = true,
                         isError = !isMinDaysValid,
                         supportingText = if (!isMinDaysValid) {
-                            { Text("0 bis 7 Tage eingeben") }
+                            { Text("0 bis 31 Tage eingeben") }
                         } else null,
                         trailingIcon = {
                             Row(
@@ -1691,9 +1724,9 @@ private fun QuotaDialog(
                                 DialogStepperButton(
                                     icon = Icons.Default.Add,
                                     contentDescription = "Tag erhöhen",
-                                    enabled = (parsedMinDays ?: 0) < 7,
+                                    enabled = (parsedMinDays ?: 0) < 31,
                                     onClick = {
-                                        minDays = ((parsedMinDays ?: 0) + 1).coerceAtMost(7).toString()
+                                        minDays = ((parsedMinDays ?: 0) + 1).coerceAtMost(31).toString()
                                     }
                                 )
                             }
@@ -1795,7 +1828,12 @@ private fun VacationDialog(
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
-                Text("Urlaubsanspruch")
+                Text(
+                    text = "Urlaubsanspruch",
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         },
         text = {
@@ -1806,7 +1844,7 @@ private fun VacationDialog(
                 // Summen-Vorschau
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -1823,7 +1861,7 @@ private fun VacationDialog(
                             Text(
                                 text = "Gesamter Anspruch",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "$parsedAnnual reg. + $parsedCarryOver Vorjahr + $parsedSpecial Sonder",
@@ -1836,7 +1874,7 @@ private fun VacationDialog(
                             text = "$totalDays Tage",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }

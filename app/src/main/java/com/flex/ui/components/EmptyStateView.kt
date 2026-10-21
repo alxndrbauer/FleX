@@ -34,6 +34,7 @@ fun EmptyStateView(
     description: String,
     modifier: Modifier = Modifier,
     actionLabel: String? = null,
+    actionEnabled: Boolean = true,
     onAction: (() -> Unit)? = null
 ) {
     Column(
@@ -82,6 +83,7 @@ fun EmptyStateView(
             Spacer(modifier = Modifier.height(16.dp))
             FilledTonalButton(
                 onClick = onAction,
+                enabled = actionEnabled,
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Text(actionLabel, fontWeight = FontWeight.SemiBold)

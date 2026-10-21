@@ -540,8 +540,13 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val state = _uiState.value
             val now = LocalTime.now().withSecond(0).withNano(0)
-            val currentDayType = state.workDay?.dayType ?: DayType.WORK
-            val isBT = currentDayType == DayType.BUSINESS_TRIP
+            val workLikeTypes = setOf(DayType.WORK, DayType.BUSINESS_TRIP, DayType.SATURDAY_BONUS)
+            val targetDayType = when {
+                state.selectedDayType in workLikeTypes -> state.selectedDayType
+                state.workDay != null -> state.workDay.dayType
+                else -> DayType.WORK
+            }
+            val isBT = targetDayType == DayType.BUSINESS_TRIP
             val effectiveLocation = if (isBT) WorkLocation.OFFICE else state.selectedLocation
 
             val workDayId = if (state.workDay == null) {
@@ -549,16 +554,18 @@ class HomeViewModel @Inject constructor(
                     WorkDay(
                         date = state.selectedDate,
                         location = effectiveLocation,
-                        dayType = DayType.WORK
+                        dayType = targetDayType
                     )
                 )
             } else {
                 val needsUpdate = state.workDay.isPlanned ||
+                    state.workDay.dayType != targetDayType ||
                     state.workDay.location != effectiveLocation
                 if (needsUpdate) {
                     workDayRepository.saveWorkDay(
                         state.workDay.copy(
                             isPlanned = false,
+                            dayType = targetDayType,
                             location = effectiveLocation
                         )
                     )

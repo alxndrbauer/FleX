@@ -127,7 +127,6 @@ fun WorkTimeRulesScreen(
                         Icon(Icons.Default.Add, contentDescription = "Regel hinzufügen")
                     }
                 },
-                windowInsets = WindowInsets(0, 0, 0, 0)
             )
         }
     ) { innerPadding ->

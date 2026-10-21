@@ -61,6 +61,7 @@ class MainActivity : ComponentActivity() {
         handleShortcutIntent(intent)
         requestNotificationPermissionIfNeeded()
         requestPromotedNotificationPermissionIfNeeded()
+        window.decorView.isForceDarkAllowed = false
         enableEdgeToEdge()
         setContent {
             val themeMode by themePreferences.themeModeFlow.collectAsState()
@@ -72,6 +73,7 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.SYSTEM -> systemDark
             }
             val isAmoled = themeMode == ThemeMode.AMOLED
+            val dynamicColor = !isAmoled
             var pendingUpdate by remember { mutableStateOf<UpdateInfo?>(null) }
             var isDownloading by remember { mutableStateOf(false) }
 
@@ -91,7 +93,11 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
 
-            FlexTheme(darkTheme = darkTheme, amoled = isAmoled) {
+            FlexTheme(
+                darkTheme = darkTheme,
+                amoled = isAmoled,
+                dynamicColor = dynamicColor
+            ) {
                 Surface(
                     modifier = androidx.compose.ui.Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

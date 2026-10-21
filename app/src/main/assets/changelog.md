@@ -19,6 +19,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Modernize app design with floating navigation and unified quota cards
 - Redesign Material 3
 - Modernize UI across settings, screens and app widget
+- Polish layouts and day handling
 
 ### Bugfixes
 
