@@ -14,6 +14,7 @@ import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateProjectedEndTimeUseCase
 import com.flex.domain.usecase.DayWorkTimeResult
 import com.flex.widget.FlexWidgetDataProvider
+import com.flex.widget.WidgetDailyProgress
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -402,10 +403,9 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
             isClockRunning: Boolean = false,
             projectedEndTime: LocalTime? = null
         ): Pair<Float, String> {
-            val progress = if (targetMinutesToday > 0) {
-                (netMinutesToday.toFloat() / targetMinutesToday.toFloat()).coerceIn(0f, 1f)
-            } else 0f
-            val progressPercent = (progress * 100).toInt()
+            val dailyProgress = WidgetDailyProgress.calculate(netMinutesToday, targetMinutesToday)
+            val progress = dailyProgress.progress
+            val progressPercent = dailyProgress.percent
             val progressDetail = when {
                 targetMinutesToday <= 0 -> {
                     if (netMinutesToday > 0) {
@@ -496,10 +496,19 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
             val (progress, textWide) = calculateProgressDetail(520L, 480L, isNarrow = false)
             val (_, textNarrow) = calculateProgressDetail(520L, 480L, isNarrow = true)
 
-            Then("wird der Fortschritt auf 100% gedeckelt und Ziel erreicht gemeldet") {
+            Then("wird der Ring auf 100% begrenzt, der Prozentwert aber weitergezählt") {
                 progress shouldBe 1f
-                textWide shouldBe "100% (Ziel erreicht)"
-                textNarrow shouldBe "100%"
+                textWide shouldBe "108% (Ziel erreicht)"
+                textNarrow shouldBe "108%"
+            }
+        }
+
+        When("das Tagessoll überschritten wird") {
+            val progress = WidgetDailyProgress.calculate(520L, 480L)
+
+            Then("bleibt der Ring voll, während der Prozentwert über 100% steigt") {
+                progress.progress shouldBe 1f
+                progress.percent shouldBe 108
             }
         }
 

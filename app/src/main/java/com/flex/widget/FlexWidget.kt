@@ -88,7 +88,10 @@ class FlexWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .background(GlanceTheme.colors.surface)
                 .cornerRadius(20.dp)
-                .padding(horizontal = 10.dp, vertical = if (isCompactHeight) 6.dp else 8.dp)
+                .padding(
+                    horizontal = if (isHeroLayout && width >= 340.dp) 8.dp else 10.dp,
+                    vertical = if (isCompactHeight) 6.dp else 8.dp
+                )
         ) {
             // Header Row: Tap opens App
             Row(
@@ -204,10 +207,12 @@ class FlexWidget : GlanceAppWidget() {
                         .clickable(actionStartActivity<MainActivity>()),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val progress = if (state.targetMinutesToday > 0) {
-                        (state.netMinutesToday.toFloat() / state.targetMinutesToday.toFloat()).coerceIn(0f, 1f)
-                    } else 0f
-                    val progressPercent = (progress * 100).toInt()
+                    val dailyProgress = WidgetDailyProgress.calculate(
+                        state.netMinutesToday,
+                        state.targetMinutesToday
+                    )
+                    val progress = dailyProgress.progress
+                    val progressPercent = dailyProgress.percent
                     val isGoalReached = state.targetMinutesToday > 0 && state.netMinutesToday >= state.targetMinutesToday
 
                     val netH = state.netMinutesToday / 60
@@ -230,12 +235,29 @@ class FlexWidget : GlanceAppWidget() {
 
                     val context = LocalContext.current
                     val isDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+                    val gaugeSize = minOf(
+                        136.dp,
+                        maxOf(102.dp, width * 0.34f),
+                        maxOf(102.dp, height - 80.dp)
+                    )
+
+                    // Overtime label on the band, same format as the in-app gauge (+2h 54m / +54m)
+                    val overtimeMinutes = (state.netMinutesToday - state.targetMinutesToday).coerceAtLeast(0L)
+                    val overtimeText = if (state.targetMinutesToday > 0 && overtimeMinutes > 0) {
+                        val otH = overtimeMinutes / 60
+                        val otM = overtimeMinutes % 60
+                        if (otH > 0) "+${otH}h ${otM}m" else "+${otM}m"
+                    } else {
+                        null
+                    }
 
                     val gaugeBitmap = remember(
                         netTimeFormatted,
                         targetFormatted,
                         prognosisText,
                         progress,
+                        dailyProgress.overtimeProgress,
+                        overtimeText,
                         state.isClockRunning,
                         isGoalReached,
                         isDark
@@ -245,9 +267,11 @@ class FlexWidget : GlanceAppWidget() {
                             targetText = targetFormatted,
                             prognosisText = prognosisText,
                             progress = progress,
+                            overtimeProgress = dailyProgress.overtimeProgress,
                             isClockRunning = state.isClockRunning,
                             dailyGoalReached = isGoalReached,
-                            isDark = isDark
+                            isDark = isDark,
+                            overtimeText = overtimeText
                         )
                     }
 
@@ -260,7 +284,7 @@ class FlexWidget : GlanceAppWidget() {
                         Image(
                             provider = ImageProvider(gaugeBitmap),
                             contentDescription = "Arbeitszeit Ring",
-                            modifier = GlanceModifier.size(102.dp)
+                            modifier = GlanceModifier.size(gaugeSize)
                         )
                     }
 
@@ -466,9 +490,11 @@ class FlexWidget : GlanceAppWidget() {
                 }
 
                 if (isTall) {
-                    val progress = if (state.targetMinutesToday > 0) {
-                        (state.netMinutesToday.toFloat() / state.targetMinutesToday.toFloat()).coerceIn(0f, 1f)
-                    } else 0f
+                    val dailyProgress = WidgetDailyProgress.calculate(
+                        state.netMinutesToday,
+                        state.targetMinutesToday
+                    )
+                    val progress = dailyProgress.progress
 
                     Spacer(modifier = GlanceModifier.height(10.dp))
                     LinearProgressIndicator(
@@ -478,7 +504,7 @@ class FlexWidget : GlanceAppWidget() {
                         backgroundColor = GlanceTheme.colors.surfaceVariant
                     )
                     Spacer(modifier = GlanceModifier.height(4.dp))
-                    val progressPercent = (progress * 100).toInt()
+                    val progressPercent = dailyProgress.percent
                     val progressDetail = when {
                         state.targetMinutesToday <= 0 -> {
                             if (state.netMinutesToday > 0) {

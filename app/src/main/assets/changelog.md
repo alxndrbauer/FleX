@@ -21,6 +21,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Modernize UI across settings, screens and app widget
 - Polish layouts and day handling
 - Match work gauge overtime band to reference
+- Match work gauge design in home widget
 
 ### Bugfixes
 

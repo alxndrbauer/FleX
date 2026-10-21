@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.sp
 import com.flex.R
 
 /** Stroke width of the work ring. */
-private val strokeWidthDp = 17.5.dp
+private val strokeWidthDp = 24.dp
 /** Width of the overtime band as a share of the ring width; it is centred on the ring, inset evenly from both edges. */
 private val overtimeBandRatio = 0.6f
 /** Dark outline on both edges of the light ring over the overtime part, wrapping around its rounded tip. */
@@ -277,13 +277,16 @@ fun CircularWorkGauge(
                     otTextPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                     otTextPaint.textAlign = Paint.Align.LEFT
 
-                    // Path runs counter-clockwise over 90° centred on the band's middle, so the text reads upright
+                    // Text reads upright only if its path runs clockwise in the top half and counter-clockwise in the bottom half.
+                    // Pick the direction from the band's middle so the label is never upside down.
                     val bandMiddle = start + sweep / 2f
+                    val readsClockwise = kotlin.math.sin(Math.toRadians(bandMiddle.toDouble())) < 0.0
                     val textArcPath = Path().apply {
                         addArc(
                             topLeft.x, topLeft.y,
                             topLeft.x + diameter, topLeft.y + diameter,
-                            bandMiddle + 45f, -90f
+                            if (readsClockwise) bandMiddle - 45f else bandMiddle + 45f,
+                            if (readsClockwise) 90f else -90f
                         )
                     }
                     val arcLen = (90f / 360f) * (Math.PI.toFloat() * diameter)
