@@ -238,46 +238,47 @@ class BackupViewModelBehaviorSpec : BehaviorSpec({
         val mockDocDir = mockk<DocumentFile>(relaxed = true)
         every { mockDocDir.createFile("application/json", any()) } returns mockCreatedFile
         every { mockDocDir.listFiles() } returns arrayOf(existingBackup1, existingBackup2)
-        every { DocumentFile.fromTreeUri(any(), any()) } returns mockDocDir
+        every { DocumentFile.fromTreeUri(context, any()) } returns mockDocDir
 
         val outputStream = ByteArrayOutputStream()
         every { context.contentResolver.openOutputStream(fileUri) } returns outputStream
 
         every { backupPreferences.autoBackupDirectoryUri } returns "content://backups/dir"
         every { backupPreferences.maxLocalBackups } returns 5
-        coEvery { backupRepository.createBackupJson() } returns "{\"backup\":\"payload\"}"
 
         val viewModel = BackupViewModel(context, backupRepository, backupPreferences)
 
         When("runAutoBackupNow() ausgeführt wird") {
-            viewModel.runAutoBackupNow()
+            Then("wird das Backup erstellt und vollständig gespeichert") {
+                coEvery { backupRepository.createBackupJson() } returns "{\"backup\":\"payload\"}"
+                viewModel.runAutoBackupNow()
 
-            Then("wird das Backup-JSON vom Repository erzeugt") {
-                coVerify { backupRepository.createBackupJson() }
-            }
-
-            Then("wird die Datei über den ContentResolver geschrieben") {
-                outputStream.toString(Charsets.UTF_8.name()) shouldBe "{\"backup\":\"payload\"}"
-            }
-
-            Then("wird der Zeitstempel des letzten Backups aktualisiert") {
-                verify { backupPreferences.lastBackupTimestamp = any() }
-            }
-
-            Then("wird der Erfolgsstatus im UI-State gemeldet") {
                 eventually(5.seconds) {
                     viewModel.uiState.value.isLoading.shouldBeFalse()
                     viewModel.uiState.value.message shouldBe "Backup erfolgreich erstellt"
                 }
+
+                coVerify { backupRepository.createBackupJson() }
+                outputStream.toString(Charsets.UTF_8.name()) shouldBe "{\"backup\":\"payload\"}"
+                verify { backupPreferences.lastBackupTimestamp = any() }
             }
         }
+    }
 
-        When("beim Erstellen des Backups ein Fehler auftritt") {
-            coEvery { backupRepository.createBackupJson() } throws RuntimeException("Datenbank gesperrt")
+    Given("bei der manuellen Ausführung eines lokalen Backups ein Fehler auftritt") {
+        val (context, backupRepository, backupPreferences) = setupMocks()
+        val mockUri = mockk<Uri>(relaxed = true)
+        every { Uri.parse(any()) } returns mockUri
+        val mockDocDir = mockk<DocumentFile>(relaxed = true)
+        every { DocumentFile.fromTreeUri(context, any()) } returns mockDocDir
+        every { backupPreferences.autoBackupDirectoryUri } returns "content://backups/dir"
+        val viewModel = BackupViewModel(context, backupRepository, backupPreferences)
 
-            viewModel.runAutoBackupNow()
-
+        When("das Repository beim Erstellen des Backups einen Fehler wirft") {
             Then("wird die Fehlermeldung im UI-State angezeigt") {
+                coEvery { backupRepository.createBackupJson() } throws RuntimeException("Datenbank gesperrt")
+                viewModel.runAutoBackupNow()
+
                 eventually(5.seconds) {
                     viewModel.uiState.value.isLoading.shouldBeFalse()
                     viewModel.uiState.value.message shouldBe "Backup fehlgeschlagen: Datenbank gesperrt"
