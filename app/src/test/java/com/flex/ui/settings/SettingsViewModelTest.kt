@@ -21,6 +21,7 @@ import com.flex.data.export.IcsExportService
 import com.flex.domain.model.SyncPlannedDaysResult
 import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.usecase.SyncPlannedDaysWithWorkTimeRuleUseCase
+import com.flex.widget.WidgetUpdater
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -81,12 +82,16 @@ class SettingsViewModelTest : BaseUnitTest() {
     @Mock
     private lateinit var syncPlannedDaysWithWorkTimeRuleUseCase: SyncPlannedDaysWithWorkTimeRuleUseCase
 
+    @Mock
+    private lateinit var widgetUpdater: WidgetUpdater
+
     private lateinit var viewModel: SettingsViewModel
 
     private fun createViewModel(): SettingsViewModel = SettingsViewModel(
         context, getSettings, settingsRepository, themePreferences,
         appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService,
-        workDayRepository, icsExportService, syncPlannedDaysWithWorkTimeRuleUseCase
+        workDayRepository, icsExportService, syncPlannedDaysWithWorkTimeRuleUseCase,
+        widgetUpdater
     )
 
     @BeforeEach
@@ -650,6 +655,17 @@ class SettingsViewModelTest : BaseUnitTest() {
         viewModel.setGaugeColorScheme(GaugeColorScheme.CLASSIC_GREEN)
 
         verify(themePreferences).setGaugeColorScheme(GaugeColorScheme.CLASSIC_GREEN)
+    }
+
+    @Test
+    fun `setGaugeColorScheme triggers widget update via WidgetUpdater`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.setGaugeColorScheme(GaugeColorScheme.CLASSIC_GREEN)
+        advanceUntilIdle()
+
+        verify(widgetUpdater).updateAll()
     }
 
     @Test

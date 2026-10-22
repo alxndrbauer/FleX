@@ -19,6 +19,7 @@ import com.flex.domain.usecase.SyncPlannedDaysWithWorkTimeRuleUseCase
 import com.flex.geofence.GeofenceManager
 import com.flex.ui.settings.GeofenceStatus
 import com.flex.ui.settings.SettingsViewModel
+import com.flex.widget.WidgetUpdater
 import com.flex.wifi.WifiMonitor
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactly
@@ -66,6 +67,7 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
         workDayRepository: WorkDayRepository = mockk(relaxed = true),
         icsExportService: IcsExportService = mockk(relaxed = true),
         syncPlannedDaysWithWorkTimeRuleUseCase: SyncPlannedDaysWithWorkTimeRuleUseCase = mockk(relaxed = true),
+        widgetUpdater: WidgetUpdater = mockk(relaxed = true),
         initialSettings: Settings = Settings(),
         initialQuotaRules: List<QuotaRule> = emptyList(),
         initialWorkTimeRules: List<WorkTimeRule> = emptyList()
@@ -87,7 +89,8 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
             calendarSyncService = calendarSyncService,
             workDayRepository = workDayRepository,
             icsExportService = icsExportService,
-            syncPlannedDaysWithWorkTimeRuleUseCase = syncPlannedDaysWithWorkTimeRuleUseCase
+            syncPlannedDaysWithWorkTimeRuleUseCase = syncPlannedDaysWithWorkTimeRuleUseCase,
+            widgetUpdater = widgetUpdater
         )
     }
 

@@ -21,7 +21,7 @@ import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.Settings
 import com.flex.domain.model.ThemeMode
 import com.flex.domain.model.WorkTimeRule
-import com.flex.widget.FlexWidgetUpdater
+import com.flex.widget.WidgetUpdater
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.GetSettingsUseCase
@@ -62,7 +62,8 @@ class SettingsViewModel @Inject constructor(
     private val calendarSyncService: CalendarSyncService,
     private val workDayRepository: WorkDayRepository,
     private val icsExportService: IcsExportService,
-    private val syncPlannedDaysWithWorkTimeRuleUseCase: SyncPlannedDaysWithWorkTimeRuleUseCase
+    private val syncPlannedDaysWithWorkTimeRuleUseCase: SyncPlannedDaysWithWorkTimeRuleUseCase,
+    private val widgetUpdater: WidgetUpdater
 ) : ViewModel() {
 
     private val _settings = MutableStateFlow(Settings())
@@ -195,7 +196,7 @@ class SettingsViewModel @Inject constructor(
 
     fun setGaugeColorScheme(scheme: GaugeColorScheme) {
         themePreferences.setGaugeColorScheme(scheme)
-        viewModelScope.launch { FlexWidgetUpdater.updateAll(context) }
+        viewModelScope.launch { widgetUpdater.updateAll() }
     }
 
     fun setAppIconVariant(variant: AppIconVariant) {

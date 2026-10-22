@@ -31,6 +31,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Fix active home office contrast and enlarge time text in quick actions widget
 - Align tracking and year overview
 - Remove redundant null checks in home screen
+- Decouple settings widget update from Glance for unit tests
 
 ## [1.8.2] - 2026-10-08
 
