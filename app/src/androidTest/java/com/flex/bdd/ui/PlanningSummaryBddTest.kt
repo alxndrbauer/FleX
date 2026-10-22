@@ -55,8 +55,10 @@ class PlanningSummaryBddTest {
                 composeTestRule.waitForIdle()
 
                 composeTestRule.onNodeWithText("Oktober 2026").assertIsDisplayed()
-                composeTestRule.onNodeWithText("✓").assertIsDisplayed()
-                composeTestRule.onNodeWithText("Büro: 12  HO: 8  Urlaub: 2").assertIsDisplayed()
+                composeTestRule.onNodeWithText("Quote erfüllt ✓").assertIsDisplayed()
+                composeTestRule.onNodeWithText("12 Büro").assertIsDisplayed()
+                composeTestRule.onNodeWithText("8 HO").assertIsDisplayed()
+                composeTestRule.onNodeWithText("2 Urlaub").assertIsDisplayed()
                 composeTestRule.onNodeWithText("20 geplant").assertIsDisplayed()
             }
 
@@ -104,9 +106,10 @@ class PlanningSummaryBddTest {
             }
 
             Then("wird das Fehl-Symbol ✗ angezeigt") {
-                composeTestRule.onNodeWithText("✗").assertIsDisplayed()
+                composeTestRule.onNodeWithText("Quote offen").assertIsDisplayed()
                 composeTestRule.onNodeWithText("November 2026").assertIsDisplayed()
-                composeTestRule.onNodeWithText("Büro: 2  HO: 8  Urlaub: 0").assertIsDisplayed()
+                composeTestRule.onNodeWithText("2 Büro").assertIsDisplayed()
+                composeTestRule.onNodeWithText("8 HO").assertIsDisplayed()
             }
         }
     }
