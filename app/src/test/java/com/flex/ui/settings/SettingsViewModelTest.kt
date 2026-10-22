@@ -10,6 +10,7 @@ import android.content.Context
 import com.flex.data.local.AppIconPreferences
 import com.flex.data.local.ThemePreferences
 import com.flex.domain.model.AppIconVariant
+import com.flex.domain.model.GaugeColorScheme
 import com.flex.domain.model.ThemeMode
 import com.flex.geofence.GeofenceManager
 import com.flex.wifi.WifiMonitor
@@ -96,6 +97,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
         whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
         whenever(themePreferences.themeModeFlow).thenReturn(MutableStateFlow(ThemeMode.SYSTEM))
+        whenever(themePreferences.gaugeColorSchemeFlow).thenReturn(MutableStateFlow(GaugeColorScheme.THEME))
         whenever(appIconPreferences.variantFlow).thenReturn(MutableStateFlow(AppIconVariant.CLASSIC))
     }
 
@@ -638,5 +640,26 @@ class SettingsViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         assertThat(viewModel.themeMode.value).isEqualTo(ThemeMode.AMOLED)
+    }
+
+    @Test
+    fun `setGaugeColorScheme delegates to themePreferences`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.setGaugeColorScheme(GaugeColorScheme.CLASSIC_GREEN)
+
+        verify(themePreferences).setGaugeColorScheme(GaugeColorScheme.CLASSIC_GREEN)
+    }
+
+    @Test
+    fun `gaugeColorScheme state exposes CLASSIC_GREEN from themePreferences`() = runTest {
+        val schemeFlow = MutableStateFlow(GaugeColorScheme.CLASSIC_GREEN)
+        whenever(themePreferences.gaugeColorSchemeFlow).thenReturn(schemeFlow)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.gaugeColorScheme.value).isEqualTo(GaugeColorScheme.CLASSIC_GREEN)
     }
 }
