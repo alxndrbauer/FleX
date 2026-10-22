@@ -47,7 +47,10 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.flex.MainActivity
 import com.flex.R
+import com.flex.data.local.ThemePreferences
+import com.flex.domain.model.GaugeColorScheme
 import com.flex.domain.model.WorkLocation
+import com.flex.ui.theme.ClassicGreenGauge
 import dagger.hilt.android.EntryPointAccessors
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -65,17 +68,19 @@ class FlexWidget : GlanceAppWidget() {
         )
         val dataProvider = entryPoint.flexWidgetDataProvider()
         val initialState = dataProvider.getWidgetState()
+        val themePreferences = entryPoint.themePreferences()
 
         provideContent {
             GlanceTheme {
                 val state by dataProvider.getWidgetStateFlow().collectAsState(initial = initialState)
-                FlexWidgetContent(state = state)
+                val gaugeScheme by themePreferences.gaugeColorSchemeFlow.collectAsState()
+                FlexWidgetContent(state = state, gaugeScheme = gaugeScheme)
             }
         }
     }
 
     @Composable
-    private fun FlexWidgetContent(state: WidgetState) {
+    private fun FlexWidgetContent(state: WidgetState, gaugeScheme: GaugeColorScheme) {
         val size = LocalSize.current
         val width = size.width
         val height = size.height
@@ -236,16 +241,28 @@ class FlexWidget : GlanceAppWidget() {
 
                     val context = LocalContext.current
                     val isDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-                    // Gauge colours follow GlanceTheme (same roles as CircularWorkGauge in the app)
-                    val gaugeColors = GaugeColors(
-                        ring = GlanceTheme.colors.primary.getColor(context).toArgb(),
-                        overtimeBand = GlanceTheme.colors.tertiary.getColor(context).toArgb(),
-                        center = GlanceTheme.colors.primaryContainer.getColor(context).toArgb(),
-                        track = GlanceTheme.colors.surfaceVariant.getColor(context).toArgb(),
-                        text = GlanceTheme.colors.onPrimaryContainer.getColor(context).toArgb(),
-                        outline = GlanceTheme.colors.surface.getColor(context).toArgb(),
-                        overtimeText = GlanceTheme.colors.onTertiary.getColor(context).toArgb(),
-                    )
+                    // Gauge colours: classic green when selected, otherwise GlanceTheme (same roles as CircularWorkGauge)
+                    val gaugeColors = if (gaugeScheme == GaugeColorScheme.CLASSIC_GREEN) {
+                        GaugeColors(
+                            ring = ClassicGreenGauge.ring.toArgb(),
+                            overtimeBand = ClassicGreenGauge.overtimeBand.toArgb(),
+                            center = ClassicGreenGauge.center.toArgb(),
+                            track = ClassicGreenGauge.track.toArgb(),
+                            text = ClassicGreenGauge.text.toArgb(),
+                            outline = ClassicGreenGauge.outline.toArgb(),
+                            overtimeText = ClassicGreenGauge.text.toArgb(),
+                        )
+                    } else {
+                        GaugeColors(
+                            ring = GlanceTheme.colors.primary.getColor(context).toArgb(),
+                            overtimeBand = GlanceTheme.colors.tertiary.getColor(context).toArgb(),
+                            center = GlanceTheme.colors.primaryContainer.getColor(context).toArgb(),
+                            track = GlanceTheme.colors.surfaceVariant.getColor(context).toArgb(),
+                            text = GlanceTheme.colors.onPrimaryContainer.getColor(context).toArgb(),
+                            outline = GlanceTheme.colors.surface.getColor(context).toArgb(),
+                            overtimeText = GlanceTheme.colors.onTertiary.getColor(context).toArgb(),
+                        )
+                    }
                     val gaugeSize = minOf(
                         136.dp,
                         maxOf(102.dp, width * 0.34f),

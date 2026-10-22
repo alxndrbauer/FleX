@@ -64,6 +64,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -99,6 +100,7 @@ import com.flex.data.update.UpdateDownloader
 import com.flex.data.update.UpdateInfo
 import com.flex.domain.model.AppIconVariant
 import com.flex.domain.model.FederalState
+import com.flex.domain.model.GaugeColorScheme
 import com.flex.domain.model.ThemeMode
 import com.flex.ui.update.UpdateDialog
 import com.flex.ui.yearchange.YearChangeDialog
@@ -123,6 +125,7 @@ fun SettingsScreen(
     val quotaRules by viewModel.quotaRules.collectAsState()
     val workTimeRules by viewModel.workTimeRules.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
+    val gaugeColorScheme by viewModel.gaugeColorScheme.collectAsState()
     val appIconVariant by viewModel.appIconVariant.collectAsState()
     val yearChangeState by yearChangeViewModel.uiState.collectAsState()
 
@@ -136,6 +139,7 @@ fun SettingsScreen(
 
     // Dialog visibility state
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showGaugeColorDialog by remember { mutableStateOf(false) }
     var showAppIconDialog by remember { mutableStateOf(false) }
     var showDailyWorkTimeDialog by remember { mutableStateOf(false) }
     var showMonthlyWorkTimeDialog by remember { mutableStateOf(false) }
@@ -233,6 +237,18 @@ fun SettingsScreen(
                     iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
                     iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     onClick = { showThemeDialog = true }
+                )
+                SettingsGroupDivider()
+                SettingsItem(
+                    title = "Ring-Farbe",
+                    subtitle = when (gaugeColorScheme) {
+                        GaugeColorScheme.THEME -> "Design-Farben"
+                        GaugeColorScheme.CLASSIC_GREEN -> "Klassisch grün"
+                    },
+                    icon = Icons.Default.Palette,
+                    iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    onClick = { showGaugeColorDialog = true }
                 )
                 SettingsGroupDivider()
                 SettingsItem(
@@ -698,6 +714,62 @@ fun SettingsScreen(
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     showThemeDialog = false
                 }) {
+                    Text("Schließen")
+                }
+            }
+        )
+    }
+
+    if (showGaugeColorDialog) {
+        AlertDialog(
+            onDismissRequest = { showGaugeColorDialog = false },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Palette,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Ring-Farbe",
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            },
+            text = {
+                val options = listOf(
+                    GaugeColorScheme.THEME to "Design-Farben",
+                    GaugeColorScheme.CLASSIC_GREEN to "Klassisch grün"
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    options.forEach { (scheme, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    viewModel.setGaugeColorScheme(scheme)
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = gaugeColorScheme == scheme,
+                                onClick = null
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showGaugeColorDialog = false }) {
                     Text("Schließen")
                 }
             }

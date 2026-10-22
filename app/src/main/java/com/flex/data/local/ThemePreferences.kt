@@ -2,6 +2,7 @@ package com.flex.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.flex.domain.model.GaugeColorScheme
 import com.flex.domain.model.ThemeMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +28,22 @@ class ThemePreferences @Inject constructor(
         _themeMode.value = mode
     }
 
+    private val _gaugeColorScheme = MutableStateFlow(
+        runCatching {
+            GaugeColorScheme.valueOf(
+                prefs.getString(KEY_GAUGE_COLOR_SCHEME, GaugeColorScheme.THEME.name) ?: GaugeColorScheme.THEME.name
+            )
+        }.getOrDefault(GaugeColorScheme.THEME)
+    )
+    val gaugeColorSchemeFlow: StateFlow<GaugeColorScheme> = _gaugeColorScheme.asStateFlow()
+
+    fun setGaugeColorScheme(scheme: GaugeColorScheme) {
+        prefs.edit().putString(KEY_GAUGE_COLOR_SCHEME, scheme.name).apply()
+        _gaugeColorScheme.value = scheme
+    }
+
     companion object {
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_GAUGE_COLOR_SCHEME = "gauge_color_scheme"
     }
 }

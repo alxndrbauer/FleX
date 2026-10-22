@@ -65,6 +65,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val themeMode by themePreferences.themeModeFlow.collectAsState()
+            val gaugeColorScheme by themePreferences.gaugeColorSchemeFlow.collectAsState()
             val onboardingCompleted by onboardingPreferences.completedFlow.collectAsState()
             val systemDark = isSystemInDarkTheme()
             val darkTheme = when (themeMode) {
@@ -98,16 +99,20 @@ class MainActivity : ComponentActivity() {
                 amoled = isAmoled,
                 dynamicColor = dynamicColor
             ) {
-                Surface(
-                    modifier = androidx.compose.ui.Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.flex.ui.theme.LocalGaugeColorScheme provides gaugeColorScheme
                 ) {
-                    FlexNavGraph(
-                        onboardingCompleted = onboardingCompleted,
-                        onOnboardingFinished = { onboardingPreferences.setCompleted() },
-                        onOnboardingReset = { onboardingPreferences.reset() },
-                        initialRoute = initialRouteState.value
-                    )
+                    Surface(
+                        modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        FlexNavGraph(
+                            onboardingCompleted = onboardingCompleted,
+                            onOnboardingFinished = { onboardingPreferences.setCompleted() },
+                            onOnboardingReset = { onboardingPreferences.reset() },
+                            initialRoute = initialRouteState.value
+                        )
+                    }
                 }
                 pendingUpdate?.let { update ->
                     UpdateDialog(

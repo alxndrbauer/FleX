@@ -48,6 +48,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.flex.R
+import com.flex.domain.model.GaugeColorScheme
+import com.flex.ui.theme.ClassicGreenGauge
+import com.flex.ui.theme.LocalGaugeColorScheme
 
 /** Stroke width of the work ring. */
 private val strokeWidthDp = 24.dp
@@ -105,15 +108,16 @@ fun CircularWorkGauge(
         )
     }
 
-    // Theme palette: primary ring, tertiary overtime band (contrasts with primary), primaryContainer centre
+    // Colour source: app theme (default) or the fixed classic green
     val colors = MaterialTheme.colorScheme
-    val ringColor = colors.primary
-    val overtimeBandColor = colors.tertiary
-    val overtimeOutlineColor = colors.surface
-    val centerColor = colors.primaryContainer
-    val trackColor = colors.surfaceContainerHighest
-    val textColor = colors.onPrimaryContainer
-    val overtimeTextColor = colors.onTertiary
+    val classic = LocalGaugeColorScheme.current == GaugeColorScheme.CLASSIC_GREEN
+    val ringColor = if (classic) ClassicGreenGauge.ring else colors.primary
+    val overtimeBandColor = if (classic) ClassicGreenGauge.overtimeBand else colors.tertiary
+    val overtimeOutlineColor = if (classic) ClassicGreenGauge.outline else colors.surface
+    val centerColor = if (classic) ClassicGreenGauge.center else colors.primaryContainer
+    val trackColor = if (classic) ClassicGreenGauge.track else colors.surfaceContainerHighest
+    val textColor = if (classic) ClassicGreenGauge.text else colors.onPrimaryContainer
+    val overtimeTextColor = if (classic) ClassicGreenGauge.text else colors.onTertiary
 
     val otTextPaint = remember {
         Paint().apply {

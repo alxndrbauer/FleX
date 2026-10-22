@@ -16,10 +16,12 @@ import com.flex.data.export.IcsExportService
 import com.flex.domain.model.AppIconVariant
 import com.flex.domain.model.DayType
 import com.flex.domain.model.FederalState
+import com.flex.domain.model.GaugeColorScheme
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.Settings
 import com.flex.domain.model.ThemeMode
 import com.flex.domain.model.WorkTimeRule
+import com.flex.widget.FlexWidgetUpdater
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.GetSettingsUseCase
@@ -79,6 +81,7 @@ class SettingsViewModel @Inject constructor(
     val geofenceStatus: StateFlow<GeofenceStatus> = _geofenceStatus.asStateFlow()
 
     val themeMode: StateFlow<ThemeMode> = themePreferences.themeModeFlow
+    val gaugeColorScheme: StateFlow<GaugeColorScheme> = themePreferences.gaugeColorSchemeFlow
     val appIconVariant: StateFlow<AppIconVariant> = appIconPreferences.variantFlow
 
     init {
@@ -188,6 +191,11 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeMode(mode: ThemeMode) {
         themePreferences.setThemeMode(mode)
+    }
+
+    fun setGaugeColorScheme(scheme: GaugeColorScheme) {
+        themePreferences.setGaugeColorScheme(scheme)
+        viewModelScope.launch { FlexWidgetUpdater.updateAll(context) }
     }
 
     fun setAppIconVariant(variant: AppIconVariant) {

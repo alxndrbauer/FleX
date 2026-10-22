@@ -1,6 +1,7 @@
 package com.flex.widget
 
 import com.flex.data.local.PausePreferences
+import com.flex.data.local.ThemePreferences
 import com.flex.domain.events.DataChangeEventBus
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.usecase.AutoClockOutUseCase
@@ -22,4 +23,5 @@ interface FlexWidgetEntryPoint {
     fun settingsRepository(): SettingsRepository
     fun pausePreferences(): PausePreferences
     fun dataChangeEventBus(): DataChangeEventBus
+    fun themePreferences(): ThemePreferences
 }
