@@ -1,72 +1,160 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Static RemoteViews preview of FlexQuickActionsWidget (wide bar). Colours follow DarkColorScheme.
+  Pill surface is the card shape tinted #333538 (surfaceVariant); tiles and the time chip use the
+  16dp chip shape tinted per tile. No text labels on the action tiles.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="horizontal"
-    android:background="@drawable/bg_widget_preview_card"
+    android:background="@drawable/bg_widget_preview_pill_wide"
+    android:backgroundTint="#FF333538"
     android:gravity="center_vertical"
-    android:padding="6dp">
+    android:orientation="horizontal"
+    android:paddingStart="6dp"
+    android:paddingEnd="6dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
 
-    <!-- Tile 1: Büro (Neutral im ausgestempelten Zustand) -->
+    <!-- Time chip: 78% progress fill on dark track, stacked digital time and "Std" -->
+    <FrameLayout
+        android:layout_width="88dp"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_widget_preview_chip"
+        android:backgroundTint="#FF121316">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="78"
+                android:background="@drawable/bg_widget_preview_chip"
+                android:backgroundTint="#FF4DA3FF" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="22" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:text="06"
+                    android:textColor="#FF003258"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:text="15"
+                    android:textColor="#FF003258"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:layout_marginStart="2dp"
+                android:layout_marginBottom="10dp"
+                android:includeFontPadding="false"
+                android:text="Std"
+                android:textColor="#FF003258"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Tile 1: Büro (active, primary) -->
     <FrameLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
+        android:layout_marginStart="5dp"
         android:layout_weight="1"
-        android:background="@drawable/bg_widget_preview_btn">
+        android:background="@drawable/bg_widget_preview_chip"
+        android:backgroundTint="#FF4DA3FF">
 
         <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_widget_preview_office"
-            android:contentDescription="@null" />
+            android:contentDescription="@null"
+            android:src="@drawable/ic_widget_office"
+            android:tint="#FF003258" />
     </FrameLayout>
 
     <!-- Tile 2: Home-Office -->
     <FrameLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="1"
         android:layout_marginStart="5dp"
-        android:background="@drawable/bg_widget_preview_btn">
+        android:layout_weight="1"
+        android:background="@drawable/bg_widget_preview_chip"
+        android:backgroundTint="#FF1A1C1E">
 
         <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_widget_preview_home"
-            android:contentDescription="@null" />
+            android:contentDescription="@null"
+            android:src="@drawable/ic_widget_home"
+            android:tint="#FFC4C6D0" />
     </FrameLayout>
 
     <!-- Tile 3: Pause -->
     <FrameLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="1"
         android:layout_marginStart="5dp"
-        android:background="@drawable/bg_widget_preview_btn">
+        android:layout_weight="1"
+        android:background="@drawable/bg_widget_preview_chip"
+        android:backgroundTint="#FF1A1C1E">
 
         <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_widget_preview_pause"
-            android:contentDescription="@null" />
+            android:contentDescription="@null"
+            android:src="@drawable/ic_widget_pause"
+            android:tint="#FFC4C6D0" />
     </FrameLayout>
 
-    <!-- Tile 4: Stopp -->
+    <!-- Tile 4: Stopp (error) -->
     <FrameLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="1"
         android:layout_marginStart="5dp"
-        android:background="@drawable/bg_widget_preview_btn">
+        android:layout_weight="1"
+        android:background="@drawable/bg_widget_preview_chip"
+        android:backgroundTint="#FF601410">
 
         <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_widget_preview_stop"
-            android:contentDescription="@null" />
+            android:contentDescription="@null"
+            android:src="@drawable/ic_widget_stop"
+            android:tint="#FFF2B8B5" />
     </FrameLayout>
 </LinearLayout>

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Widget preview only: secondaryContainer Home-Office button (#1E4E2B, 11dp) -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#4F378B" />
-    <corners android:radius="12dp" />
+    <solid android:color="#FF1E4E2B" />
+    <corners android:radius="11dp" />
 </shape>

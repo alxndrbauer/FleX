@@ -255,12 +255,12 @@ class FlexWidget : GlanceAppWidget() {
                     } else {
                         GaugeColors(
                             ring = GlanceTheme.colors.primary.getColor(context).toArgb(),
-                            overtimeBand = GlanceTheme.colors.tertiary.getColor(context).toArgb(),
+                            overtimeBand = GlanceTheme.colors.tertiaryContainer.getColor(context).toArgb(),
                             center = GlanceTheme.colors.primaryContainer.getColor(context).toArgb(),
                             track = GlanceTheme.colors.surfaceVariant.getColor(context).toArgb(),
                             text = GlanceTheme.colors.onPrimaryContainer.getColor(context).toArgb(),
                             outline = GlanceTheme.colors.surface.getColor(context).toArgb(),
-                            overtimeText = GlanceTheme.colors.onTertiary.getColor(context).toArgb(),
+                            overtimeText = GlanceTheme.colors.onTertiaryContainer.getColor(context).toArgb(),
                         )
                     }
                     val gaugeSize = minOf(

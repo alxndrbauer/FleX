@@ -124,6 +124,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.flex.domain.model.DayType
+import com.flex.domain.model.FlextimeBalance
 import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
@@ -460,6 +461,35 @@ fun MonthScreen(
                             fontWeight = FontWeight.ExtraBold,
                             color = diffColor
                         )
+                    }
+                }
+                val monthFlexWarning = state.prognosisFlextime.thresholdWarningMessage
+                if (monthFlexWarning != null) {
+                    val monthFlexNegative = state.prognosisFlextime.totalMinutes < 0L
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = (if (monthFlexNegative) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.tertiaryContainer).copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                modifier = Modifier.size(15.dp),
+                                tint = if (monthFlexNegative) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                            Text(
+                                text = monthFlexWarning,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (monthFlexNegative) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
                     }
                 }
 
@@ -2017,6 +2047,35 @@ private fun MonthFlextimeDetailsSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
+
+                    val sheetFlexWarning = FlextimeBalance.warningMessage(totalMin)
+                    if (sheetFlexWarning != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = (if (totalMin < 0L) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.tertiaryContainer).copy(alpha = 0.6f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = if (totalMin < 0L) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                Text(
+                                    text = sheetFlexWarning,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (totalMin < 0L) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

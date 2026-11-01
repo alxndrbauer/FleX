@@ -8,6 +8,8 @@ Saldo = Anfangssaldo + Summe der täglichen Differenzen.
 • Wochenendarbeit: volle Nettozeit
 • Gleittag: −Tagessoll
 • Urlaub / Sonderurlaub: neutral (0)
+
+Hinweis: Ab ±25 Stunden wird eine Warnung angezeigt.
 """.trim()
 
 const val TOOLTIP_OVERTIME_TITLE = "Überstunden-Saldo"

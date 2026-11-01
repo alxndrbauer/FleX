@@ -174,6 +174,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.flex.R
 import com.flex.domain.model.BreakViolationType
 import com.flex.domain.model.DayType
+import com.flex.domain.model.FlextimeBalance
 import com.flex.domain.model.ProjectedEndTime
 import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.TimeBlock
@@ -1137,6 +1138,7 @@ private fun HeroCard(
                         borderGlowColor = if (isPos) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
                         title = "Gleitzeit",
                         value = balanceText,
+                        subtitle = FlextimeBalance.shortWarningBadge(balanceMin),
                         valueColor = if (isPos) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error,
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f),
                         isLive = isLiveFlextime,
@@ -1373,6 +1375,17 @@ private fun HeroCard(
                     fontWeight = FontWeight.Bold
                 )
             }
+            val currentFlexMin = (if (state.isClockRunning && isToday) state.liveFlextimeBalance ?: state.flextimeBalance else state.flextimeBalance).totalMinutes
+            val flexWarning = FlextimeBalance.warningMessage(currentFlexMin)
+            if (flexWarning != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "⚠ $flexWarning",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (currentFlexMin < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
@@ -1504,9 +1517,11 @@ private fun HeroMetricCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     if (subtitle != null) {
-                        val subColor = when (subtitle) {
-                            "Pflicht!" -> MaterialTheme.colorScheme.error
-                            "OK ✓" -> MaterialTheme.colorScheme.secondary
+                        val subColor = when {
+                            subtitle == "Pflicht!" -> MaterialTheme.colorScheme.error
+                            subtitle == "OK ✓" -> MaterialTheme.colorScheme.secondary
+                            subtitle.startsWith("⚠") ->
+                                if (subtitle.contains("< -25h")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         }
                         Text(
@@ -1848,6 +1863,35 @@ private fun FlextimeDetailsSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
+
+                    val totalWarning = FlextimeBalance.warningMessage(totalMin)
+                    if (totalWarning != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = (if (totalMin < 0) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.tertiaryContainer).copy(alpha = 0.6f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = if (totalMin < 0) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                Text(
+                                    text = totalWarning,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (totalMin < 0) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
+                    }
 
                     if (!isToday && totalMin != state.flextimeBalance.totalMinutes) {
                         Spacer(modifier = Modifier.height(2.dp))

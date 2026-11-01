@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Widget preview only: neutral action button (surfaceVariant #333538, 11dp) -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#36343B" />
-    <corners android:radius="12dp" />
+    <solid android:color="#FF333538" />
+    <corners android:radius="11dp" />
 </shape>

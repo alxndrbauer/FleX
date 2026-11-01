@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget preview only: static circular work gauge (78% progress), geometry mirrors
+  CircularWorkGaugeBitmapRenderer on a 152-unit reference (stroke 24, ring radius 64).
+  Track #333538, progress #4DA3FF (round caps), centre #004881. Text is drawn by the layout.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="112dp"
+    android:height="112dp"
+    android:viewportWidth="152"
+    android:viewportHeight="152">
+    <path
+        android:fillColor="#FF004881"
+        android:pathData="M24,76 A52,52 0 1,0 128,76 A52,52 0 1,0 24,76 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF333538"
+        android:strokeWidth="24"
+        android:pathData="M76,12 A64,64 0 1,1 76,140 A64,64 0 1,1 76,12 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF4DA3FF"
+        android:strokeWidth="24"
+        android:strokeLineCap="round"
+        android:pathData="M76,12 A64,64 0 1,1 13.13,64.01" />
+</vector>

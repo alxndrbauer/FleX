@@ -1,236 +1,410 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+ Static RemoteViews preview of FlexWidget (hero layout). Colours follow DarkColorScheme.
+ Designed for a 250x142dp frame (3x2 cells): 10dp padding leaves 122dp for header (16),
+ hero (70) and action row (28), with 4dp gaps. Text and card sizes are compressed to fit.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="@drawable/bg_widget_preview_card"
-    android:padding="14dp">
+    android:orientation="vertical"
+    android:padding="10dp">
 
     <!-- Header Row -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:layout_height="16dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_notification"
+            android:tint="#FF4DA3FF" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:includeFontPadding="false"
+            android:text="FleX"
+            android:textColor="#FF4DA3FF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:includeFontPadding="false"
+            android:text="• Fr., 23. Okt."
+            android:textColor="#FFC4C6D0"
+            android:textSize="10sp" />
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="FleX"
-            android:textColor="#D0BCFF"
-            android:textSize="15sp"
-            android:textStyle="bold" />
+            android:layout_weight="1" />
 
+        <!-- Status pill -->
         <LinearLayout
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:layout_height="16dp"
             android:background="@drawable/bg_widget_preview_pill"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp">
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="6dp"
+            android:paddingEnd="7dp">
 
             <ImageView
-                android:layout_width="12dp"
-                android:layout_height="12dp"
-                android:src="@drawable/ic_widget_preview_office"
-                android:contentDescription="@null" />
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_widget_office"
+                android:tint="#FFD6E3FF" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
+                android:layout_marginStart="3dp"
+                android:includeFontPadding="false"
                 android:text="Büro"
-                android:textColor="#EADDFF"
-                android:textSize="11sp"
+                android:textColor="#FFD6E3FF"
+                android:textSize="9sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Metrics Row -->
+    <!-- Hero Row: gauge (left) and metric cards (right) -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:layout_height="70dp"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <FrameLayout
+            android:layout_width="84dp"
+            android:layout_height="70dp">
+
+            <ImageView
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_widget_preview_gauge" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:text="6h 15m"
+                    android:textColor="#FFD6E3FF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:text="von 8h 0min"
+                    android:textColor="#FFD6E3FF"
+                    android:textSize="7sp" />
+
+                <!-- Estimated end time pill -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:background="@drawable/bg_widget_preview_chip"
+                    android:backgroundTint="#FF003562"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="6dp"
+                    android:paddingTop="1dp"
+                    android:paddingBottom="1dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:text="~16:30"
+                        android:textColor="#FFD6E3FF"
+                        android:textSize="7sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginStart="10dp"
             android:layout_weight="1"
-            android:orientation="horizontal"
-            android:gravity="bottom">
+            android:orientation="vertical">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="06:15"
-                android:textColor="#E6E1E5"
-                android:textSize="24sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:layout_marginBottom="2dp"
-                android:text="/ 08:00 Std."
-                android:textColor="#CAC4D0"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="end">
-
-            <!-- Flextime Chip -->
+            <!-- Gleitzeit -->
             <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="22dp"
+                android:background="@drawable/bg_widget_preview_metric"
+                android:backgroundTint="#FF331E48"
                 android:gravity="center_vertical"
-                android:background="@drawable/bg_widget_preview_chip"
-                android:paddingStart="6dp"
-                android:paddingEnd="6dp"
-                android:paddingTop="2dp"
-                android:paddingBottom="2dp">
+                android:orientation="horizontal"
+                android:paddingStart="3dp"
+                android:paddingEnd="6dp">
 
-                <ImageView
-                    android:layout_width="11dp"
-                    android:layout_height="11dp"
-                    android:src="@drawable/ic_widget_preview_trending"
-                    android:contentDescription="@null" />
+                <LinearLayout
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:background="@drawable/bg_widget_preview_chip"
+                    android:backgroundTint="#FF4C2F6E"
+                    android:gravity="center"
+                    android:orientation="horizontal">
 
-                <TextView
+                    <ImageView
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_widget_trending"
+                        android:tint="#FFE8D5FF" />
+                </LinearLayout>
+
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:text="Flex +01:30 Std."
-                    android:textColor="#CCC2DC"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
+                    android:layout_marginStart="6dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:text="Gleitzeit"
+                        android:textColor="#FFE2E2E6"
+                        android:textSize="8sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:text="+1h 30m"
+                        android:textColor="#FFE2E2E6"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
             </LinearLayout>
 
-            <!-- Quota Chip -->
+            <!-- Pause -->
             <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="22dp"
+                android:layout_marginTop="2dp"
+                android:background="@drawable/bg_widget_preview_metric"
+                android:backgroundTint="#FF1A3358"
                 android:gravity="center_vertical"
-                android:background="@drawable/bg_widget_preview_chip"
-                android:paddingStart="6dp"
-                android:paddingEnd="6dp"
-                android:paddingTop="2dp"
-                android:paddingBottom="2dp">
+                android:orientation="horizontal"
+                android:paddingStart="3dp"
+                android:paddingEnd="6dp">
 
-                <ImageView
-                    android:layout_width="11dp"
-                    android:layout_height="11dp"
-                    android:src="@drawable/ic_widget_preview_quota"
-                    android:contentDescription="@null" />
+                <LinearLayout
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:background="@drawable/bg_widget_preview_chip"
+                    android:backgroundTint="#FF244A80"
+                    android:gravity="center"
+                    android:orientation="horizontal">
 
-                <TextView
+                    <ImageView
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_widget_coffee"
+                        android:tint="#FFD0E2FF" />
+                </LinearLayout>
+
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:text="3/3 T. · 60%"
-                    android:textColor="#CAC4D0"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
+                    android:layout_marginStart="6dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:text="Pause"
+                        android:textColor="#FFE2E2E6"
+                        android:textSize="8sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:text="30 min"
+                        android:textColor="#FFE2E2E6"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Verbleibend -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="22dp"
+                android:layout_marginTop="2dp"
+                android:background="@drawable/bg_widget_preview_metric"
+                android:backgroundTint="#FF222F3E"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="3dp"
+                android:paddingEnd="6dp">
+
+                <LinearLayout
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:background="@drawable/bg_widget_preview_chip"
+                    android:backgroundTint="#FF31455E"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_widget_hourglass"
+                        android:tint="#FFD4E3F8" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:text="Verbleibend"
+                        android:textColor="#FFE2E2E6"
+                        android:textSize="8sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:text="1h 45m"
+                        android:textColor="#FFE2E2E6"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
-
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
 
     <!-- Action Buttons Row -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="38dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:layout_height="28dp"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="28dp"
             android:layout_weight="1"
             android:background="@drawable/bg_widget_preview_btn"
             android:gravity="center"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp">
 
             <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:src="@drawable/ic_widget_preview_pause"
-                android:contentDescription="@null" />
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_widget_pause"
+                android:tint="#FFC4C6D0" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="3dp"
+                android:includeFontPadding="false"
+                android:singleLine="true"
                 android:text="Pause"
-                android:textColor="#CAC4D0"
-                android:textSize="12sp"
+                android:textColor="#FFC4C6D0"
+                android:textSize="8sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="28dp"
+            android:layout_marginStart="4dp"
             android:layout_weight="1"
-            android:layout_marginStart="6dp"
-            android:background="@drawable/bg_widget_preview_pill"
+            android:background="@drawable/bg_widget_preview_btn_primary"
             android:gravity="center"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp">
 
             <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:src="@drawable/ic_widget_preview_home"
-                android:contentDescription="@null" />
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_widget_home"
+                android:tint="#FFB8F5BC" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:text="HO"
-                android:textColor="#CCC2DC"
-                android:textSize="12sp"
+                android:layout_marginStart="3dp"
+                android:includeFontPadding="false"
+                android:singleLine="true"
+                android:text="Home-Office"
+                android:textColor="#FFB8F5BC"
+                android:textSize="8sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="28dp"
+            android:layout_marginStart="4dp"
             android:layout_weight="1"
-            android:layout_marginStart="6dp"
             android:background="@drawable/bg_widget_preview_btn_error"
             android:gravity="center"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp">
 
             <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:src="@drawable/ic_widget_preview_stop"
-                android:contentDescription="@null" />
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_widget_stop"
+                android:tint="#FFF2B8B5" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="3dp"
+                android:includeFontPadding="false"
+                android:singleLine="true"
                 android:text="Stopp"
-                android:textColor="#F2B8B5"
-                android:textSize="12sp"
+                android:textColor="#FFF2B8B5"
+                android:textSize="8sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>

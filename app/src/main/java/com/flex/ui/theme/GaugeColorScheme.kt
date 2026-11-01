@@ -10,9 +10,9 @@ val LocalGaugeColorScheme = compositionLocalOf { GaugeColorScheme.THEME }
 /** Fixed palette of the classic green gauge (used when CLASSIC_GREEN is selected). */
 object ClassicGreenGauge {
     val ring = Color(0xFF55D26F)
-    val overtimeBand = Color(0xFF178A36)
+    val overtimeBand = Color(0xFF0D6826)
     val center = Color(0xFF00502B)
     val track = Color(0xFF0A3D22)
-    val text = Color(0xFFE8F5EA)
+    val text = Color(0xFFF0FAF2)
     val outline = Color(0xFF1B1F1C)
 }

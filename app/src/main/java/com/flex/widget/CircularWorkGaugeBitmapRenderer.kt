@@ -37,7 +37,7 @@ object CircularWorkGaugeBitmapRenderer {
     private const val REFERENCE_SIZE_DP = 152f
     private const val STROKE_DP = 24f
     private const val OUTLINE_DP = 3f
-    private const val OVERTIME_TEXT_DP = 10f
+    private const val OVERTIME_TEXT_DP = 10.5f
     // Overtime band width as a share of the ring width (CircularWorkGauge overtimeBandRatio)
     private const val BAND_RATIO = 0.6f
 

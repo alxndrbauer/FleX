@@ -24,6 +24,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Match work gauge design in home widget
 - Use theme colours for work gauge and home widget
 - Add setting for work gauge ring colour
+- Add flextime ±25h warning, improve overtime gauge contrast, fix quota font scaling, and update widget previews
 
 ### Verbesserungen
 

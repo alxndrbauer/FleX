@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,8 +43,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -68,7 +70,8 @@ fun MiniProgressRing(
     modifier: Modifier = Modifier,
     trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
     overlapColor: Color? = null,
-    strokeWidthDp: Float = 2.5f
+    strokeWidthDp: Float = 2.5f,
+    sizeDp: Float = 24f
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceAtLeast(0f),
@@ -86,7 +89,7 @@ fun MiniProgressRing(
     val outlineColor = MaterialTheme.colorScheme.surface
 
     Box(
-        modifier = modifier.size(24.dp),
+        modifier = modifier.size(sizeDp.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize().padding(1.5.dp)) {
@@ -211,6 +214,7 @@ fun OfficeQuotaCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -252,6 +256,7 @@ fun OfficeQuotaCard(
                     }
                 }
 
+                Spacer(modifier = Modifier.width(8.dp))
                 Surface(
                     shape = RoundedCornerShape(50),
                     color = if (isMet) MaterialTheme.colorScheme.secondaryContainer
@@ -331,87 +336,105 @@ fun OfficeQuotaCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Side-by-side metric tiles (Tage & Stunden)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
-                    modifier = Modifier.weight(1f)
+            // Metric tiles (Tage & Stunden): side-by-side normally, stacked at large font scales
+            val fontScale = LocalDensity.current.fontScale
+            val daysTile: @Composable (Modifier) -> Unit = { tileModifier ->
+                QuotaMetricTile(
+                    label = "Tage",
+                    icon = Icons.Default.CalendarToday,
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    valueText = "$officeDays\u00A0von\u00A0$requiredDays",
+                    progress = daysProgress,
+                    progressColor = MaterialTheme.colorScheme.primary,
+                    modifier = tileModifier
+                )
+            }
+            val hoursTile: @Composable (Modifier) -> Unit = { tileModifier ->
+                QuotaMetricTile(
+                    label = "Stunden",
+                    icon = Icons.Default.Schedule,
+                    iconTint = MaterialTheme.colorScheme.secondary,
+                    valueText = "${officeH}h\u00A0${officeM}m / ${reqH}h\u00A0${reqM}m",
+                    progress = hoursProgress,
+                    progressColor = MaterialTheme.colorScheme.secondary,
+                    modifier = tileModifier
+                )
+            }
+            if (fontScale >= 1.3f) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.CalendarToday,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "Tage",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "$officeDays von $requiredDays",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        MiniProgressRing(
-                            progress = daysProgress,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    daysTile(Modifier.fillMaxWidth())
+                    hoursTile(Modifier.fillMaxWidth())
                 }
-
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
-                    modifier = Modifier.weight(1f)
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Schedule,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "Stunden",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "${officeH}h ${officeM}m / ${reqH}h ${reqM}m",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 11.sp),
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        MiniProgressRing(
-                            progress = hoursProgress,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                    }
+                    daysTile(Modifier.weight(1f))
+                    hoursTile(Modifier.weight(1f))
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun QuotaMetricTile(
+    label: String,
+    icon: ImageVector,
+    iconTint: Color,
+    valueText: String,
+    progress: Float,
+    progressColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                MiniProgressRing(
+                    progress = progress,
+                    color = progressColor,
+                    sizeDp = 22f,
+                    strokeWidthDp = 2.8f
+                )
+            }
+            Text(
+                text = valueText,
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 16.sp),
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
