@@ -14,6 +14,8 @@ import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.ui.dashboard.DashboardViewModel
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.shouldBe
@@ -75,12 +77,13 @@ class QuotaViewModelBehaviorSpec : BehaviorSpec({
             workDayRepository = workDayRepository,
             settingsRepository = settingsRepository,
             calculateQuota = calculateQuota,
-            calculateFlextime = calculateFlextime
+            calculateFlextime = calculateFlextime,
+            clock = fixedClock()
         )
     }
 
     Given("ein Nutzer mit konfigurierten Quotenregeln für den aktuellen Monat") {
-        val currentMonth = YearMonth.now()
+        val currentMonth = YearMonth.from(TestDates.FRIDAY)
         val customRule = QuotaRule(
             id = 1L,
             validFrom = currentMonth,
@@ -128,7 +131,7 @@ class QuotaViewModelBehaviorSpec : BehaviorSpec({
     }
 
     Given("ein Arbeitnehmer mit Urlaubsanspruch und genommenen bzw. geplanten Tagen") {
-        val currentYear = LocalDate.now().year
+        val currentYear = TestDates.FRIDAY.year
         val settings = Settings(
             annualVacationDays = 30,
             carryOverVacationDays = 2,
@@ -203,7 +206,7 @@ class QuotaViewModelBehaviorSpec : BehaviorSpec({
     }
 
     Given("ein Arbeitnehmer mit erfassten Krankentagen im laufenden Jahr") {
-        val currentYear = LocalDate.now().year
+        val currentYear = TestDates.FRIDAY.year
         val actualSickDays = (1..4).map { day ->
             WorkDay(
                 id = day.toLong(),

@@ -10,6 +10,8 @@ import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.ui.yearchange.YearChangeViewModel
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
@@ -95,7 +97,8 @@ class YearChangeViewModelBehaviorSpec : BehaviorSpec({
             workDayRepository = workDayRepository,
             settingsRepository = settingsRepository,
             getSettings = getSettings,
-            calculateFlextime = calculateFlextime
+            calculateFlextime = calculateFlextime,
+            clock = fixedClock()
         )
 
         When("der initiale State geladen wird") {
@@ -179,7 +182,8 @@ class YearChangeViewModelBehaviorSpec : BehaviorSpec({
             workDayRepository = workDayRepository,
             settingsRepository = settingsRepository,
             getSettings = getSettings,
-            calculateFlextime = calculateFlextime
+            calculateFlextime = calculateFlextime,
+            clock = fixedClock()
         )
 
         When("der State ausgewertet wird") {
@@ -229,7 +233,8 @@ class YearChangeViewModelBehaviorSpec : BehaviorSpec({
             workDayRepository = workDayRepository,
             settingsRepository = settingsRepository,
             getSettings = getSettings,
-            calculateFlextime = calculateFlextime
+            calculateFlextime = calculateFlextime,
+            clock = fixedClock()
         )
 
         When("der Jahreswechsel mit Minusstunden angewendet wird") {
@@ -262,7 +267,8 @@ class YearChangeViewModelBehaviorSpec : BehaviorSpec({
             workDayRepository = workDayRepository,
             settingsRepository = settingsRepository,
             getSettings = getSettings,
-            calculateFlextime = calculateFlextime
+            calculateFlextime = calculateFlextime,
+            clock = fixedClock()
         )
 
         When("das ViewModel geladen wird") {
@@ -294,7 +300,7 @@ class YearChangeViewModelBehaviorSpec : BehaviorSpec({
         val getSettings = mockk<GetSettingsUseCase>()
         val calculateFlextime = mockk<CalculateFlextimeUseCase>()
 
-        val currentYear = LocalDate.now().year
+        val currentYear = TestDates.FRIDAY.year
         val currentYearSettings = Settings(
             settingsYear = currentYear
         )
@@ -307,7 +313,8 @@ class YearChangeViewModelBehaviorSpec : BehaviorSpec({
             workDayRepository = workDayRepository,
             settingsRepository = settingsRepository,
             getSettings = getSettings,
-            calculateFlextime = calculateFlextime
+            calculateFlextime = calculateFlextime,
+            clock = fixedClock()
         )
 
         When("das Einstellungsjahr dem aktuellen Kalenderjahr entspricht") {

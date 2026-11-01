@@ -21,6 +21,8 @@ import com.flex.domain.usecase.DayWorkTimeResult
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.usecase.SyncPlannedDaysWithWorkTimeRuleUseCase
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -80,7 +82,8 @@ class PlanningViewModelWorkTimeRuleTest : BaseUnitTest() {
     private fun createViewModel() = PlanningViewModel(
         getMonthWorkDays, getSettings, workDayRepository, settingsRepository,
         calculateDayWorkTime, calculateQuota, calculateFlextime, buildPrognosisDays,
-        syncPlannedDaysWithWorkTimeRuleUseCase
+        syncPlannedDaysWithWorkTimeRuleUseCase,
+        clock = fixedClock()
     )
 
     // ========== QuotaRule Priority Tests ==========
@@ -109,7 +112,7 @@ class PlanningViewModelWorkTimeRuleTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRuleForMonth(any(), any())).thenReturn(quotaRule)
 
         // Office day planned for next month (default selected month in Planning is next month)
-        val nextMonth = YearMonth.now().plusMonths(1)
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         val officeDay = WorkDay(
             id = 1,
             date = nextMonth.atDay(1),
@@ -272,7 +275,7 @@ class PlanningViewModelWorkTimeRuleTest : BaseUnitTest() {
     @Test
     fun `officeHours isMet reflects correct required minutes after settings change`() = runTest {
         // Given: Planning month with one full office day (480 min)
-        val nextMonth = YearMonth.now().plusMonths(1)
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         val officeDay = WorkDay(
             id = 1,
             date = nextMonth.atDay(1),

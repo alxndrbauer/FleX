@@ -16,6 +16,8 @@ import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateAnalyticsUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
@@ -87,13 +89,14 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
         // Then: State should have current YearMonth
         assertThat(viewModel.uiState.value.timeRange)
-            .isEqualTo(TimeRange.Month(YearMonth.now()))
+            .isEqualTo(TimeRange.Month(YearMonth.from(TestDates.FRIDAY)))
     }
 
     @Test
@@ -103,7 +106,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -126,7 +130,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -143,7 +148,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -169,7 +175,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -190,7 +197,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -230,7 +238,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         // Manually set time range to Feb
         viewModel.setTimeRange(TimeRange.Month(febMonth))
@@ -278,7 +287,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
         advanceUntilIdle()
@@ -303,7 +313,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -363,7 +374,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
         advanceUntilIdle()
@@ -400,7 +412,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
 
@@ -434,7 +447,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
         advanceUntilIdle()
@@ -454,7 +468,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -472,7 +487,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
         advanceUntilIdle()
@@ -493,7 +509,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
         advanceUntilIdle()
@@ -514,7 +531,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
         advanceUntilIdle()
@@ -537,7 +555,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
         advanceUntilIdle()
@@ -561,7 +580,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Year(2025))
         advanceUntilIdle()
@@ -581,7 +601,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Year(2025))
         advanceUntilIdle()
@@ -601,7 +622,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Year(2025))
         advanceUntilIdle()
@@ -629,7 +651,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(customRange)
         advanceUntilIdle()
@@ -675,7 +698,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Month(febMonth))
         advanceUntilIdle()
@@ -698,7 +722,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Month(decMonth))
         advanceUntilIdle()
@@ -719,7 +744,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Month(janMonth))
         advanceUntilIdle()
@@ -745,7 +771,8 @@ class AnalyticsViewModelTest : BaseUnitTest() {
             workDayRepository,
             getSettingsUseCase,
             settingsRepository,
-            calculateAnalyticsUseCase
+            calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         viewModel.setTimeRange(TimeRange.Month(marchMonth))
         advanceUntilIdle()

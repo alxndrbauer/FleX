@@ -22,6 +22,8 @@ import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.usecase.SyncPlannedDaysWithWorkTimeRuleUseCase
 import com.flex.ui.planning.PlanType
 import com.flex.ui.planning.PlanningViewModel
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldHaveSize
@@ -99,13 +101,14 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
             calculateQuota = calculateQuota,
             calculateFlextime = calculateFlextime,
             buildPrognosisDays = buildPrognosisDays,
-            syncPlannedDaysWithWorkTimeRuleUseCase = syncPlannedDaysWithWorkTimeRuleUseCase
+            syncPlannedDaysWithWorkTimeRuleUseCase = syncPlannedDaysWithWorkTimeRuleUseCase,
+            clock = fixedClock()
         )
         return Pair(workDayRepository, vm)
     }
 
     Given("ein initialisiertes PlanningViewModel für den Folgemonat") {
-        val nextMonth = YearMonth.now().plusMonths(1)
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         val plannedWorkDay = WorkDay(
             id = 1L,
             date = nextMonth.atDay(10),
@@ -148,7 +151,8 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
         val viewModel = PlanningViewModel(
             getMonthWorkDays, getSettings, workDayRepository, settingsRepository,
             calculateDayWorkTime, calculateQuota, calculateFlextime, buildPrognosisDays,
-            mockk(relaxed = true)
+            mockk(relaxed = true),
+            clock = fixedClock()
         )
 
         When("der State geladen ist") {
@@ -170,7 +174,7 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
     }
 
     Given("das Planen eines Bürotags (OFFICE)") {
-        val nextMonth = YearMonth.now().plusMonths(1)
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         val dateOffice = findFirstWorkday(nextMonth)
         val (workDayRepository, viewModel) = setupPlanningViewModel()
         coEvery { workDayRepository.saveWorkDay(any()) } returns 101L
@@ -196,7 +200,7 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
     }
 
     Given("das Planen eines Home-Office-Tags (HOME_OFFICE)") {
-        val nextMonth = YearMonth.now().plusMonths(1)
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         val dateHomeOffice = findFirstWorkday(nextMonth)
         val (workDayRepository, viewModel) = setupPlanningViewModel()
         coEvery { workDayRepository.saveWorkDay(any()) } returns 102L
@@ -221,7 +225,7 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
     }
 
     Given("das Planen eines Urlaubstags (VACATION)") {
-        val nextMonth = YearMonth.now().plusMonths(1)
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         val dateVacation = findFirstWorkday(nextMonth)
         val (workDayRepository, viewModel) = setupPlanningViewModel()
         coEvery { workDayRepository.saveWorkDay(any()) } returns 103L
@@ -243,7 +247,7 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
     }
 
     Given("das Entfernen eines geplanten Tages") {
-        val nextMonth = YearMonth.now().plusMonths(1)
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         val plannedDate = findFirstWorkday(nextMonth)
         val plannedWorkDay = WorkDay(
             id = 50L,
@@ -278,7 +282,8 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
         val viewModel = PlanningViewModel(
             getMonthWorkDays, getSettings, workDayRepository, settingsRepository,
             calculateDayWorkTime, calculateQuota, calculateFlextime, buildPrognosisDays,
-            mockk(relaxed = true)
+            mockk(relaxed = true),
+            clock = fixedClock()
         )
 
         When("removePlan für diesen Tag aufgerufen wird") {
@@ -303,7 +308,7 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
     }
 
     Given("das Anwenden des Standardmonats") {
-        val nextMonth = YearMonth.now().plusMonths(1)
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
 
         val getMonthWorkDays = mockk<GetMonthWorkDaysUseCase>(relaxed = true)
         val getSettings = mockk<GetSettingsUseCase>(relaxed = true)
@@ -332,7 +337,8 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
         val viewModel = PlanningViewModel(
             getMonthWorkDays, getSettings, workDayRepository, settingsRepository,
             calculateDayWorkTime, calculateQuota, calculateFlextime, buildPrognosisDays,
-            mockk(relaxed = true)
+            mockk(relaxed = true),
+            clock = fixedClock()
         )
 
         When("applyStandardMonth mit PlanType OFFICE aufgerufen wird") {
@@ -356,7 +362,7 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
             Then("enthält monthSummaries genau 12 Monatsübersichten ab aktuellem Monat") {
                 val summaries = viewModel.uiState.value.monthSummaries
                 summaries shouldHaveSize 12
-                val currentMonth = YearMonth.now()
+                val currentMonth = YearMonth.from(TestDates.FRIDAY)
                 summaries.first().yearMonth shouldBe currentMonth
                 summaries.last().yearMonth shouldBe currentMonth.plusMonths(11)
             }
@@ -364,7 +370,7 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
     }
 
     Given("die Synchronisation geplanter Tage mit Arbeitszeitregeln") {
-        val nextMonth = YearMonth.now().plusMonths(1)
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         val syncUseCase = mockk<SyncPlannedDaysWithWorkTimeRuleUseCase>(relaxed = true)
         val (_, viewModel) = setupPlanningViewModel(
             syncPlannedDaysWithWorkTimeRuleUseCase = syncUseCase
@@ -417,7 +423,7 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
     }
 
     Given("die Prüfung, ob der Sync-Button aktiv sein soll (canSyncPlannedDays)") {
-        val nextMonth = YearMonth.now().plusMonths(1)
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
 
         When("alle geplanten Tage bereits der aktuellen Arbeitszeit-Regel entsprechen") {
             val matchingDay = WorkDay(

@@ -3,6 +3,7 @@ package com.flex.domain.usecase
 import com.flex.domain.events.DataChangeEvent
 import com.flex.domain.events.DataChangeEventBus
 import com.flex.domain.repository.WorkDayRepository
+import com.flex.support.TestDates
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
@@ -27,10 +28,10 @@ class AutoBookPlannedDaysUseCaseTest {
 
     @Test
     fun `when planned days are confirmed, emits event and returns count`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         whenever(workDayRepository.confirmPlannedDaysUpTo(today)).thenReturn(2)
 
-        val result = useCase()
+        val result = useCase(today)
 
         assertThat(result).isEqualTo(2)
         verify(workDayRepository).confirmPlannedDaysUpTo(today)
@@ -39,10 +40,10 @@ class AutoBookPlannedDaysUseCaseTest {
 
     @Test
     fun `when no planned days are confirmed, does not emit, returns 0`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         whenever(workDayRepository.confirmPlannedDaysUpTo(today)).thenReturn(0)
 
-        val result = useCase()
+        val result = useCase(today)
 
         assertThat(result).isEqualTo(0)
         verify(workDayRepository).confirmPlannedDaysUpTo(today)

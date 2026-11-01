@@ -25,6 +25,8 @@ import com.flex.domain.usecase.CheckBreakViolationUseCase
 import com.flex.domain.usecase.CheckTimeBlockOverlapUseCase
 import com.flex.data.local.WhatsNewPreferences
 import com.flex.notification.BreakWarningScheduler
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import android.content.Context
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -97,7 +99,8 @@ class HomeViewModelWorkTimeRuleTest : BaseUnitTest() {
         getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
         dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
         whatsNewPreferences, backupPreferences, autoBookPlannedDays,
-        CheckTimeBlockOverlapUseCase()
+        CheckTimeBlockOverlapUseCase(),
+        clock = fixedClock()
     )
 
     // ========== QuotaRule Resolution Tests ==========
@@ -111,7 +114,7 @@ class HomeViewModelWorkTimeRuleTest : BaseUnitTest() {
         val settings = Settings(officeQuotaPercent = settingsPercent, officeQuotaMinDays = 8)
         val quotaRule = QuotaRule(
             id = 1,
-            validFrom = YearMonth.now().minusMonths(1), // valid since last month
+            validFrom = YearMonth.from(TestDates.FRIDAY).minusMonths(1), // valid since last month
             officeQuotaPercent = rulePercent,
             officeQuotaMinDays = 10
         )
@@ -137,7 +140,7 @@ class HomeViewModelWorkTimeRuleTest : BaseUnitTest() {
         val settings = Settings(officeQuotaPercent = 40, officeQuotaMinDays = settingsMinDays)
         val quotaRule = QuotaRule(
             id = 1,
-            validFrom = YearMonth.now().minusMonths(1),
+            validFrom = YearMonth.from(TestDates.FRIDAY).minusMonths(1),
             officeQuotaPercent = 50,
             officeQuotaMinDays = ruleMinDays
         )
@@ -270,7 +273,7 @@ class HomeViewModelWorkTimeRuleTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRuleForMonth(any(), any())).thenReturn(null)
 
         // When: Month work days has some actual office work to trigger requiredOfficeMinutes calc
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val officeDay = WorkDay(
             id = 1,
             date = today,

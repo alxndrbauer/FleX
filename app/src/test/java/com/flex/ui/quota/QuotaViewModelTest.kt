@@ -19,6 +19,8 @@ import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.ui.dashboard.DashboardUiState
 import com.flex.ui.dashboard.DashboardViewModel
 import com.flex.ui.dashboard.VacationInfo
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -80,12 +82,13 @@ class QuotaViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
         // Then: State should have current YearMonth
-        assertThat(viewModel.uiState.value.yearMonth).isEqualTo(YearMonth.now())
+        assertThat(viewModel.uiState.value.yearMonth).isEqualTo(YearMonth.from(TestDates.FRIDAY))
     }
 
     @Test
@@ -105,7 +108,8 @@ class QuotaViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -128,7 +132,8 @@ class QuotaViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -148,16 +153,17 @@ class QuotaViewModelTest : BaseUnitTest() {
 
         // And: Work days with used vacation
         val yearDays = listOf(
-            WorkDay(id = 1, date = LocalDate.now().minusDays(10), dayType = DayType.VACATION, isPlanned = false),
-            WorkDay(id = 2, date = LocalDate.now().minusDays(9), dayType = DayType.VACATION, isPlanned = false),
-            WorkDay(id = 3, date = LocalDate.now().minusDays(8), dayType = DayType.SPECIAL_VACATION, isPlanned = false)
+            WorkDay(id = 1, date = TestDates.FRIDAY.minusDays(10), dayType = DayType.VACATION, isPlanned = false),
+            WorkDay(id = 2, date = TestDates.FRIDAY.minusDays(9), dayType = DayType.VACATION, isPlanned = false),
+            WorkDay(id = 3, date = TestDates.FRIDAY.minusDays(8), dayType = DayType.SPECIAL_VACATION, isPlanned = false)
         )
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(yearDays))
 
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -178,16 +184,17 @@ class QuotaViewModelTest : BaseUnitTest() {
     fun `vacationInfo excludes planned days from used count`() = runTest {
         // Given: Mix of actual and planned vacation days
         val yearDays = listOf(
-            WorkDay(id = 1, date = LocalDate.now().minusDays(10), dayType = DayType.VACATION, isPlanned = false),
-            WorkDay(id = 2, date = LocalDate.now().plusDays(10), dayType = DayType.VACATION, isPlanned = true),
-            WorkDay(id = 3, date = LocalDate.now().plusDays(11), dayType = DayType.VACATION, isPlanned = true)
+            WorkDay(id = 1, date = TestDates.FRIDAY.minusDays(10), dayType = DayType.VACATION, isPlanned = false),
+            WorkDay(id = 2, date = TestDates.FRIDAY.plusDays(10), dayType = DayType.VACATION, isPlanned = true),
+            WorkDay(id = 3, date = TestDates.FRIDAY.plusDays(11), dayType = DayType.VACATION, isPlanned = true)
         )
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(yearDays))
 
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -201,17 +208,18 @@ class QuotaViewModelTest : BaseUnitTest() {
     fun `vacationInfo tracks special vacation separately`() = runTest {
         // Given: Mix of regular and special vacation
         val yearDays = listOf(
-            WorkDay(id = 1, date = LocalDate.now().minusDays(10), dayType = DayType.VACATION, isPlanned = false),
-            WorkDay(id = 2, date = LocalDate.now().minusDays(9), dayType = DayType.VACATION, isPlanned = false),
-            WorkDay(id = 3, date = LocalDate.now().minusDays(8), dayType = DayType.SPECIAL_VACATION, isPlanned = false),
-            WorkDay(id = 4, date = LocalDate.now().plusDays(10), dayType = DayType.SPECIAL_VACATION, isPlanned = true)
+            WorkDay(id = 1, date = TestDates.FRIDAY.minusDays(10), dayType = DayType.VACATION, isPlanned = false),
+            WorkDay(id = 2, date = TestDates.FRIDAY.minusDays(9), dayType = DayType.VACATION, isPlanned = false),
+            WorkDay(id = 3, date = TestDates.FRIDAY.minusDays(8), dayType = DayType.SPECIAL_VACATION, isPlanned = false),
+            WorkDay(id = 4, date = TestDates.FRIDAY.plusDays(10), dayType = DayType.SPECIAL_VACATION, isPlanned = true)
         )
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(yearDays))
 
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -233,14 +241,15 @@ class QuotaViewModelTest : BaseUnitTest() {
 
         // And: Some vacation days used
         val yearDays = listOf(
-            WorkDay(id = 1, date = LocalDate.now().minusDays(10), dayType = DayType.VACATION, isPlanned = false)
+            WorkDay(id = 1, date = TestDates.FRIDAY.minusDays(10), dayType = DayType.VACATION, isPlanned = false)
         )
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(yearDays))
 
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -265,7 +274,8 @@ class QuotaViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -282,7 +292,7 @@ class QuotaViewModelTest : BaseUnitTest() {
         // And: Quota rule for current month
         val quotaRule = QuotaRule(
             id = 1,
-            validFrom = YearMonth.now().minusMonths(1),
+            validFrom = YearMonth.from(TestDates.FRIDAY).minusMonths(1),
             officeQuotaPercent = 60,
             officeQuotaMinDays = 12
         )
@@ -292,7 +302,8 @@ class QuotaViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -312,7 +323,8 @@ class QuotaViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -342,7 +354,8 @@ class QuotaViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -358,8 +371,8 @@ class QuotaViewModelTest : BaseUnitTest() {
     fun `flextimeBalance is calculated from year data`() = runTest {
         // Given: Year work days
         val yearDays = listOf(
-            WorkDay(id = 1, date = LocalDate.now().minusDays(30), location = WorkLocation.OFFICE, isPlanned = false),
-            WorkDay(id = 2, date = LocalDate.now().minusDays(29), location = WorkLocation.HOME_OFFICE, isPlanned = false)
+            WorkDay(id = 1, date = TestDates.FRIDAY.minusDays(30), location = WorkLocation.OFFICE, isPlanned = false),
+            WorkDay(id = 2, date = TestDates.FRIDAY.minusDays(29), location = WorkLocation.HOME_OFFICE, isPlanned = false)
         )
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(yearDays))
 
@@ -375,7 +388,8 @@ class QuotaViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -395,16 +409,17 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(getSettings()).thenReturn(flowOf(settings))
 
         val monthDays = listOf(
-            WorkDay(id = 1, date = LocalDate.now().minusDays(5), dayType = DayType.WORK),
-            WorkDay(id = 2, date = LocalDate.now().minusDays(4), dayType = DayType.VACATION),
-            WorkDay(id = 3, date = LocalDate.now().minusDays(3), dayType = DayType.FLEX_DAY)
+            WorkDay(id = 1, date = TestDates.FRIDAY.minusDays(5), dayType = DayType.WORK),
+            WorkDay(id = 2, date = TestDates.FRIDAY.minusDays(4), dayType = DayType.VACATION),
+            WorkDay(id = 3, date = TestDates.FRIDAY.minusDays(3), dayType = DayType.FLEX_DAY)
         )
         whenever(getMonthWorkDays(any())).thenReturn(flowOf(monthDays))
 
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -427,7 +442,8 @@ class QuotaViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -447,7 +463,8 @@ class QuotaViewModelTest : BaseUnitTest() {
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -463,15 +480,16 @@ class QuotaViewModelTest : BaseUnitTest() {
     fun `planned days are excluded from flextime calculation`() = runTest {
         // Given: Mix of planned and actual days
         val yearDays = listOf(
-            WorkDay(id = 1, date = LocalDate.now().minusDays(5), dayType = DayType.WORK, isPlanned = false),
-            WorkDay(id = 2, date = LocalDate.now().plusDays(5), dayType = DayType.WORK, isPlanned = true)
+            WorkDay(id = 1, date = TestDates.FRIDAY.minusDays(5), dayType = DayType.WORK, isPlanned = false),
+            WorkDay(id = 2, date = TestDates.FRIDAY.plusDays(5), dayType = DayType.WORK, isPlanned = true)
         )
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(yearDays))
 
         // When: ViewModel is created
         viewModel = DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 

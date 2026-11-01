@@ -36,6 +36,8 @@ import com.flex.ui.month.MonthViewModel
 import com.flex.ui.month.getMonthDayCellColor
 import com.flex.ui.year.YearOverviewViewModel
 import com.flex.widget.FlexWidgetDataProvider
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
@@ -272,7 +274,7 @@ class WorkTimeRuleIntegrationBehaviorSpec : BehaviorSpec({
         val getMonthWorkDays = mockk<GetMonthWorkDaysUseCase>(relaxed = true)
         val getSettings = mockk<GetSettingsUseCase>(relaxed = true)
         val calculateFlextime = CalculateFlextimeUseCase(calculateDayWorkTime)
-        val calculateQuota = CalculateQuotaUseCase(calculateDayWorkTime)
+        val calculateQuota = CalculateQuotaUseCase(calculateDayWorkTime, clock = fixedClock())
         val dataChangeEventBus = mockk<DataChangeEventBus>(relaxed = true)
         val checkBreakViolation = mockk<CheckBreakViolationUseCase>(relaxed = true)
         val breakWarningScheduler = mockk<BreakWarningScheduler>(relaxed = true)
@@ -324,7 +326,8 @@ class WorkTimeRuleIntegrationBehaviorSpec : BehaviorSpec({
             whatsNewPreferences = whatsNewPreferences,
             backupPreferences = backupPreferences,
             autoBookPlannedDaysUseCase = autoBookPlannedDays,
-            checkTimeBlockOverlap = CheckTimeBlockOverlapUseCase()
+            checkTimeBlockOverlap = CheckTimeBlockOverlapUseCase(),
+            clock = fixedClock()
         )
 
         When("der Nutzer den Oktober auswählt") {
@@ -382,7 +385,8 @@ class WorkTimeRuleIntegrationBehaviorSpec : BehaviorSpec({
             workDayRepository = workDayRepo,
             getSettings = getSettings,
             calculateDayWorkTime = calculateDayWorkTime,
-            settingsRepository = settingsRepo
+            settingsRepository = settingsRepo,
+            clock = fixedClock()
         )
 
         When("die Heatmap-Einträge für das Jahr 2026 generiert werden") {
@@ -424,7 +428,7 @@ class WorkTimeRuleIntegrationBehaviorSpec : BehaviorSpec({
         val getMonthWorkDays = mockk<GetMonthWorkDaysUseCase>(relaxed = true)
         val getSettings = mockk<GetSettingsUseCase>(relaxed = true)
         val calculateFlextime = CalculateFlextimeUseCase(calculateDayWorkTime)
-        val calculateQuota = CalculateQuotaUseCase(calculateDayWorkTime)
+        val calculateQuota = CalculateQuotaUseCase(calculateDayWorkTime, clock = fixedClock())
         val dataChangeEventBus = mockk<DataChangeEventBus>(relaxed = true)
         val checkBreakViolation = mockk<CheckBreakViolationUseCase>(relaxed = true)
         val breakWarningScheduler = mockk<BreakWarningScheduler>(relaxed = true)
@@ -468,7 +472,8 @@ class WorkTimeRuleIntegrationBehaviorSpec : BehaviorSpec({
             whatsNewPreferences = whatsNewPreferences,
             backupPreferences = backupPreferences,
             autoBookPlannedDaysUseCase = autoBookPlannedDays,
-            checkTimeBlockOverlap = CheckTimeBlockOverlapUseCase()
+            checkTimeBlockOverlap = CheckTimeBlockOverlapUseCase(),
+            clock = fixedClock()
         )
 
         When("der Nutzer einen regulären Arbeitstag ansteuert (Donnerstag 17.09.2026)") {
@@ -518,7 +523,7 @@ class WorkTimeRuleIntegrationBehaviorSpec : BehaviorSpec({
         val getMonthWorkDays = mockk<GetMonthWorkDaysUseCase>()
         val getSettings = mockk<GetSettingsUseCase>()
         val calculateFlextime = CalculateFlextimeUseCase(calculateDayWorkTime)
-        val calculateQuota = CalculateQuotaUseCase(calculateDayWorkTime)
+        val calculateQuota = CalculateQuotaUseCase(calculateDayWorkTime, clock = fixedClock())
         val buildPrognosisDays = BuildPrognosisDaysUseCase()
         val dataChangeEventBus = mockk<DataChangeEventBus>(relaxed = true)
         val prepareExportData = mockk<PrepareExportDataUseCase>(relaxed = true)
@@ -564,7 +569,8 @@ class WorkTimeRuleIntegrationBehaviorSpec : BehaviorSpec({
             exportService = exportService,
             checkBreakViolation = checkBreakViolation,
             buildPrognosisDays = buildPrognosisDays,
-            checkTimeBlockOverlap = CheckTimeBlockOverlapUseCase()
+            checkTimeBlockOverlap = CheckTimeBlockOverlapUseCase(),
+            clock = fixedClock()
         )
 
         When("die Monatsdaten berechnet werden") {
@@ -614,11 +620,11 @@ class WorkTimeRuleIntegrationBehaviorSpec : BehaviorSpec({
         val workDayRepo = mockk<WorkDayRepository>(relaxed = true)
         val settingsRepo = mockk<SettingsRepository>(relaxed = true)
         val calculateFlextime = CalculateFlextimeUseCase(calculateDayWorkTime)
-        val calculateQuota = CalculateQuotaUseCase(calculateDayWorkTime)
+        val calculateQuota = CalculateQuotaUseCase(calculateDayWorkTime, clock = fixedClock())
 
         val fourDayRule = WorkTimeRule(
             id = 1L,
-            validFrom = YearMonth.now(),
+            validFrom = YearMonth.from(TestDates.FRIDAY),
             dailyWorkMinutes = 533,
             monthlyWorkMinutes = 9594,
             workDays = fourDays
@@ -634,13 +640,14 @@ class WorkTimeRuleIntegrationBehaviorSpec : BehaviorSpec({
             settingsRepository = settingsRepo,
             calculateDayWorkTime = calculateDayWorkTime,
             calculateFlextime = calculateFlextime,
-            calculateQuota = calculateQuota
+            calculateQuota = calculateQuota,
+            clock = fixedClock()
         )
 
         When("heute ein freier Tag nach WorkTimeRule ist") {
             every { settingsRepo.getWorkTimeRuleForDate(any(), any()) } returns fourDayRule.copy(
                 workDays = setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY)
-                    .filter { it != LocalDate.now().dayOfWeek }.toSet()
+                    .filter { it != TestDates.FRIDAY.dayOfWeek }.toSet()
             )
             every { workDayRepo.getWorkDay(any()) } returns flowOf(null)
 
@@ -653,7 +660,7 @@ class WorkTimeRuleIntegrationBehaviorSpec : BehaviorSpec({
 
         When("heute ein Arbeitstag nach WorkTimeRule ist") {
             every { settingsRepo.getWorkTimeRuleForDate(any(), any()) } returns fourDayRule.copy(
-                workDays = setOf(LocalDate.now().dayOfWeek)
+                workDays = setOf(TestDates.FRIDAY.dayOfWeek)
             )
             every { workDayRepo.getWorkDay(any()) } returns flowOf(null)
 

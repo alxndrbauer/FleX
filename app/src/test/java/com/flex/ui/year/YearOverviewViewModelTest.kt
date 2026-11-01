@@ -12,6 +12,8 @@ import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.DayWorkTimeResult
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -63,7 +65,8 @@ class YearOverviewViewModelTest : BaseUnitTest() {
             workDayRepository = workDayRepository,
             getSettings = getSettings,
             calculateDayWorkTime = calculateDayWorkTime,
-            settingsRepository = settingsRepository
+            settingsRepository = settingsRepository,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -75,12 +78,13 @@ class YearOverviewViewModelTest : BaseUnitTest() {
 
     @Test
     fun `year navigation updates year state and reloads data`() = runTest {
-        val initialYear = LocalDate.now().year
+        val initialYear = TestDates.FRIDAY.year
         val viewModel = YearOverviewViewModel(
             workDayRepository = workDayRepository,
             getSettings = getSettings,
             calculateDayWorkTime = calculateDayWorkTime,
-            settingsRepository = settingsRepository
+            settingsRepository = settingsRepository,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -144,7 +148,8 @@ class YearOverviewViewModelTest : BaseUnitTest() {
             workDayRepository = workDayRepository,
             getSettings = getSettings,
             calculateDayWorkTime = calculateDayWorkTime,
-            settingsRepository = settingsRepository
+            settingsRepository = settingsRepository,
+            clock = fixedClock()
         )
         viewModel.selectYear(testYear)
         advanceUntilIdle()

@@ -16,6 +16,8 @@ import com.flex.domain.usecase.CalculateProjectedEndTimeUseCase
 import com.flex.domain.usecase.DayWorkTimeResult
 import com.flex.widget.FlexWidgetDataProvider
 import com.flex.widget.WidgetDailyProgress
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -60,10 +62,11 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
             workDayRepository = workDayRepository,
             settingsRepository = settingsRepository,
             calculateDayWorkTime = calculateDayWorkTime,
-            calculateFlextime = calculateFlextime
+            calculateFlextime = calculateFlextime,
+            clock = fixedClock()
         )
 
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDay = WorkDay(
             id = 1L,
             date = today,
@@ -130,14 +133,15 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
             workDayRepository = workDayRepository,
             settingsRepository = settingsRepository,
             calculateDayWorkTime = calculateDayWorkTime,
-            calculateFlextime = calculateFlextime
+            calculateFlextime = calculateFlextime,
+            clock = fixedClock()
         )
 
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(
             id = 20L,
             workDayId = 2L,
-            startTime = LocalTime.now().minusHours(2),
+            startTime = LocalTime.of(12, 0).minusHours(2),
             endTime = null,
             location = WorkLocation.HOME_OFFICE
         )
@@ -196,10 +200,11 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
             workDayRepository = workDayRepository,
             settingsRepository = settingsRepository,
             calculateDayWorkTime = calculateDayWorkTime,
-            calculateFlextime = calculateFlextime
+            calculateFlextime = calculateFlextime,
+            clock = fixedClock()
         )
 
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         every { workDayRepository.getWorkDay(today) } returns flowOf(null)
         every { calculateFlextime(any(), any(), any(), any()) } returns FlextimeBalance(
             initialMinutes = 0,
@@ -244,10 +249,11 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
             settingsRepository = settingsRepository,
             calculateDayWorkTime = calculateDayWorkTime,
             calculateFlextime = calculateFlextime,
-            pausePreferences = pausePreferences
+            pausePreferences = pausePreferences,
+            clock = fixedClock()
         )
 
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDay = WorkDay(
             id = 1L,
             date = today,
@@ -304,10 +310,11 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
             settingsRepository = settingsRepository,
             calculateDayWorkTime = calculateDayWorkTime,
             calculateFlextime = calculateFlextime,
-            calculateProjectedEndTime = calculateProjectedEndTime
+            calculateProjectedEndTime = calculateProjectedEndTime,
+            clock = fixedClock()
         )
 
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(
             id = 30L,
             workDayId = 3L,

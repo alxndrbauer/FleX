@@ -7,6 +7,8 @@ import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.AutoClockOutUseCase
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
@@ -24,12 +26,12 @@ import java.time.LocalTime
 
 class AutoClockOutBehaviorSpec : BehaviorSpec({
 
-    val today = LocalDate.now()
+    val today = TestDates.FRIDAY
 
     Given("ein laufender Arbeitszeitblock im Büro") {
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
         val pausePreferences = mockk<PausePreferences>(relaxed = true)
-        val autoClockOut = AutoClockOutUseCase(workDayRepository, pausePreferences)
+        val autoClockOut = AutoClockOutUseCase(workDayRepository, pausePreferences, clock = fixedClock())
 
         val runningBlock = TimeBlock(
             id = 42L,
@@ -69,7 +71,7 @@ class AutoClockOutBehaviorSpec : BehaviorSpec({
     Given("ein Nutzer in aktiver Arbeitspause beim Verlassen des Büros") {
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
         val pausePreferences = mockk<PausePreferences>(relaxed = true)
-        val autoClockOut = AutoClockOutUseCase(workDayRepository, pausePreferences)
+        val autoClockOut = AutoClockOutUseCase(workDayRepository, pausePreferences, clock = fixedClock())
 
         val completedBlock = TimeBlock(
             id = 11L,
@@ -109,7 +111,7 @@ class AutoClockOutBehaviorSpec : BehaviorSpec({
     Given("ein Tag mit bereits abgeschlossenen Blöcken und ohne aktive Pause") {
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
         val pausePreferences = mockk<PausePreferences>(relaxed = true)
-        val autoClockOut = AutoClockOutUseCase(workDayRepository, pausePreferences)
+        val autoClockOut = AutoClockOutUseCase(workDayRepository, pausePreferences, clock = fixedClock())
 
         val finishedBlock = TimeBlock(
             id = 15L,
@@ -145,7 +147,7 @@ class AutoClockOutBehaviorSpec : BehaviorSpec({
     Given("ein Tag ohne jeglichen WorkDay-Eintrag") {
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
         val pausePreferences = mockk<PausePreferences>(relaxed = true)
-        val autoClockOut = AutoClockOutUseCase(workDayRepository, pausePreferences)
+        val autoClockOut = AutoClockOutUseCase(workDayRepository, pausePreferences, clock = fixedClock())
 
         every { pausePreferences.isPaused } returns false
         coEvery { workDayRepository.getWorkDay(today) } returns flowOf(null)

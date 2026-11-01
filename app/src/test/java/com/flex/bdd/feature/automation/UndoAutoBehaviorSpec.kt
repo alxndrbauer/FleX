@@ -10,6 +10,8 @@ import com.flex.domain.model.WorkLocation
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.AutoClockInUseCase
 import com.flex.domain.usecase.UndoAutoClockUseCase
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -95,7 +97,7 @@ class UndoAutoBehaviorSpec : BehaviorSpec({
         val storedValues = mutableMapOf<String, Any>()
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
         val preferencesBeforeClockIn = storedGeofencePreferences(storedValues)
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val plannedBlock = TimeBlock(
             id = 50L,
             workDayId = 10L,
@@ -129,7 +131,8 @@ class UndoAutoBehaviorSpec : BehaviorSpec({
         When("der automatische Eintrag rückgängig gemacht wird, auch nach einem Neustart") {
             val generatedBlockId = AutoClockInUseCase(
                 workDayRepository,
-                preferencesBeforeClockIn
+                preferencesBeforeClockIn,
+                clock = fixedClock()
             )()
             val preferencesAfterRestart = storedGeofencePreferences(storedValues)
             UndoAutoClockUseCase(workDayRepository, preferencesAfterRestart)()

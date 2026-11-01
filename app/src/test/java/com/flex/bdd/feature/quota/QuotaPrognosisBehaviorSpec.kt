@@ -9,6 +9,8 @@ import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.time.DayOfWeek
@@ -19,7 +21,7 @@ import java.time.YearMonth
 class QuotaPrognosisBehaviorSpec : BehaviorSpec({
 
     val calculateDayWorkTime = CalculateDayWorkTimeUseCase()
-    val calculateQuota = CalculateQuotaUseCase(calculateDayWorkTime)
+    val calculateQuota = CalculateQuotaUseCase(calculateDayWorkTime, clock = fixedClock())
 
     val defaultSettings = Settings(
         dailyWorkMinutes = 426,
@@ -51,7 +53,7 @@ class QuotaPrognosisBehaviorSpec : BehaviorSpec({
     Given("die Berechnung verbleibender Arbeitstage im Monat") {
 
         When("ein bereits vergangener Monat betrachtet wird") {
-            val pastMonth = YearMonth.now().minusMonths(1)
+            val pastMonth = YearMonth.from(TestDates.FRIDAY).minusMonths(1)
             val status = calculateQuota(
                 workDays = emptyList(),
                 settings = defaultSettings,
@@ -103,8 +105,8 @@ class QuotaPrognosisBehaviorSpec : BehaviorSpec({
         }
 
         When("der aktuelle laufende Monat betrachtet wird") {
-            val currentMonth = YearMonth.now()
-            val today = LocalDate.now()
+            val currentMonth = YearMonth.from(TestDates.FRIDAY)
+            val today = TestDates.FRIDAY
 
             val status = calculateQuota(
                 workDays = emptyList(),
@@ -213,7 +215,7 @@ class QuotaPrognosisBehaviorSpec : BehaviorSpec({
         When("die noch erforderlichen Bürotage die verbleibenden Arbeitstage übersteigen") {
             // Angenommen ein Zukunftsmonat hätte nur noch 2 verbleibende Tage, aber 5 Tage werden benötigt
             // In einem vergangenen Monat ist remainingWorkDays = 0, required = 8
-            val pastMonth = YearMonth.now().minusMonths(1)
+            val pastMonth = YearMonth.from(TestDates.FRIDAY).minusMonths(1)
             val status = calculateQuota(
                 workDays = emptyList(),
                 settings = defaultSettings,

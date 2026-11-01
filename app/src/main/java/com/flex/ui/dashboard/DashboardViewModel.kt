@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
@@ -95,10 +96,13 @@ class DashboardViewModel @Inject constructor(
     private val calculateQuota: CalculateQuotaUseCase,
     private val calculateFlextime: CalculateFlextimeUseCase,
     private val calculateDashboardMetrics: CalculateDashboardMetricsUseCase = CalculateDashboardMetricsUseCase(CalculateDayWorkTimeUseCase()),
-    private val calculateAnalytics: CalculateAnalyticsUseCase = CalculateAnalyticsUseCase(CalculateDayWorkTimeUseCase(), calculateFlextime)
+    private val calculateAnalytics: CalculateAnalyticsUseCase = CalculateAnalyticsUseCase(CalculateDayWorkTimeUseCase(), calculateFlextime),
+    private val clock: Clock = Clock.systemDefaultZone()
 ) : ViewModel() {
 
-    private val _dateSelection = MutableStateFlow(DateSelection())
+    private val _dateSelection = MutableStateFlow(
+        DateSelection(year = LocalDate.now(clock).year, yearMonth = YearMonth.now(clock))
+    )
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
@@ -193,7 +197,7 @@ class DashboardViewModel @Inject constructor(
                         it.dayType == DayType.SICK_DAY && !it.isPlanned
                     }
 
-                    val today = LocalDate.now()
+                    val today = LocalDate.now(clock)
                     val forecast = calculateDashboardMetrics.calculateForecast(
                         actualQuota = actualQuota,
                         projectedQuota = projectedQuota,

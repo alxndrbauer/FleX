@@ -8,20 +8,22 @@ import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.repository.WorkDayRepository
 import kotlinx.coroutines.flow.first
+import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalTime
 import javax.inject.Inject
 
 class AutoClockInUseCase @Inject constructor(
     private val workDayRepository: WorkDayRepository,
-    private val geofencePreferences: GeofencePreferences
+    private val geofencePreferences: GeofencePreferences,
+    private val clock: Clock = Clock.systemDefaultZone()
 ) {
     suspend operator fun invoke(): Long? {
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         val existingDay = workDayRepository.getWorkDay(today).first()
         if (existingDay?.timeBlocks?.any { it.endTime == null } == true) return null
 
-        val now = LocalTime.now().withSecond(0).withNano(0)
+        val now = LocalTime.now(clock).withSecond(0).withNano(0)
         val plannedDurationBlocks = existingDay
             ?.takeIf { it.isPlanned }
             ?.timeBlocks

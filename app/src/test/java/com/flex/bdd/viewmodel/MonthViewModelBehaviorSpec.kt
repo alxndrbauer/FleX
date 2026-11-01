@@ -24,6 +24,8 @@ import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.usecase.PrepareExportDataUseCase
 import com.flex.ui.month.MonthViewModel
 import com.flex.ui.month.TimeBlockInput
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
@@ -108,13 +110,14 @@ class MonthViewModelBehaviorSpec : BehaviorSpec({
             exportService = exportService,
             checkBreakViolation = checkBreakViolation,
             buildPrognosisDays = buildPrognosisDays,
-            checkTimeBlockOverlap = checkTimeBlockOverlap
+            checkTimeBlockOverlap = checkTimeBlockOverlap,
+            clock = fixedClock()
         )
         return Pair(workDayRepository, vm)
     }
 
     Given("ein MonthViewModel für den aktuellen Monat") {
-        val currentMonth = YearMonth.now()
+        val currentMonth = YearMonth.from(TestDates.FRIDAY)
         val day1 = WorkDay(
             id = 1L,
             date = currentMonth.atDay(3),
@@ -138,7 +141,7 @@ class MonthViewModelBehaviorSpec : BehaviorSpec({
     }
 
     Given("die Monatsnavigation") {
-        val currentMonth = YearMonth.now()
+        val currentMonth = YearMonth.from(TestDates.FRIDAY)
         val prevMonth = currentMonth.minusMonths(1)
         val nextMonth = currentMonth.plusMonths(1)
 
@@ -175,7 +178,7 @@ class MonthViewModelBehaviorSpec : BehaviorSpec({
     }
 
     Given("das Auswählen eines Tages") {
-        val currentMonth = YearMonth.now()
+        val currentMonth = YearMonth.from(TestDates.FRIDAY)
         // Ein Werktag im Monat (Tag 15 ist meist kein Feiertag)
         val date = currentMonth.atDay(15)
         val existingBlock = TimeBlock(id = 101L, workDayId = 42L, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 0))
@@ -232,7 +235,7 @@ class MonthViewModelBehaviorSpec : BehaviorSpec({
     Given("das Speichern und Löschen eines Tages") {
         val repo = mockk<WorkDayRepository>(relaxed = true)
         val (_, viewModel) = setupMonthViewModel(workDayRepository = repo)
-        val targetDate = YearMonth.now().atDay(14)
+        val targetDate = YearMonth.from(TestDates.FRIDAY).atDay(14)
         val existingBlock = TimeBlock(id = 99L, workDayId = 7L, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(12, 0))
         val existingDay = WorkDay(id = 7L, date = targetDate, location = WorkLocation.OFFICE, timeBlocks = listOf(existingBlock))
 

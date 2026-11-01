@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -118,7 +119,8 @@ class PlanningViewModel @Inject constructor(
     private val calculateQuota: CalculateQuotaUseCase,
     private val calculateFlextime: CalculateFlextimeUseCase,
     private val buildPrognosisDays: BuildPrognosisDaysUseCase,
-    private val syncPlannedDaysWithWorkTimeRuleUseCase: SyncPlannedDaysWithWorkTimeRuleUseCase
+    private val syncPlannedDaysWithWorkTimeRuleUseCase: SyncPlannedDaysWithWorkTimeRuleUseCase,
+    private val clock: Clock = Clock.systemDefaultZone()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlanningUiState())
@@ -127,7 +129,7 @@ class PlanningViewModel @Inject constructor(
     private val _undoEvent = MutableSharedFlow<UndoEvent>()
     val undoEvent: SharedFlow<UndoEvent> = _undoEvent.asSharedFlow()
 
-    private val _selectedMonth = MutableStateFlow(YearMonth.now().plusMonths(1))
+    private val _selectedMonth = MutableStateFlow(YearMonth.now(clock).plusMonths(1))
 
     init {
         loadData()
@@ -234,7 +236,7 @@ private data class PlanningConfig(
         rules: List<QuotaRule>,
         workTimeRules: List<com.flex.domain.model.WorkTimeRule>
     ) {
-        val currentMonth = YearMonth.now()
+        val currentMonth = YearMonth.now(clock)
         val summaries = mutableListOf<MonthSummary>()
 
         for (offset in 0L..11L) {
@@ -319,7 +321,7 @@ private data class PlanningConfig(
     }
 
     fun previousMonth() {
-        val min = YearMonth.now()
+        val min = YearMonth.now(clock)
         if (_selectedMonth.value > min) {
             _selectedMonth.value = _selectedMonth.value.minusMonths(1)
         }

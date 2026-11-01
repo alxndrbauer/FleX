@@ -20,6 +20,8 @@ import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.ui.dashboard.DashboardViewModel
 import com.flex.domain.model.getRuleForDate
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
@@ -87,11 +89,11 @@ class DashboardViewModelBehaviorSpec : BehaviorSpec({
 
         val calculateDayWorkTime = CalculateDayWorkTimeUseCase()
         val calculateFlextime = CalculateFlextimeUseCase(calculateDayWorkTime)
-        val calculateQuota = CalculateQuotaUseCase(calculateDayWorkTime)
+        val calculateQuota = CalculateQuotaUseCase(calculateDayWorkTime, clock = fixedClock())
         val calculateDashboardMetrics = CalculateDashboardMetricsUseCase(calculateDayWorkTime)
         val calculateAnalytics = CalculateAnalyticsUseCase(calculateDayWorkTime, calculateFlextime)
 
-        val currentYearMonth = YearMonth.now()
+        val currentYearMonth = YearMonth.from(TestDates.FRIDAY)
         // Gültig ab dem Vormonat: am Monatsanfang reicht die laufende Woche sonst in den
         // Vormonat hinein, und für diese Tage gäbe es (noch) keine Regel.
         val fourDayRule = WorkTimeRule(
@@ -121,7 +123,8 @@ class DashboardViewModelBehaviorSpec : BehaviorSpec({
             calculateQuota = calculateQuota,
             calculateFlextime = calculateFlextime,
             calculateDashboardMetrics = calculateDashboardMetrics,
-            calculateAnalytics = calculateAnalytics
+            calculateAnalytics = calculateAnalytics,
+            clock = fixedClock()
         )
 
         When("das Dashboard den aktuellen Wochenstatus (currentWeekStatus) berechnet") {
@@ -151,7 +154,7 @@ class DashboardViewModelBehaviorSpec : BehaviorSpec({
 
         val calculateDayWorkTime = CalculateDayWorkTimeUseCase()
         val calculateFlextime = CalculateFlextimeUseCase(calculateDayWorkTime)
-        val calculateQuota = CalculateQuotaUseCase(calculateDayWorkTime)
+        val calculateQuota = CalculateQuotaUseCase(calculateDayWorkTime, clock = fixedClock())
         val calculateDashboardMetrics = CalculateDashboardMetricsUseCase(calculateDayWorkTime)
         val calculateAnalytics = CalculateAnalyticsUseCase(calculateDayWorkTime, calculateFlextime)
 
@@ -223,7 +226,8 @@ class DashboardViewModelBehaviorSpec : BehaviorSpec({
                 calculateQuota = calculateQuota,
                 calculateFlextime = calculateFlextime,
                 calculateDashboardMetrics = calculateDashboardMetrics,
-                calculateAnalytics = calculateAnalytics
+                calculateAnalytics = calculateAnalytics,
+                clock = fixedClock()
             )
             viewModel.selectMonth(julyMonth)
             testDispatcher.scheduler.advanceUntilIdle()

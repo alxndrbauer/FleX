@@ -7,16 +7,18 @@ import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.repository.WorkDayRepository
 import kotlinx.coroutines.flow.first
+import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalTime
 import javax.inject.Inject
 
 class ClockInUseCase @Inject constructor(
     private val workDayRepository: WorkDayRepository,
-    private val pausePreferences: PausePreferences
+    private val pausePreferences: PausePreferences,
+    private val clock: Clock = Clock.systemDefaultZone()
 ) {
     suspend operator fun invoke(locationOverride: WorkLocation? = null): Boolean {
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         val existingDay = workDayRepository.getWorkDay(today).first()
         if (existingDay?.timeBlocks?.any { it.endTime == null } == true) return false
 
@@ -31,7 +33,7 @@ class ClockInUseCase @Inject constructor(
                 ?: existingDay?.location
                 ?: WorkLocation.OFFICE
         }
-        val now = LocalTime.now().withSecond(0).withNano(0)
+        val now = LocalTime.now(clock).withSecond(0).withNano(0)
 
         existingDay
             ?.takeIf { it.isPlanned }

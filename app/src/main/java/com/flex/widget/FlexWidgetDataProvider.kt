@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -33,11 +34,12 @@ class FlexWidgetDataProvider @Inject constructor(
     private val calculateQuota: CalculateQuotaUseCase? = null,
     private val pausePreferences: PausePreferences? = null,
     private val dataChangeEventBus: DataChangeEventBus? = null,
-    private val calculateProjectedEndTime: CalculateProjectedEndTimeUseCase = CalculateProjectedEndTimeUseCase()
+    private val calculateProjectedEndTime: CalculateProjectedEndTimeUseCase = CalculateProjectedEndTimeUseCase(),
+    private val clock: Clock = Clock.systemDefaultZone()
 ) {
 
     fun getWidgetStateFlow(): Flow<WidgetState> {
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         val pauseFlow = pausePreferences?.isPausedFlow ?: flowOf(false)
 
         return combine(
@@ -52,7 +54,7 @@ class FlexWidgetDataProvider @Inject constructor(
     }
 
     suspend fun getWidgetState(): WidgetState {
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         val workDay = workDayRepository.getWorkDay(today).first()
         val settings = settingsRepository.getSettings().first()
         val workTimeRules = settingsRepository.getWorkTimeRules().first()
@@ -87,7 +89,7 @@ class FlexWidgetDataProvider @Inject constructor(
             ?: workDay?.location
             ?: WorkLocation.OFFICE
 
-        val now = LocalTime.now().withSecond(0).withNano(0)
+        val now = LocalTime.now(clock).withSecond(0).withNano(0)
         val blocksForCalc = if (runningBlock != null) {
             allBlocks.map { if (it.endTime == null) it.copy(endTime = now) else it }
         } else {

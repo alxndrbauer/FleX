@@ -6,6 +6,8 @@ import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.repository.WorkDayRepository
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -27,11 +29,11 @@ class ClockInUseCaseTest {
     private val pausePreferences: PausePreferences = mock()
     private lateinit var useCase: ClockInUseCase
 
-    private val today = LocalDate.now()
+    private val today = TestDates.FRIDAY
 
     @BeforeEach
     fun setUp() {
-        useCase = ClockInUseCase(workDayRepository, pausePreferences)
+        useCase = ClockInUseCase(workDayRepository, pausePreferences, clock = fixedClock())
     }
 
     @Test

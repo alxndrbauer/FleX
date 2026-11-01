@@ -10,6 +10,8 @@ import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.ui.year.YearOverviewViewModel
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
@@ -48,7 +50,7 @@ class YearOverviewViewModelBehaviorSpec : BehaviorSpec({
         val getSettings = mockk<GetSettingsUseCase>()
         val calculateDayWorkTime = CalculateDayWorkTimeUseCase()
 
-        val currentYear = LocalDate.now().year
+        val currentYear = TestDates.FRIDAY.year
         val expectedDaysCount = Year.of(currentYear).length()
 
         val settings = Settings(
@@ -63,7 +65,8 @@ class YearOverviewViewModelBehaviorSpec : BehaviorSpec({
         val viewModel = YearOverviewViewModel(
             workDayRepository = workDayRepository,
             getSettings = getSettings,
-            calculateDayWorkTime = calculateDayWorkTime
+            calculateDayWorkTime = calculateDayWorkTime,
+            clock = fixedClock()
         )
 
         When("der initiale Zustand geladen wird") {
@@ -90,7 +93,7 @@ class YearOverviewViewModelBehaviorSpec : BehaviorSpec({
         val getSettings = mockk<GetSettingsUseCase>()
         val calculateDayWorkTime = CalculateDayWorkTimeUseCase()
 
-        val currentYear = LocalDate.now().year
+        val currentYear = TestDates.FRIDAY.year
         val settings = Settings(dailyWorkMinutes = 426)
 
         val officeWorkDate = LocalDate.of(currentYear, 3, 10)
@@ -152,7 +155,8 @@ class YearOverviewViewModelBehaviorSpec : BehaviorSpec({
         val viewModel = YearOverviewViewModel(
             workDayRepository = workDayRepository,
             getSettings = getSettings,
-            calculateDayWorkTime = calculateDayWorkTime
+            calculateDayWorkTime = calculateDayWorkTime,
+            clock = fixedClock()
         )
 
         When("die DayHeatmapEntry-Einträge erzeugt werden") {
@@ -205,7 +209,7 @@ class YearOverviewViewModelBehaviorSpec : BehaviorSpec({
         val getSettings = mockk<GetSettingsUseCase>()
         val calculateDayWorkTime = CalculateDayWorkTimeUseCase()
 
-        val currentYear = LocalDate.now().year
+        val currentYear = TestDates.FRIDAY.year
         val prevYear = currentYear - 1
         val nextYearVal = currentYear + 1
 
@@ -216,7 +220,8 @@ class YearOverviewViewModelBehaviorSpec : BehaviorSpec({
         val viewModel = YearOverviewViewModel(
             workDayRepository = workDayRepository,
             getSettings = getSettings,
-            calculateDayWorkTime = calculateDayWorkTime
+            calculateDayWorkTime = calculateDayWorkTime,
+            clock = fixedClock()
         )
 
         When("previousYear() aufgerufen wird") {
@@ -256,7 +261,7 @@ class YearOverviewViewModelBehaviorSpec : BehaviorSpec({
         val getSettings = mockk<GetSettingsUseCase>()
         val calculateDayWorkTime = CalculateDayWorkTimeUseCase()
 
-        val year = LocalDate.now().year
+        val year = TestDates.FRIDAY.year
         val settings = Settings(dailyWorkMinutes = 426)
 
         // 5 reine Bürotage (ohne Zeitblöcke, location = OFFICE)
@@ -430,7 +435,8 @@ class YearOverviewViewModelBehaviorSpec : BehaviorSpec({
         val viewModel = YearOverviewViewModel(
             workDayRepository = workDayRepository,
             getSettings = getSettings,
-            calculateDayWorkTime = calculateDayWorkTime
+            calculateDayWorkTime = calculateDayWorkTime,
+            clock = fixedClock()
         )
 
         When("die Jahressummen ausgewertet werden") {

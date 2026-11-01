@@ -14,6 +14,8 @@ import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -68,7 +70,8 @@ class DashboardViewModelTest : BaseUnitTest() {
     private fun createViewModel(): DashboardViewModel {
         return DashboardViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
-            settingsRepository, calculateQuota, calculateFlextime
+            settingsRepository, calculateQuota, calculateFlextime,
+            clock = fixedClock()
         )
     }
 
@@ -77,8 +80,8 @@ class DashboardViewModelTest : BaseUnitTest() {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        val currentYear = LocalDate.now().year
-        val currentYearMonth = YearMonth.now()
+        val currentYear = TestDates.FRIDAY.year
+        val currentYearMonth = YearMonth.from(TestDates.FRIDAY)
 
         assertThat(viewModel.uiState.value.selectedYear).isEqualTo(currentYear)
         assertThat(viewModel.uiState.value.selectedYearMonth).isEqualTo(currentYearMonth)

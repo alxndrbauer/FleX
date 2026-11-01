@@ -25,6 +25,10 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Use theme colours for work gauge and home widget
 - Add setting for work gauge ring colour
 
+### Verbesserungen
+
+- Inject a Clock instead of reading the system clock
+
 ### Bugfixes
 
 - Respect WorkTimeRule targets and work days across views and widgets

@@ -7,6 +7,8 @@ import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.AutoClockInUseCase
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -24,12 +26,12 @@ import java.time.LocalTime
 
 class AutoClockInBehaviorSpec : BehaviorSpec({
 
-    val today = LocalDate.now()
+    val today = TestDates.FRIDAY
 
     Given("ein Arbeitstag ohne bisherige Zeiterfassung") {
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
         val geofencePreferences = mockk<GeofencePreferences>(relaxed = true)
-        val autoClockIn = AutoClockInUseCase(workDayRepository, geofencePreferences)
+        val autoClockIn = AutoClockInUseCase(workDayRepository, geofencePreferences, clock = fixedClock())
 
         coEvery { workDayRepository.getWorkDay(today) } returns flowOf(null)
         coEvery { workDayRepository.saveWorkDay(any()) } returns 101L
@@ -65,7 +67,7 @@ class AutoClockInBehaviorSpec : BehaviorSpec({
     Given("ein bestehender Arbeitstag mit bereits beendeten Zeitblöcken") {
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
         val geofencePreferences = mockk<GeofencePreferences>(relaxed = true)
-        val autoClockIn = AutoClockInUseCase(workDayRepository, geofencePreferences)
+        val autoClockIn = AutoClockInUseCase(workDayRepository, geofencePreferences, clock = fixedClock())
 
         val morningBlock = TimeBlock(
             id = 50L,
@@ -110,7 +112,7 @@ class AutoClockInBehaviorSpec : BehaviorSpec({
     Given("ein geplanter Tag mit einem Dauer-Platzhalter") {
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
         val geofencePreferences = mockk<GeofencePreferences>(relaxed = true)
-        val autoClockIn = AutoClockInUseCase(workDayRepository, geofencePreferences)
+        val autoClockIn = AutoClockInUseCase(workDayRepository, geofencePreferences, clock = fixedClock())
 
         val plannedBlock = TimeBlock(
             id = 60L,
@@ -161,7 +163,7 @@ class AutoClockInBehaviorSpec : BehaviorSpec({
     Given("ein bereits laufender Zeitblock am heutigen Tag") {
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
         val geofencePreferences = mockk<GeofencePreferences>(relaxed = true)
-        val autoClockIn = AutoClockInUseCase(workDayRepository, geofencePreferences)
+        val autoClockIn = AutoClockInUseCase(workDayRepository, geofencePreferences, clock = fixedClock())
 
         val runningBlock = TimeBlock(
             id = 75L,

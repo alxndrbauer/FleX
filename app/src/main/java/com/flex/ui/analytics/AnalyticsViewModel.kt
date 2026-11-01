@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.YearMonth
 import javax.inject.Inject
 
@@ -48,13 +49,14 @@ class AnalyticsViewModel @Inject constructor(
     private val workDayRepository: WorkDayRepository,
     private val getSettingsUseCase: GetSettingsUseCase,
     private val settingsRepository: SettingsRepository,
-    private val calculateAnalyticsUseCase: CalculateAnalyticsUseCase
+    private val calculateAnalyticsUseCase: CalculateAnalyticsUseCase,
+    private val clock: Clock = Clock.systemDefaultZone()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AnalyticsUiState())
     val uiState: StateFlow<AnalyticsUiState> = _uiState.asStateFlow()
 
-    private val _timeRange = MutableStateFlow<TimeRange>(TimeRange.Month(YearMonth.now()))
+    private val _timeRange = MutableStateFlow<TimeRange>(TimeRange.Month(YearMonth.now(clock)))
 
     init {
         loadAnalyticsData()

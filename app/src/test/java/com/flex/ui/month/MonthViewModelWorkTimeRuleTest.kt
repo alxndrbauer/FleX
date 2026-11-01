@@ -26,6 +26,8 @@ import com.flex.domain.usecase.PrepareExportDataUseCase
 import com.flex.domain.events.DataChangeEventBus
 import com.flex.domain.model.BreakCheckResult
 import com.flex.data.export.ExportService
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -94,7 +96,8 @@ class MonthViewModelWorkTimeRuleTest : BaseUnitTest() {
     private fun createViewModel(): MonthViewModel = MonthViewModel(
         getMonthWorkDays, getSettings, workDayRepository,
         settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-        prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+        prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+        clock = fixedClock()
     )
 
     // ========== WorkTimeRule Priority Tests ==========
@@ -403,7 +406,7 @@ class MonthViewModelWorkTimeRuleTest : BaseUnitTest() {
     @Test
     fun `totalWorkMinutes correctly computes zero when all days are neutral`() = runTest {
         // Given: An entire month of vacation days, with no workTimeRules
-        val month = YearMonth.now().minusMonths(2)
+        val month = YearMonth.from(TestDates.FRIDAY).minusMonths(2)
         val vacationDays = (1..5).map { day ->
             WorkDay(
                 id = day.toLong(),

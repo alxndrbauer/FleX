@@ -11,7 +11,8 @@ import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
-import com.flex.domain.model.WorkTimeRule
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
@@ -43,10 +44,8 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.YearMonth
 
 /**
  * Unit tests for HomeViewModel.
@@ -102,30 +101,12 @@ class HomeViewModelTest : BaseUnitTest() {
 
     private lateinit var viewModel: HomeViewModel
 
-    /**
-     * Tagessoll 480m an jedem Kalendertag. Ohne diese Regel hängt das erwartete Tagessoll
-     * davon ab, an welchem Kalendertag die Suite läuft (am Wochenende ist es 0).
-     */
-    private val allDaysRule = WorkTimeRule(
-        id = 99L,
-        validFrom = YearMonth.of(2020, 1),
-        dailyWorkMinutes = 480,
-        monthlyWorkMinutes = 9600,
-        workDays = DayOfWeek.entries.toSet()
-    )
-
-    /** Stubt Regelliste und Auflösung gemeinsam, damit der Zustand nicht widersprüchlich ist. */
-    private fun stubAllDaysRule() {
-        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(listOf(allDaysRule)))
-        whenever(settingsRepository.getWorkTimeRuleForDate(any(), any())).thenReturn(allDaysRule)
-    }
-
     private fun createViewModel() = HomeViewModel(
         context, workDayRepository, settingsRepository, getMonthWorkDays,
         getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
         dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
         whatsNewPreferences, backupPreferences, autoBookPlannedDays,
-        checkTimeBlockOverlap
+        checkTimeBlockOverlap, clock = fixedClock()
     )
 
     @BeforeEach
@@ -159,13 +140,13 @@ class HomeViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         // Then: State should have today's date
-        assertThat(viewModel.uiState.value.today).isEqualTo(LocalDate.now())
+        assertThat(viewModel.uiState.value.today).isEqualTo(TestDates.FRIDAY)
     }
 
     @Test
     fun `initial state loads workDay when it exists`() = runTest {
         // Given: Repository returns work day for today
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDay = WorkDay(
             id = 1,
             date = today,
@@ -202,7 +183,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `initial state detects running clock when timeBlock has no endTime`() = runTest {
         // Given: Work day with running time block
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(
             id = 1,
             workDayId = 1,
@@ -226,7 +207,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `initial state computes live dayWorkTime and liveFlextimeDelta when clock is running`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(
             id = 1,
             workDayId = 1,
@@ -254,7 +235,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `onResume immediately updates live dayWorkTime and liveFlextimeDelta when clock is running`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(
             id = 1,
             workDayId = 1,
@@ -306,7 +287,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `initial state computes liveFlextimeBalance and liveMonthlyFlextimeBalance when clock is running`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(
             id = 1,
             workDayId = 1,
@@ -340,7 +321,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `liveFlextimeBalance and liveMonthlyFlextimeBalance are null when clock is not running`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val completedBlock = TimeBlock(
             id = 1,
             workDayId = 1,
@@ -361,7 +342,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `initial state calculates dayWorkTime from timeBlocks`() = runTest {
         // Given: Work day with time blocks
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val timeBlock = TimeBlock(
             id = 1,
             workDayId = 1,
@@ -411,7 +392,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `initial state loads baseFlextimeBalance from calculation of days before selected date`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val yesterday = today.minusDays(1)
         val day1 = WorkDay(id = 1, date = yesterday, dayType = DayType.WORK)
         val day2 = WorkDay(id = 2, date = today, dayType = DayType.WORK, timeBlocks = listOf(
@@ -444,7 +425,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `navigateToDate updates baseFlextimeBalance and selectedDateFlextimeBalance for past date`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val twoDaysAgo = today.minusDays(2)
         val yesterday = today.minusDays(1)
 
@@ -493,7 +474,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `selected date flextime uses work days from the selected year`() = runTest {
-        val selectedDate = LocalDate.of(LocalDate.now().year - 1, 12, 30)
+        val selectedDate = LocalDate.of(TestDates.FRIDAY.year - 1, 12, 30)
         val selectedYearWorkDay = WorkDay(id = 42L, date = selectedDate, dayType = DayType.WORK)
         val expectedBalance = FlextimeBalance(totalMinutes = 777)
         whenever(workDayRepository.getWorkDaysForYear(selectedDate.year))
@@ -515,7 +496,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `viewing another year keeps current and selected date flextime balances separate`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val selectedDate = LocalDate.of(today.year - 1, 12, 30)
         val currentYearDay = WorkDay(
             id = 101L,
@@ -580,7 +561,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `clockIn creates new WorkDay when none exists`() = runTest {
         // Given: No work day for today
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(null))
         whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
 
@@ -599,7 +580,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `clockIn creates TimeBlock with current time when WorkDay exists`() = runTest {
         // Given: Existing work day
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDay = WorkDay(id = 1, date = today)
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
@@ -617,7 +598,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `clockIn resets isPlanned flag and deletes placeholder blocks when WorkDay is planned`() = runTest {
         // Given: Planned work day with a planned placeholder block
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val plannedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), isDuration = true)
         val plannedWorkDay = WorkDay(id = 1, date = today, isPlanned = true, timeBlocks = listOf(plannedBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedWorkDay))
@@ -639,7 +620,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `clockOut updates running TimeBlock with endTime`() = runTest {
         // Given: Work day with running time block
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(
             id = 1,
             workDayId = 1,
@@ -663,7 +644,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `clockOut does nothing when no running TimeBlock exists`() = runTest {
         // Given: Work day with no running time blocks
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val completedBlock = TimeBlock(
             id = 1,
             workDayId = 1,
@@ -689,7 +670,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `setLocation updates selectedLocation and persists to WorkDay`() = runTest {
         // Given: Existing work day
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE)
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
@@ -725,7 +706,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `setDayType updates selectedDayType and persists to WorkDay`() = runTest {
         // Given: Existing work day
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDay = WorkDay(id = 1, date = today, dayType = DayType.WORK)
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
@@ -763,7 +744,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `saveManualEntry adds TimeBlock to existing WorkDay`() = runTest {
         // Given: Existing work day
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDay = WorkDay(id = 1, date = today)
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
@@ -780,7 +761,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `saveManualEntry deletes placeholder blocks when WorkDay is planned`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val plannedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), isDuration = true)
         val plannedWorkDay = WorkDay(id = 1, date = today, isPlanned = true, timeBlocks = listOf(plannedBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedWorkDay))
@@ -836,7 +817,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `saveDurationEntry deletes placeholder blocks when WorkDay is planned`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val plannedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), isDuration = true)
         val plannedWorkDay = WorkDay(id = 1, date = today, isPlanned = true, timeBlocks = listOf(plannedBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedWorkDay))
@@ -917,7 +898,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `deleteTimeBlock when last block also deletes WorkDay`() = runTest {
         // Given: WorkDay with exactly one TimeBlock
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val timeBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(12, 0))
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(timeBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
@@ -936,7 +917,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `deleteTimeBlock when not last block does NOT delete WorkDay`() = runTest {
         // Given: WorkDay with two TimeBlocks
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val timeBlock1 = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(12, 0))
         val timeBlock2 = TimeBlock(id = 2, workDayId = 1, startTime = LocalTime.of(13, 0), endTime = LocalTime.of(17, 0))
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(timeBlock1, timeBlock2))
@@ -956,7 +937,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `deleteTimeBlock when block is running cancels break warning and stops timer service`() = runTest {
         // Given: WorkDay with a running TimeBlock
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = null)
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
@@ -977,7 +958,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `deleteDay when a block was running cancels break warning and stops timer service`() = runTest {
         // Given: WorkDay with a running TimeBlock
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = null)
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
@@ -1033,7 +1014,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `updateTimeBlock retains isDuration true by default`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val durationBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), location = WorkLocation.OFFICE, isDuration = true)
         val workDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, timeBlocks = listOf(durationBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
@@ -1049,7 +1030,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `updateTimeBlock updates isDuration to false when requested`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val durationBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), location = WorkLocation.OFFICE, isDuration = true)
         val workDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, timeBlocks = listOf(durationBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
@@ -1067,7 +1048,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `bookTimeBlock saves adjusted times and location, unplans planned workday, and retains isDuration`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val plannedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), location = WorkLocation.OFFICE, isDuration = true)
         val plannedDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, isPlanned = true, timeBlocks = listOf(plannedBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedDay))
@@ -1084,7 +1065,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `bookTimeBlock without end time starts timer service when enabled and preserves isDuration`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val plannedBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), location = WorkLocation.OFFICE, isDuration = true)
         val plannedDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, isPlanned = true, timeBlocks = listOf(plannedBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedDay))
@@ -1104,7 +1085,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `bookTimeBlock deletes other placeholder blocks and allows changing isDuration to false`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val plannedBlock1 = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(15, 6), location = WorkLocation.OFFICE, isDuration = true)
         val plannedBlock2 = TimeBlock(id = 2, workDayId = 1, startTime = LocalTime.of(15, 6), endTime = LocalTime.of(16, 0), location = WorkLocation.OFFICE, isDuration = true)
         val plannedDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, isPlanned = true, timeBlocks = listOf(plannedBlock1, plannedBlock2))
@@ -1153,7 +1134,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `toggleTimeBlockLocation on running block updates block, workday, and notifies service`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = null, location = WorkLocation.OFFICE)
         val workDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, timeBlocks = listOf(runningBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
@@ -1176,7 +1157,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `toggleTimeBlockLocation does nothing when DayType is BUSINESS_TRIP`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val btBlock = TimeBlock(id = 1, workDayId = 1, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 0), location = WorkLocation.OFFICE)
         val btDay = WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, dayType = DayType.BUSINESS_TRIP, timeBlocks = listOf(btBlock))
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(btDay))
@@ -1213,7 +1194,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `saveDayType updates existing WorkDay`() = runTest {
         // Given: Existing work day
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDay = WorkDay(id = 1, date = today, dayType = DayType.WORK)
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
@@ -1243,7 +1224,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `saveDayType un-plans planned day when saving`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val plannedDay = WorkDay(id = 5, date = today, dayType = DayType.WORK, isPlanned = true)
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(plannedDay))
 
@@ -1261,7 +1242,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `clockIn creates WORK day even if uncommitted dayType selection is VACATION`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(null))
         whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
 
@@ -1281,7 +1262,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `clockIn creates SATURDAY_BONUS day when uncommitted dayType selection is SATURDAY_BONUS`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(null))
         whenever(workDayRepository.saveWorkDay(any())).thenReturn(1L)
 
@@ -1301,7 +1282,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `clockIn updates existing WORK day to SATURDAY_BONUS when uncommitted dayType selection is SATURDAY_BONUS`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val existingWorkDay = WorkDay(
             id = 10L,
             date = today,
@@ -1330,7 +1311,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `saveDayType with DayType WORK deletes workDay when timeBlocks is empty`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val vacationDay = WorkDay(id = 10, date = today, dayType = DayType.VACATION, timeBlocks = emptyList())
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(vacationDay))
 
@@ -1362,7 +1343,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `empty timeBlocks list results in zero dayWorkTime`() = runTest {
         // Given: Work day with no time blocks
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDay = WorkDay(id = 1, date = today, timeBlocks = emptyList())
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
         whenever(calculateDayWorkTime(emptyList())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
@@ -1379,7 +1360,7 @@ class HomeViewModelTest : BaseUnitTest() {
     @Test
     fun `isClockRunning is false when no timeBlocks exist`() = runTest {
         // Given: Work day with no time blocks
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDay = WorkDay(id = 1, date = today, timeBlocks = emptyList())
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
@@ -1398,7 +1379,7 @@ class HomeViewModelTest : BaseUnitTest() {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        verify(autoBookPlannedDays).invoke()
+        verify(autoBookPlannedDays).invoke(any())
     }
 
     @Test
@@ -1409,14 +1390,14 @@ class HomeViewModelTest : BaseUnitTest() {
         viewModel.onResume()
         advanceUntilIdle()
 
-        verify(autoBookPlannedDays, org.mockito.kotlin.times(2)).invoke()
+        verify(autoBookPlannedDays, org.mockito.kotlin.times(2)).invoke(any())
     }
 
     // ========== Overlap Warning Tests ==========
 
     @Test
     fun `hasTimeBlockOverlap is false when no time blocks exist`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDay = WorkDay(id = 1, date = today, timeBlocks = emptyList())
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
@@ -1428,7 +1409,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `hasTimeBlockOverlap is false when time blocks do not overlap`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val blocks = listOf(
             TimeBlock(id = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(12, 0)),
             TimeBlock(id = 2, startTime = LocalTime.of(13, 0), endTime = LocalTime.of(17, 0))
@@ -1444,7 +1425,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `hasTimeBlockOverlap is true when time blocks overlap`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val blocks = listOf(
             TimeBlock(id = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(13, 0)),
             TimeBlock(id = 2, startTime = LocalTime.of(12, 0), endTime = LocalTime.of(17, 0))
@@ -1460,7 +1441,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `hasTimeBlockOverlap is false when overlapping block is duration based`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val blocks = listOf(
             TimeBlock(id = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(12, 0)),
             TimeBlock(id = 2, isDuration = true, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(11, 0))
@@ -1476,7 +1457,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `BUSINESS_TRIP day type calls calculateDayWorkTime and checkBreakViolation with isBusinessTrip true`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val blocks = listOf(
             TimeBlock(id = 1, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(16, 0))
         )
@@ -1496,17 +1477,16 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `projectedEndTime is populated in HomeUiState when clocked in with a target`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(
             id = 1,
             workDayId = 1,
-            startTime = LocalTime.now().minusHours(1),
+            startTime = LocalTime.of(12, 0).minusHours(1),
             endTime = null
         )
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
         val settings = Settings(dailyWorkMinutes = 480) // 8 hours target (> 6h -> 30m break)
         whenever(getSettings()).thenReturn(flowOf(settings))
-        stubAllDaysRule()
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         viewModel = createViewModel()
@@ -1523,7 +1503,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `projectedEndTime is null when clock is not running`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val completedBlock = TimeBlock(
             id = 1,
             workDayId = 1,
@@ -1544,18 +1524,17 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `projectedEndTime is null when selectedDate is not today`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val yesterday = today.minusDays(1)
         val runningBlock = TimeBlock(
             id = 1,
             workDayId = 1,
-            startTime = LocalTime.now().minusHours(1),
+            startTime = LocalTime.of(12, 0).minusHours(1),
             endTime = null
         )
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
         val settings = Settings(dailyWorkMinutes = 480)
         whenever(getSettings()).thenReturn(flowOf(settings))
-        stubAllDaysRule()
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
         whenever(workDayRepository.getWorkDay(yesterday)).thenReturn(flowOf(null))
 
@@ -1571,12 +1550,12 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `projectedEndTime is null when daily target is already reached`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         // Worked 120 minutes with a target of 60 minutes
         val runningBlock = TimeBlock(
             id = 1,
             workDayId = 1,
-            startTime = LocalTime.now().minusMinutes(120),
+            startTime = LocalTime.of(12, 0).minusMinutes(120),
             endTime = null
         )
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
@@ -1593,17 +1572,16 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `updateLiveWorkTime keeps projectedEndTime updated when clock is running`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(
             id = 1,
             workDayId = 1,
-            startTime = LocalTime.now().minusHours(1),
+            startTime = LocalTime.of(12, 0).minusHours(1),
             endTime = null
         )
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
         val settings = Settings(dailyWorkMinutes = 480)
         whenever(getSettings()).thenReturn(flowOf(settings))
-        stubAllDaysRule()
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         viewModel = createViewModel()
@@ -1621,11 +1599,11 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `projectedEndTime is null when dailyTargetMinutes is zero`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(
             id = 1,
             workDayId = 1,
-            startTime = LocalTime.now().minusHours(1),
+            startTime = LocalTime.of(12, 0).minusHours(1),
             endTime = null
         )
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
@@ -1641,7 +1619,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `clockIn retains dayType on existing planned vacation day and un-plans it`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val plannedVacation = WorkDay(
             id = 42L,
             date = today,
@@ -1667,7 +1645,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `clockIn on business trip suppresses break warning scheduler`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val businessTrip = WorkDay(
             id = 43L,
             date = today,
@@ -1691,7 +1669,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `saveDayType preserves existing workDay and enforces OFFICE for BUSINESS_TRIP`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val block = TimeBlock(id = 1L, workDayId = 44L, startTime = LocalTime.of(9, 0), endTime = LocalTime.of(17, 0), location = WorkLocation.HOME_OFFICE)
         val existing = WorkDay(
             id = 44L,
@@ -1722,7 +1700,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `SATURDAY_BONUS has zero daily target and zero remaining minutes`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val saturdayBonus = WorkDay(
             id = 50L,
             date = today,
@@ -1744,7 +1722,7 @@ class HomeViewModelTest : BaseUnitTest() {
 
     @Test
     fun `saveDayType to BUSINESS_TRIP while timer is running cancels break warning`() = runTest {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(id = 1L, workDayId = 55L, startTime = LocalTime.of(8, 0), endTime = null, location = WorkLocation.OFFICE)
         val runningWorkDay = WorkDay(
             id = 55L,

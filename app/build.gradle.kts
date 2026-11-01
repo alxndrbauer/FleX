@@ -213,3 +213,24 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
+
+/**
+ * Tests dürfen die Systemuhr nicht lesen: sonst hängt die Suite vom Kalendertag ab,
+ * an dem sie läuft. Für Datum/Uhrzeit `fixedClock()` aus `com.flex.support` verwenden.
+ */
+tasks.register("checkTestWallClock") {
+    group = "verification"
+    description = "Fails when unit tests read the system clock directly."
+    val testSources = fileTree("src/test") { include("**/*.kt") }
+    val clockPattern = Regex("""(LocalDate|LocalTime|YearMonth|LocalDateTime)\.now\(\)""")
+    inputs.files(testSources)
+    doLast {
+        val offenders = testSources.filter { clockPattern.containsMatchIn(it.readText()) }
+        check(offenders.isEmpty()) {
+            "Tests lesen die Systemuhr — nutze fixedClock() aus com.flex.support: " +
+                offenders.joinToString { it.relativeTo(projectDir).path }
+        }
+    }
+}
+
+tasks.named("check") { dependsOn("checkTestWallClock") }

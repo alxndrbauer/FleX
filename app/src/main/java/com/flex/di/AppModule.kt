@@ -28,6 +28,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import java.time.Clock
 import javax.inject.Singleton
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -145,6 +146,14 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    /**
+     * Single source of "now" for the whole app. Tests substitute a fixed clock so they do not
+     * depend on the calendar day the suite runs on.
+     */
+    @Provides
+    @Singleton
+    fun provideClock(): Clock = Clock.systemDefaultZone()
 
     @Provides
     @Singleton

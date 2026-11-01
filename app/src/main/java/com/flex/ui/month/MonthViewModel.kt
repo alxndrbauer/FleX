@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -96,7 +97,8 @@ class MonthViewModel @Inject constructor(
     private val checkBreakViolation: CheckBreakViolationUseCase,
     private val buildPrognosisDays: BuildPrognosisDaysUseCase,
     private val checkTimeBlockOverlap: CheckTimeBlockOverlapUseCase = CheckTimeBlockOverlapUseCase(),
-    private val exportNotificationHelper: ExportNotificationHelper? = null
+    private val exportNotificationHelper: ExportNotificationHelper? = null,
+    private val clock: Clock = Clock.systemDefaultZone()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MonthUiState())
@@ -105,7 +107,7 @@ class MonthViewModel @Inject constructor(
     private val _undoEvent = MutableSharedFlow<UndoEvent>()
     val undoEvent: SharedFlow<UndoEvent> = _undoEvent.asSharedFlow()
 
-    private val _selectedMonth = MutableStateFlow(YearMonth.now())
+    private val _selectedMonth = MutableStateFlow(YearMonth.now(clock))
 
     init {
         loadMonth()
@@ -153,8 +155,8 @@ private data class MonthConfig(
                 val qDays = rule?.officeQuotaMinDays ?: settings.officeQuotaMinDays
 
                 // Resolve running block on today so hours worked so far are accounted for
-                val now = LocalTime.now().withSecond(0).withNano(0)
-                val today = LocalDate.now()
+                val now = LocalTime.now(clock).withSecond(0).withNano(0)
+                val today = LocalDate.now(clock)
                 val resolvedDays = days.map { day ->
                     if (day.date == today && day.timeBlocks.any { it.endTime == null }) {
                         day.copy(timeBlocks = day.timeBlocks.map { block ->
@@ -164,7 +166,7 @@ private data class MonthConfig(
                 }
 
                 // For current/past months, exclude planned days from calculations
-                val isCurrentOrPast = !month.isAfter(YearMonth.now())
+                val isCurrentOrPast = !month.isAfter(YearMonth.now(clock))
                 val daysForCalc = if (isCurrentOrPast) resolvedDays.filter { !it.isPlanned } else resolvedDays
                 val hasPlanned = days.any { it.isPlanned }
 
@@ -235,15 +237,15 @@ private data class MonthConfig(
                 val violationDates = if (settings.breakWarningEnabled) {
                     days.filter { !it.isPlanned }.mapNotNull { workDay ->
                         val result = if (workDay.dayType == DayType.BUSINESS_TRIP)
-                            checkBreakViolation(workDay.timeBlocks, isBusinessTrip = true)
+                            checkBreakViolation(workDay.timeBlocks, now = LocalTime.now(clock), isBusinessTrip = true)
                         else
-                            checkBreakViolation(workDay.timeBlocks)
+                            checkBreakViolation(workDay.timeBlocks, now = LocalTime.now(clock))
                         if (!result.skipped && result.violations.isNotEmpty()) workDay.date else null
                     }.toSet()
                 } else emptySet()
 
                 val overlappingDates = days.filter { !it.isPlanned }.mapNotNull { workDay ->
-                    if (checkTimeBlockOverlap(workDay.timeBlocks)) workDay.date else null
+                    if (checkTimeBlockOverlap(workDay.timeBlocks, now = LocalTime.now(clock))) workDay.date else null
                 }.toSet()
 
                 // Calculate monthly worked hours: WORK + SATURDAY_BONUS + BUSINESS_TRIP actual minutes,

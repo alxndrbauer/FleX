@@ -18,6 +18,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -38,7 +39,8 @@ class YearChangeViewModel @Inject constructor(
     private val workDayRepository: WorkDayRepository,
     private val settingsRepository: SettingsRepository,
     private val getSettings: GetSettingsUseCase,
-    private val calculateFlextime: CalculateFlextimeUseCase
+    private val calculateFlextime: CalculateFlextimeUseCase,
+    private val clock: Clock = Clock.systemDefaultZone()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(YearChangeState())
@@ -64,7 +66,7 @@ class YearChangeViewModel @Inject constructor(
                             settings.annualVacationDays + settings.carryOverVacationDays - usedVacation
                         )
                         val balance = calculateFlextime(actualDays, settings, null, workTimeRules)
-                        val shouldShowAuto = LocalDate.now().year > settings.settingsYear
+                        val shouldShowAuto = LocalDate.now(clock).year > settings.settingsYear
                         val showDialog = (shouldShowAuto || manuallyOpened) && !dismissed
 
                         YearChangeState(

@@ -10,6 +10,8 @@ import com.flex.domain.usecase.AutoClockOutUseCase
 import com.flex.domain.usecase.ClockInUseCase
 import com.flex.domain.usecase.PauseWorkUseCase
 import com.flex.domain.usecase.SwitchLocationUseCase
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
@@ -31,8 +33,8 @@ class ClockInOutBehaviorSpec : BehaviorSpec({
     Given("erstmaliges Einstempeln am Tag") {
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
         val pausePreferences = mockk<PausePreferences>(relaxed = true)
-        val clockInUseCase = ClockInUseCase(workDayRepository, pausePreferences)
-        val today = LocalDate.now()
+        val clockInUseCase = ClockInUseCase(workDayRepository, pausePreferences, clock = fixedClock())
+        val today = TestDates.FRIDAY
 
         coEvery { workDayRepository.getWorkDay(today) } returns flowOf(null)
         coEvery { workDayRepository.saveWorkDay(any()) } returns 101L
@@ -71,8 +73,8 @@ class ClockInOutBehaviorSpec : BehaviorSpec({
     Given("ein laufender Zeitblock beim Ausstempeln") {
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
         val pausePreferences = mockk<PausePreferences>(relaxed = true)
-        val autoClockOutUseCase = AutoClockOutUseCase(workDayRepository, pausePreferences)
-        val today = LocalDate.now()
+        val autoClockOutUseCase = AutoClockOutUseCase(workDayRepository, pausePreferences, clock = fixedClock())
+        val today = TestDates.FRIDAY
 
         val runningBlock = TimeBlock(
             id = 15L,
@@ -112,8 +114,8 @@ class ClockInOutBehaviorSpec : BehaviorSpec({
     Given("mehrfaches Ein- und Ausstempeln am selben Tag") {
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
         val pausePreferences = mockk<PausePreferences>(relaxed = true)
-        val clockInUseCase = ClockInUseCase(workDayRepository, pausePreferences)
-        val today = LocalDate.now()
+        val clockInUseCase = ClockInUseCase(workDayRepository, pausePreferences, clock = fixedClock())
+        val today = TestDates.FRIDAY
 
         val completedBlock1 = TimeBlock(
             id = 1L,
@@ -186,8 +188,8 @@ class ClockInOutBehaviorSpec : BehaviorSpec({
     Given("pausieren der Arbeit während eines laufenden Blocks") {
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
         val pausePreferences = mockk<PausePreferences>(relaxed = true)
-        val pauseWorkUseCase = PauseWorkUseCase(workDayRepository, pausePreferences)
-        val today = LocalDate.now()
+        val pauseWorkUseCase = PauseWorkUseCase(workDayRepository, pausePreferences, clock = fixedClock())
+        val today = TestDates.FRIDAY
 
         val runningBlock = TimeBlock(
             id = 77L,
@@ -228,8 +230,8 @@ class ClockInOutBehaviorSpec : BehaviorSpec({
 
     Given("standortwechsel während eines laufenden Blocks") {
         val workDayRepository = mockk<WorkDayRepository>(relaxed = true)
-        val switchLocationUseCase = SwitchLocationUseCase(workDayRepository)
-        val today = LocalDate.now()
+        val switchLocationUseCase = SwitchLocationUseCase(workDayRepository, clock = fixedClock())
+        val today = TestDates.FRIDAY
 
         val runningBlock = TimeBlock(
             id = 88L,

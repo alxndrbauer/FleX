@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -73,13 +74,14 @@ class YearOverviewViewModel @Inject constructor(
     private val workDayRepository: WorkDayRepository,
     private val getSettings: GetSettingsUseCase,
     private val calculateDayWorkTime: CalculateDayWorkTimeUseCase,
-    private val settingsRepository: SettingsRepository? = null
+    private val settingsRepository: SettingsRepository? = null,
+    private val clock: Clock = Clock.systemDefaultZone()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(YearOverviewUiState())
     val uiState: StateFlow<YearOverviewUiState> = _uiState.asStateFlow()
 
-    private val _year = MutableStateFlow(LocalDate.now().year)
+    private val _year = MutableStateFlow(LocalDate.now(clock).year)
 
     init {
         loadData()
@@ -162,7 +164,7 @@ class YearOverviewViewModel @Inject constructor(
                         homeOfficeWorkDays = hoDays
                     )
 
-                    val nowMonth = java.time.YearMonth.now()
+                    val nowMonth = java.time.YearMonth.now(clock)
                     val actualDaysByMonth = actualDays.groupBy { it.date.monthValue }
                     val monthSummaries = (1..12).map { monthNum ->
                         val ym = java.time.YearMonth.of(year, monthNum)

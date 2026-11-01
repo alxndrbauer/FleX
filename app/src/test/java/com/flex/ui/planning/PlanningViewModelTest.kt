@@ -23,6 +23,8 @@ import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.usecase.SyncPlannedDaysWithWorkTimeRuleUseCase
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -81,7 +83,8 @@ class PlanningViewModelTest : BaseUnitTest() {
     private fun createViewModel() = PlanningViewModel(
         getMonthWorkDays, getSettings, workDayRepository, settingsRepository,
         calculateDayWorkTime, calculateQuota, calculateFlextime, buildPrognosisDays,
-        syncPlannedDaysWithWorkTimeRuleUseCase
+        syncPlannedDaysWithWorkTimeRuleUseCase,
+        clock = fixedClock()
     )
 
     @Test
@@ -94,7 +97,7 @@ class PlanningViewModelTest : BaseUnitTest() {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        val nextMonth = YearMonth.now().plusMonths(1)
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         val testDate = (1..28)
             .map { nextMonth.atDay(it) }
             .first { it.dayOfWeek !in listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY) && !PublicHolidays.isHoliday(it) }
@@ -120,7 +123,7 @@ class PlanningViewModelTest : BaseUnitTest() {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        val testDate = YearMonth.now().plusMonths(1).atDay(10)
+        val testDate = YearMonth.from(TestDates.FRIDAY).plusMonths(1).atDay(10)
         viewModel.savePlannedHours(testDate, 300)
         advanceUntilIdle()
 
@@ -154,7 +157,7 @@ class PlanningViewModelTest : BaseUnitTest() {
 
     @Test
     fun `planDay with PlanType BUSINESS_TRIP saves WorkLocation OFFICE and DayType BUSINESS_TRIP`() = runTest {
-        val testDate = YearMonth.now().plusMonths(1).atDay(5)
+        val testDate = YearMonth.from(TestDates.FRIDAY).plusMonths(1).atDay(5)
         whenever(workDayRepository.saveWorkDay(any())).thenReturn(15L)
 
         viewModel = createViewModel()
@@ -177,7 +180,7 @@ class PlanningViewModelTest : BaseUnitTest() {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        val selectedMonth = YearMonth.now().plusMonths(1)
+        val selectedMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         whenever(syncPlannedDaysWithWorkTimeRuleUseCase.countAffectedPlannedDays(selectedMonth, selectedMonth)).thenReturn(8)
 
         val count = viewModel.getAffectedPlannedDaysCount()
@@ -191,7 +194,7 @@ class PlanningViewModelTest : BaseUnitTest() {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        val selectedMonth = YearMonth.now().plusMonths(1)
+        val selectedMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         whenever(syncPlannedDaysWithWorkTimeRuleUseCase.syncMonth(selectedMonth, false, null)).thenReturn(
             SyncPlannedDaysResult(updatedDaysCount = 5, removedDaysCount = 0, untouchedCustomDaysCount = 0)
         )
@@ -211,7 +214,7 @@ class PlanningViewModelTest : BaseUnitTest() {
 
     @Test
     fun `syncPlannedDays calculates previousDailyMinutes as most frequent duration ungleich targetDailyMinutes`() = runTest {
-        val selectedMonth = YearMonth.now().plusMonths(1)
+        val selectedMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         val workTimeRule = WorkTimeRule(
             id = 1L,
             validFrom = selectedMonth,
@@ -256,7 +259,7 @@ class PlanningViewModelTest : BaseUnitTest() {
 
     @Test
     fun `canSyncPlannedDays is false when all planned days already match rule`() = runTest {
-        val selectedMonth = YearMonth.now().plusMonths(1)
+        val selectedMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         val workTimeRule = WorkTimeRule(
             id = 1L,
             validFrom = selectedMonth,
@@ -279,7 +282,7 @@ class PlanningViewModelTest : BaseUnitTest() {
 
     @Test
     fun `canSyncPlannedDays is false when all standard days match rule and only a single custom day exists`() = runTest {
-        val selectedMonth = YearMonth.now().plusMonths(1)
+        val selectedMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         val workTimeRule = WorkTimeRule(
             id = 1L,
             validFrom = selectedMonth,
@@ -305,7 +308,7 @@ class PlanningViewModelTest : BaseUnitTest() {
 
     @Test
     fun `canSyncPlannedDays is true when planned days have outdated standard duration`() = runTest {
-        val selectedMonth = YearMonth.now().plusMonths(1)
+        val selectedMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         val workTimeRule = WorkTimeRule(
             id = 1L,
             validFrom = selectedMonth,
@@ -329,7 +332,7 @@ class PlanningViewModelTest : BaseUnitTest() {
 
     @Test
     fun `flextime breakdown reflects actual balance and planned contribution`() = runTest {
-        val selectedMonth = YearMonth.now().plusMonths(1)
+        val selectedMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
         val actualDay = WorkDay(
             id = 1L,
             date = selectedMonth.minusMonths(1).atDay(15),

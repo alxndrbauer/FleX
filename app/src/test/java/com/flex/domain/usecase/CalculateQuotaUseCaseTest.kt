@@ -6,6 +6,8 @@ import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -25,7 +27,7 @@ class CalculateQuotaUseCaseTest {
     @BeforeEach
     fun setUp() {
         calculateDayWorkTime = mock()
-        useCase = CalculateQuotaUseCase(calculateDayWorkTime)
+        useCase = CalculateQuotaUseCase(calculateDayWorkTime, clock = fixedClock())
         settings = Settings(
             dailyWorkMinutes = 426, // 7h 6min
             monthlyWorkMinutes = 9266,
@@ -346,8 +348,8 @@ class CalculateQuotaUseCaseTest {
     @Test
     fun testRemainingWorkDaysWhenCurrentMonthExpectCorrectCount() {
         // Uses the current month dynamically so remainingWorkDays > 0 as long as the month isn't over
-        val currentMonth = YearMonth.now()
-        val today = java.time.LocalDate.now()
+        val currentMonth = YearMonth.from(TestDates.FRIDAY)
+        val today = TestDates.FRIDAY
         // Skip test if today is the last day of the month (no remaining work days possible)
         assumeTrue(today.dayOfMonth < currentMonth.lengthOfMonth())
 

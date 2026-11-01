@@ -26,6 +26,8 @@ import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.notification.BreakWarningScheduler
 import com.flex.ui.home.HomeViewModel
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
@@ -112,13 +114,14 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
             whatsNewPreferences = whatsNewPreferences,
             backupPreferences = backupPreferences,
             autoBookPlannedDaysUseCase = autoBookPlannedDays,
-            checkTimeBlockOverlap = checkTimeBlockOverlap
+            checkTimeBlockOverlap = checkTimeBlockOverlap,
+            clock = fixedClock()
         )
         return Pair(workDayRepository, vm)
     }
 
     Given("ein noch nicht gestarteter Arbeitstag") {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDayFlow = MutableStateFlow<WorkDay?>(null)
 
         val context = mockk<Context>(relaxed = true)
@@ -155,7 +158,8 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
             context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
             dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
-            whatsNewPreferences, backupPreferences, autoBookPlannedDays
+            whatsNewPreferences, backupPreferences, autoBookPlannedDays,
+            clock = fixedClock()
         )
 
         When("der initiale State geladen ist") {
@@ -174,7 +178,7 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
     }
 
     Given("ein Nutzer stempelt sich im Büro ein") {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDayFlow = MutableStateFlow<WorkDay?>(null)
         var currentWorkDay: WorkDay? = null
 
@@ -229,7 +233,8 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
             context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
             dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
-            whatsNewPreferences, backupPreferences, autoBookPlannedDays
+            whatsNewPreferences, backupPreferences, autoBookPlannedDays,
+            clock = fixedClock()
         )
 
         When("clockIn mit OFFICE ausgeführt wird") {
@@ -254,7 +259,7 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
     }
 
     Given("ein laufender Arbeitsblock beim Ausstempeln") {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val runningBlock = TimeBlock(id = 10L, workDayId = 1L, startTime = LocalTime.of(9, 0), endTime = null, location = WorkLocation.OFFICE)
         val initialDay = WorkDay(id = 1L, date = today, location = WorkLocation.OFFICE, timeBlocks = listOf(runningBlock))
         val workDayFlow = MutableStateFlow<WorkDay?>(initialDay)
@@ -302,7 +307,8 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
             context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
             dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
-            whatsNewPreferences, backupPreferences, autoBookPlannedDays
+            whatsNewPreferences, backupPreferences, autoBookPlannedDays,
+            clock = fixedClock()
         )
 
         When("clockOut aufgerufen wird") {
@@ -399,7 +405,7 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
     }
 
     Given("das Löschen eines Tages") {
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val block1 = TimeBlock(id = 1L, workDayId = 10L, startTime = LocalTime.of(8, 0), endTime = LocalTime.of(12, 0))
         val block2 = TimeBlock(id = 2L, workDayId = 10L, startTime = LocalTime.of(13, 0), endTime = LocalTime.of(17, 0))
         val workDay = WorkDay(id = 10L, date = today, timeBlocks = listOf(block1, block2))
@@ -438,7 +444,8 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
             context, workDayRepository, settingsRepository, getMonthWorkDays,
             getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
             dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
-            whatsNewPreferences, backupPreferences, autoBookPlannedDays
+            whatsNewPreferences, backupPreferences, autoBookPlannedDays,
+            clock = fixedClock()
         )
 
         When("deleteDay aufgerufen wird") {
@@ -498,7 +505,8 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
                 getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
                 dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
                 whatsNewPreferences, backupPreferences, autoBookPlannedDays,
-                CheckTimeBlockOverlapUseCase()
+                CheckTimeBlockOverlapUseCase(),
+                clock = fixedClock()
             )
             customVm.navigateToDate(dateBeforeDeadline)
             customVm.setDayType(DayType.SPECIAL_VACATION)
@@ -550,7 +558,8 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
                 getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
                 dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
                 whatsNewPreferences, backupPreferences, autoBookPlannedDays,
-                CheckTimeBlockOverlapUseCase()
+                CheckTimeBlockOverlapUseCase(),
+                clock = fixedClock()
             )
             customVm.navigateToDate(dateAfterDeadline)
             customVm.setDayType(DayType.SPECIAL_VACATION)
@@ -602,7 +611,8 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
                 getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
                 dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
                 whatsNewPreferences, backupPreferences, autoBookPlannedDays,
-                CheckTimeBlockOverlapUseCase()
+                CheckTimeBlockOverlapUseCase(),
+                clock = fixedClock()
             )
             customVm.navigateToDate(dateBeforeDeadline)
             customVm.setDayType(DayType.SPECIAL_VACATION)

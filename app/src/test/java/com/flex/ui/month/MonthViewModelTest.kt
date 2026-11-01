@@ -35,6 +35,8 @@ import android.content.ContentResolver
 import android.net.Uri
 import com.flex.domain.model.ExportData
 import com.flex.notification.ExportNotificationHelper
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import org.mockito.Mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
@@ -128,12 +130,13 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
         // Then: State should have current YearMonth
-        assertThat(viewModel.uiState.value.yearMonth).isEqualTo(YearMonth.now())
+        assertThat(viewModel.uiState.value.yearMonth).isEqualTo(YearMonth.from(TestDates.FRIDAY))
     }
 
     @Test
@@ -145,7 +148,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -156,7 +160,7 @@ class MonthViewModelTest : BaseUnitTest() {
     @Test
     fun `initial state loads workDays from repository`() = runTest {
         // Given: Repository returns work days
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDays = listOf(
             WorkDay(id = 1, date = today, location = WorkLocation.OFFICE, dayType = DayType.WORK)
         )
@@ -166,7 +170,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -183,7 +188,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -203,7 +209,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -223,7 +230,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -256,7 +264,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -279,7 +288,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -299,14 +309,15 @@ class MonthViewModelTest : BaseUnitTest() {
     @Test
     fun `clearEditing sets editingDay to null`() = runTest {
         // Given: ViewModel with editing day set
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDay = WorkDay(id = 1, date = today)
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -333,7 +344,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -375,7 +387,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -410,7 +423,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -440,14 +454,15 @@ class MonthViewModelTest : BaseUnitTest() {
         val timeBlock2 = TimeBlock(id = 2, workDayId = 1, startTime = LocalTime.of(13, 0), endTime = LocalTime.of(17, 0))
         val workDay = WorkDay(
             id = 1,
-            date = LocalDate.now(),
+            date = TestDates.FRIDAY,
             timeBlocks = listOf(timeBlock1, timeBlock2)
         )
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -464,14 +479,15 @@ class MonthViewModelTest : BaseUnitTest() {
     @Test
     fun `deleteDay clears editing state`() = runTest {
         // Given: ViewModel with editing state
-        val today = LocalDate.now()
+        val today = TestDates.FRIDAY
         val workDay = WorkDay(id = 1, date = today)
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -504,7 +520,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -528,7 +545,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -548,7 +566,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -573,7 +592,7 @@ class MonthViewModelTest : BaseUnitTest() {
         // Given: WorkDay with no time blocks
         val workDay = WorkDay(
             id = 1,
-            date = LocalDate.now(),
+            date = TestDates.FRIDAY,
             dayType = DayType.VACATION,
             timeBlocks = emptyList()
         )
@@ -581,7 +600,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -595,7 +615,7 @@ class MonthViewModelTest : BaseUnitTest() {
 
     @Test
     fun `overlappingDates is empty when no time blocks overlap`() = runTest {
-        val testDate = YearMonth.now().atDay(10)
+        val testDate = YearMonth.from(TestDates.FRIDAY).atDay(10)
         val workDay = WorkDay(
             id = 1,
             date = testDate,
@@ -610,7 +630,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -619,7 +640,7 @@ class MonthViewModelTest : BaseUnitTest() {
 
     @Test
     fun `overlappingDates contains dates with overlapping time blocks`() = runTest {
-        val testDate = YearMonth.now().atDay(15)
+        val testDate = YearMonth.from(TestDates.FRIDAY).atDay(15)
         val workDay = WorkDay(
             id = 2,
             date = testDate,
@@ -634,7 +655,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -643,7 +665,7 @@ class MonthViewModelTest : BaseUnitTest() {
 
     @Test
     fun `overlappingDates ignores planned days`() = runTest {
-        val testDate = YearMonth.now().atDay(20)
+        val testDate = YearMonth.from(TestDates.FRIDAY).atDay(20)
         val plannedWorkDay = WorkDay(
             id = 3,
             date = testDate,
@@ -659,7 +681,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -670,14 +693,15 @@ class MonthViewModelTest : BaseUnitTest() {
 
     @Test
     fun `exportToUri calls exportNotificationHelper showExportNotification on successful CSV export`() = runTest {
-        val exportData = ExportData(YearMonth.now(), emptyList(), 0, 0, Settings())
+        val exportData = ExportData(YearMonth.from(TestDates.FRIDAY), emptyList(), 0, 0, Settings())
         whenever(prepareExportData(any())).thenReturn(exportData)
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
             prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
-            exportNotificationHelper = exportNotificationHelper
+            exportNotificationHelper = exportNotificationHelper,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -691,14 +715,15 @@ class MonthViewModelTest : BaseUnitTest() {
 
     @Test
     fun `exportToUri calls exportNotificationHelper showExportNotification on successful PDF export`() = runTest {
-        val exportData = ExportData(YearMonth.now(), emptyList(), 0, 0, Settings())
+        val exportData = ExportData(YearMonth.from(TestDates.FRIDAY), emptyList(), 0, 0, Settings())
         whenever(prepareExportData(any())).thenReturn(exportData)
 
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
             prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
-            exportNotificationHelper = exportNotificationHelper
+            exportNotificationHelper = exportNotificationHelper,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -712,7 +737,7 @@ class MonthViewModelTest : BaseUnitTest() {
 
     @Test
     fun `exportToUri does NOT call exportNotificationHelper showExportNotification when exportService throws an exception`() = runTest {
-        val exportData = ExportData(YearMonth.now(), emptyList(), 0, 0, Settings())
+        val exportData = ExportData(YearMonth.from(TestDates.FRIDAY), emptyList(), 0, 0, Settings())
         whenever(prepareExportData(any())).thenReturn(exportData)
         whenever(exportService.exportToCsv(any(), any(), any())).thenThrow(RuntimeException("Disk error"))
 
@@ -720,7 +745,8 @@ class MonthViewModelTest : BaseUnitTest() {
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
             prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
-            exportNotificationHelper = exportNotificationHelper
+            exportNotificationHelper = exportNotificationHelper,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -733,7 +759,7 @@ class MonthViewModelTest : BaseUnitTest() {
 
     @Test
     fun `actualWorkedMinutesMonth includes BUSINESS_TRIP days`() = runTest {
-        val today = java.time.LocalDate.now()
+        val today = TestDates.FRIDAY
         val btDay = com.flex.domain.model.WorkDay(
             id = 1,
             date = today,
@@ -751,7 +777,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -781,7 +808,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -793,7 +821,7 @@ class MonthViewModelTest : BaseUnitTest() {
 
     @Test
     fun `baseFlextimeMinutes represents balance from previous months`() = runTest {
-        val selectedMonth = YearMonth.now()
+        val selectedMonth = YearMonth.from(TestDates.FRIDAY)
         val priorMonthDay = WorkDay(
             id = 1L,
             date = selectedMonth.minusMonths(1).atDay(10),
@@ -809,7 +837,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         advanceUntilIdle()
 
@@ -818,7 +847,7 @@ class MonthViewModelTest : BaseUnitTest() {
 
     @Test
     fun `targetMinutesToDate matches targetMinutesMonth for past month and calculates differenceMinutesMonth`() = runTest {
-        val pastMonth = YearMonth.now().minusMonths(2)
+        val pastMonth = YearMonth.from(TestDates.FRIDAY).minusMonths(2)
         whenever(workDayRepository.getWorkDaysForYear(pastMonth.year)).thenReturn(flowOf(emptyList()))
         whenever(getMonthWorkDays(pastMonth)).thenReturn(flowOf(emptyList()))
         whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(FlextimeBalance(totalMinutes = 0L))
@@ -826,7 +855,8 @@ class MonthViewModelTest : BaseUnitTest() {
         viewModel = MonthViewModel(
             getMonthWorkDays, getSettings, workDayRepository,
             settingsRepository, calculateDayWorkTime, calculateQuota, calculateFlextime, dataChangeEventBus,
-            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays
+            prepareExportData, exportService, checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
         )
         viewModel.selectMonth(pastMonth)
         advanceUntilIdle()

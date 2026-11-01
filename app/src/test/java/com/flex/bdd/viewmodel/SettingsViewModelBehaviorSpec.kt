@@ -21,6 +21,7 @@ import com.flex.ui.settings.GeofenceStatus
 import com.flex.ui.settings.SettingsViewModel
 import com.flex.widget.WidgetUpdater
 import com.flex.wifi.WifiMonitor
+import com.flex.support.TestDates
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
@@ -205,7 +206,7 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
         val savedSettingsSlot = slot<Settings>()
         coEvery { settingsRepository.saveSettings(capture(savedSettingsSlot)) } returns Unit
 
-        val currentYear = LocalDate.now().year
+        val currentYear = TestDates.FRIDAY.year
         val initialSettings = Settings(
             settingsYear = currentYear,
             federalState = FederalState.HAMBURG

@@ -10,6 +10,8 @@ import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateAnalyticsUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.ui.analytics.AnalyticsViewModel
+import com.flex.support.TestDates
+import com.flex.support.fixedClock
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.collections.shouldHaveSize
@@ -67,7 +69,8 @@ class AnalyticsViewModelBehaviorSpec : BehaviorSpec({
             workDayRepository = workDayRepository,
             getSettingsUseCase = getSettingsUseCase,
             settingsRepository = settingsRepository,
-            calculateAnalyticsUseCase = calculateAnalyticsUseCase
+            calculateAnalyticsUseCase = calculateAnalyticsUseCase,
+            clock = fixedClock()
         )
         return Pair(workDayRepository, vm)
     }
@@ -77,7 +80,7 @@ class AnalyticsViewModelBehaviorSpec : BehaviorSpec({
 
         When("der initiale Zustand geladen wird") {
             Then("steht timeRange auf dem aktuellen Monat") {
-                viewModel.uiState.value.timeRange shouldBe TimeRange.Month(YearMonth.now())
+                viewModel.uiState.value.timeRange shouldBe TimeRange.Month(YearMonth.from(TestDates.FRIDAY))
             }
 
             Then("ist analyticsData mit den Diagrammdaten befüllt") {

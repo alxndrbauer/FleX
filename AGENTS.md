@@ -115,6 +115,7 @@ fix(ui): Delete button now appears in month view dialog
 - Komplexe Tasks in Subtasks aufteilen und für mehrere Subagents strukturieren
 - TDD: Tests vor der Implementierung schreiben
 - Tests für neue Features schreiben
+- **Tests lesen nie die Systemuhr.** Datum/Uhrzeit kommen aus `fixedClock()` bzw. `TestDates` (`app/src/test/java/com/flex/support/TestClock.kt`); Produktionsklassen bekommen einen injizierten `java.time.Clock`. `./gradlew checkTestWallClock` erzwingt das.
 - Code-Review nach größeren Änderungen
 - Descriptive Commit Messages (Conventional Commits) – *nur wenn vom User ausdrücklich beauftragt*
 - Gradle Tasks dürfen ohne Nachfragen ausgeführt werden

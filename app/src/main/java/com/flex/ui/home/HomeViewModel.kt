@@ -52,6 +52,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -106,7 +107,8 @@ class HomeViewModel @Inject constructor(
     private val backupPreferences: com.flex.data.backup.BackupPreferences,
     private val autoBookPlannedDaysUseCase: AutoBookPlannedDaysUseCase,
     private val checkTimeBlockOverlap: CheckTimeBlockOverlapUseCase = CheckTimeBlockOverlapUseCase(),
-    private val calculateProjectedEndTime: CalculateProjectedEndTimeUseCase = CalculateProjectedEndTimeUseCase()
+    private val calculateProjectedEndTime: CalculateProjectedEndTimeUseCase = CalculateProjectedEndTimeUseCase(),
+    private val clock: Clock = Clock.systemDefaultZone()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -126,11 +128,11 @@ class HomeViewModel @Inject constructor(
     private var cachedYearDays: List<WorkDay> = emptyList()
 
     private fun computeRemainingMinutes(state: HomeUiState, workTimeRules: List<WorkTimeRule> = cachedWorkTimeRules): Int? {
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         if (state.selectedDate != today) return null
         if (state.timeBlocks.isEmpty()) return null
 
-        val now = LocalTime.now()
+        val now = LocalTime.now(clock)
         val blocksForCalc = state.timeBlocks.map { block ->
             if (block.endTime == null) block.copy(endTime = now) else block
         }
@@ -147,7 +149,7 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun computeProjectedEndTime(state: HomeUiState, workTimeRules: List<WorkTimeRule> = cachedWorkTimeRules): ProjectedEndTime? {
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         if (!state.isClockRunning || state.selectedDate != today || state.timeBlocks.isEmpty()) return null
         val rule = settingsRepository.getWorkTimeRuleForDate(today, workTimeRules)
         val dailyTarget = getDailyWorkTargetMinutes(
@@ -160,12 +162,12 @@ class HomeViewModel @Inject constructor(
         return calculateProjectedEndTime(
             timeBlocks = state.timeBlocks,
             dailyTargetMinutes = dailyTarget,
-            now = LocalTime.now(),
+            now = LocalTime.now(clock),
             isBusinessTrip = state.selectedDayType == DayType.BUSINESS_TRIP
         )
     }
 
-    private val _selectedDate = MutableStateFlow(LocalDate.now())
+    private val _selectedDate = MutableStateFlow(LocalDate.now(clock))
     private val _refreshTrigger = MutableStateFlow(Unit)
     private val _localDayTypeOverride = MutableStateFlow<DayType?>(null)
 
@@ -190,15 +192,15 @@ class HomeViewModel @Inject constructor(
     private fun launchMidnightRefresh() {
         viewModelScope.launch(Dispatchers.Default) {
             while (true) {
-                val currentDate = LocalDate.now()
+                val currentDate = LocalDate.now(clock)
                 val millisUntilMidnight = java.time.Duration.between(
-                    java.time.LocalDateTime.now(),
+                    java.time.LocalDateTime.now(clock),
                     currentDate.plusDays(1).atStartOfDay()
                 ).toMillis()
                 delay(millisUntilMidnight + 500)
                 autoBookPlannedDays()
                 if (_selectedDate.value == currentDate) {
-                    _selectedDate.value = LocalDate.now()
+                    _selectedDate.value = LocalDate.now(clock)
                 }
             }
         }
@@ -206,9 +208,9 @@ class HomeViewModel @Inject constructor(
 
     fun updateLiveWorkTime() {
         val state = _uiState.value
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         if (state.isClockRunning && state.selectedDate == today) {
-            val now = LocalTime.now()
+            val now = LocalTime.now(clock)
             val blocksForCalc = state.timeBlocks.map { block ->
                 if (block.endTime == null) block.copy(endTime = now) else block
             }
@@ -216,8 +218,8 @@ class HomeViewModel @Inject constructor(
             val liveWorkTime = if (isBusinessTrip) calculateDayWorkTime(blocksForCalc, isBusinessTrip = true) else calculateDayWorkTime(blocksForCalc)
             val liveFlexDelta = liveWorkTime.netMinutes - state.baseDayNetMinutes
             val liveBreakCheck = if (state.settings.breakWarningEnabled) {
-                if (isBusinessTrip) checkBreakViolation(blocksForCalc, isBusinessTrip = true)
-                else checkBreakViolation(blocksForCalc)
+                if (isBusinessTrip) checkBreakViolation(blocksForCalc, now = LocalTime.now(clock), isBusinessTrip = true)
+                else checkBreakViolation(blocksForCalc, now = LocalTime.now(clock))
             } else BreakCheckResult(emptyList(), skipped = false)
 
             val todayWithNow = (state.workDay ?: WorkDay(date = today, location = state.selectedLocation, dayType = state.selectedDayType))
@@ -266,7 +268,7 @@ class HomeViewModel @Inject constructor(
                 _localDayTypeOverride
             ) { _, _, date, override -> Pair(date, override) }
                 .flatMapLatest { (date, override) ->
-                    val today = LocalDate.now()
+                    val today = LocalDate.now(clock)
                     val yearMonth = YearMonth.from(date)
                     val todayYearMonth = YearMonth.from(today)
                     val currentYearDaysFlow = workDayRepository.getWorkDaysForYear(today.year)
@@ -312,9 +314,9 @@ class HomeViewModel @Inject constructor(
                         val timeBlocks = workDay?.timeBlocks ?: emptyList()
                         val isRunning = timeBlocks.any { it.endTime == null }
                         val baseDayResult = if (isBusinessTrip) calculateDayWorkTime(timeBlocks, isBusinessTrip = true) else calculateDayWorkTime(timeBlocks)
-                        val hasOverlap = checkTimeBlockOverlap(timeBlocks)
+                        val hasOverlap = checkTimeBlockOverlap(timeBlocks, now = LocalTime.now(clock))
                         val isToday = date == today
-                        val now = LocalTime.now()
+                        val now = LocalTime.now(clock)
                         val blocksForCalc = if (isRunning && isToday) {
                             timeBlocks.map { block ->
                                 if (block.endTime == null) block.copy(endTime = now) else block
@@ -333,8 +335,8 @@ class HomeViewModel @Inject constructor(
                             0L
                         }
                         val breakCheckResult = if (settings.breakWarningEnabled) {
-                            if (isBusinessTrip) checkBreakViolation(blocksForCalc, isBusinessTrip = true)
-                            else checkBreakViolation(blocksForCalc)
+                            if (isBusinessTrip) checkBreakViolation(blocksForCalc, now = LocalTime.now(clock), isBusinessTrip = true)
+                            else checkBreakViolation(blocksForCalc, now = LocalTime.now(clock))
                         } else {
                             BreakCheckResult(emptyList(), skipped = false)
                         }
@@ -485,7 +487,7 @@ class HomeViewModel @Inject constructor(
 
     fun autoBookPlannedDays() {
         viewModelScope.launch {
-            autoBookPlannedDaysUseCase()
+            autoBookPlannedDaysUseCase(LocalDate.now(clock))
         }
     }
 
@@ -533,7 +535,7 @@ class HomeViewModel @Inject constructor(
 
     fun goToToday() {
         _localDayTypeOverride.value = null
-        _selectedDate.value = LocalDate.now()
+        _selectedDate.value = LocalDate.now(clock)
     }
 
     fun navigateToDate(date: LocalDate) {
@@ -544,7 +546,7 @@ class HomeViewModel @Inject constructor(
     fun clockIn() {
         viewModelScope.launch {
             val state = _uiState.value
-            val now = LocalTime.now().withSecond(0).withNano(0)
+            val now = LocalTime.now(clock).withSecond(0).withNano(0)
             val workLikeTypes = setOf(DayType.WORK, DayType.BUSINESS_TRIP, DayType.SATURDAY_BONUS)
             val targetDayType = when {
                 state.selectedDayType in workLikeTypes -> state.selectedDayType
@@ -599,7 +601,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val state = _uiState.value
             val runningBlock = state.timeBlocks.find { it.endTime == null } ?: return@launch
-            val now = LocalTime.now().withSecond(0).withNano(0)
+            val now = LocalTime.now(clock).withSecond(0).withNano(0)
 
             workDayRepository.saveTimeBlock(
                 runningBlock.copy(endTime = now)

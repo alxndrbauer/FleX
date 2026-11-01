@@ -9,13 +9,15 @@ import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.getRuleForDate
 import com.flex.domain.model.getRuleForMonth
+import java.time.Clock
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
 
 class CalculateQuotaUseCase @Inject constructor(
-    private val calculateDayWorkTime: CalculateDayWorkTimeUseCase
+    private val calculateDayWorkTime: CalculateDayWorkTimeUseCase,
+    private val clock: Clock = Clock.systemDefaultZone()
 ) {
 
     operator fun invoke(
@@ -97,7 +99,7 @@ class CalculateQuotaUseCase @Inject constructor(
         val percentQuotaMet = officePercent + 0.05 >= quotaPercent
         val daysQuotaMet = officeDays >= quotaMinDays
 
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         val remainingWorkDays = if (yearMonth.isAfter(YearMonth.from(today)) ||
             yearMonth == YearMonth.from(today)
         ) {

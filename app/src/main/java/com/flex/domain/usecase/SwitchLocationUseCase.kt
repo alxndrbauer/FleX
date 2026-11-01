@@ -3,14 +3,16 @@ package com.flex.domain.usecase
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.repository.WorkDayRepository
 import kotlinx.coroutines.flow.first
+import java.time.Clock
 import java.time.LocalDate
 import javax.inject.Inject
 
 class SwitchLocationUseCase @Inject constructor(
-    private val workDayRepository: WorkDayRepository
+    private val workDayRepository: WorkDayRepository,
+    private val clock: Clock = Clock.systemDefaultZone()
 ) {
     suspend operator fun invoke(targetLocation: WorkLocation? = null): Boolean {
-        val today = LocalDate.now()
+        val today = LocalDate.now(clock)
         val workDay = workDayRepository.getWorkDay(today).first() ?: return false
         val runningBlock = workDay.timeBlocks.find { it.endTime == null } ?: return false
 
