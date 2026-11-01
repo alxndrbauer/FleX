@@ -55,12 +55,12 @@ Für komplexe Aufgaben wird folgende Strategie verwendet:
 ## Projektspezifisch
 
 ### Tech Stack
-- **Language:** Kotlin 2.4.20
+- **Language:** Kotlin 2.4.21
 - **UI:** Jetpack Compose + Material 3
 - **Architecture:** MVVM + Clean Architecture
 - **Database:** Room 2.8.5
 - **DI:** Hilt 2.60.1
-- **Build:** Gradle 9.8.0, AGP 9.4.1
+- **Build:** Gradle 9.8.2, AGP 9.5.0
 - **Version Catalog:** `gradle/libs.versions.toml`
 
 ### Key Patterns

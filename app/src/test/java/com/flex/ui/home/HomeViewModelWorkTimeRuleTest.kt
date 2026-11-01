@@ -436,14 +436,32 @@ class HomeViewModelWorkTimeRuleTest : BaseUnitTest() {
     @Test
     fun `dailyTargetMinutes falls back to Settings when no WorkTimeRule exists`() = runTest {
         val settings = Settings(dailyWorkMinutes = 426)
+        val friday = LocalDate.of(2026, 10, 16) // fixed workday, independent of the real clock
         whenever(getSettings()).thenReturn(flowOf(settings))
         whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
         whenever(settingsRepository.getWorkTimeRuleForDate(any(), any())).thenReturn(null)
 
         viewModel = createViewModel()
+        viewModel.navigateToDate(friday)
         advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.dailyTargetMinutes).isEqualTo(426)
+    }
+
+    @Test
+    fun `dailyTargetMinutes is zero on a non-working day`() = runTest {
+        val settings = Settings(dailyWorkMinutes = 426)
+        val saturday = LocalDate.of(2026, 10, 17)
+
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
+        whenever(settingsRepository.getWorkTimeRuleForDate(any(), any())).thenReturn(null)
+
+        viewModel = createViewModel()
+        viewModel.navigateToDate(saturday)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.dailyTargetMinutes).isEqualTo(0)
     }
 
     @Test

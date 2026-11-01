@@ -11,6 +11,7 @@ import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
@@ -42,8 +43,10 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.YearMonth
 
 /**
  * Unit tests for HomeViewModel.
@@ -98,6 +101,24 @@ class HomeViewModelTest : BaseUnitTest() {
     private lateinit var checkTimeBlockOverlap: CheckTimeBlockOverlapUseCase
 
     private lateinit var viewModel: HomeViewModel
+
+    /**
+     * Tagessoll 480m an jedem Kalendertag. Ohne diese Regel hängt das erwartete Tagessoll
+     * davon ab, an welchem Kalendertag die Suite läuft (am Wochenende ist es 0).
+     */
+    private val allDaysRule = WorkTimeRule(
+        id = 99L,
+        validFrom = YearMonth.of(2020, 1),
+        dailyWorkMinutes = 480,
+        monthlyWorkMinutes = 9600,
+        workDays = DayOfWeek.entries.toSet()
+    )
+
+    /** Stubt Regelliste und Auflösung gemeinsam, damit der Zustand nicht widersprüchlich ist. */
+    private fun stubAllDaysRule() {
+        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(listOf(allDaysRule)))
+        whenever(settingsRepository.getWorkTimeRuleForDate(any(), any())).thenReturn(allDaysRule)
+    }
 
     private fun createViewModel() = HomeViewModel(
         context, workDayRepository, settingsRepository, getMonthWorkDays,
@@ -1485,6 +1506,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
         val settings = Settings(dailyWorkMinutes = 480) // 8 hours target (> 6h -> 30m break)
         whenever(getSettings()).thenReturn(flowOf(settings))
+        stubAllDaysRule()
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         viewModel = createViewModel()
@@ -1533,6 +1555,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
         val settings = Settings(dailyWorkMinutes = 480)
         whenever(getSettings()).thenReturn(flowOf(settings))
+        stubAllDaysRule()
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
         whenever(workDayRepository.getWorkDay(yesterday)).thenReturn(flowOf(null))
 
@@ -1580,6 +1603,7 @@ class HomeViewModelTest : BaseUnitTest() {
         val workDay = WorkDay(id = 1, date = today, timeBlocks = listOf(runningBlock))
         val settings = Settings(dailyWorkMinutes = 480)
         whenever(getSettings()).thenReturn(flowOf(settings))
+        stubAllDaysRule()
         whenever(workDayRepository.getWorkDay(today)).thenReturn(flowOf(workDay))
 
         viewModel = createViewModel()

@@ -78,14 +78,14 @@ Eine Android-App zur Erfassung von Arbeitszeiten mit Fokus auf Büro/Home-Office
 
 ## Tech Stack
 
-- **Language**: Kotlin 2.4.20
+- **Language**: Kotlin 2.4.21
 - **UI**: Jetpack Compose + Material 3
 - **Architecture**: MVVM + Clean Architecture
 - **Database**: Room 2.8.5
 - **DI**: Hilt 2.60.1
 - **Location**: Google Play Services Location 21.4.0
 - **Charts**: Vico 3.3.1
-- **Build**: Gradle 9.8.0, AGP 9.4.1
+- **Build**: Gradle 9.8.2, AGP 9.5.0
 
 ## Installation
 

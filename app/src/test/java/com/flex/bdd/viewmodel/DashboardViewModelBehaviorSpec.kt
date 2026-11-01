@@ -92,9 +92,11 @@ class DashboardViewModelBehaviorSpec : BehaviorSpec({
         val calculateAnalytics = CalculateAnalyticsUseCase(calculateDayWorkTime, calculateFlextime)
 
         val currentYearMonth = YearMonth.now()
+        // Gültig ab dem Vormonat: am Monatsanfang reicht die laufende Woche sonst in den
+        // Vormonat hinein, und für diese Tage gäbe es (noch) keine Regel.
         val fourDayRule = WorkTimeRule(
             id = 1L,
-            validFrom = currentYearMonth,
+            validFrom = currentYearMonth.minusMonths(1),
             dailyWorkMinutes = 533,
             monthlyWorkMinutes = 18 * 533,
             workDays = fourDays

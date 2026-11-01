@@ -7,6 +7,7 @@ import com.flex.domain.model.Settings
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
+import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
@@ -20,10 +21,22 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.YearMonth
 
 class FlexWidgetBehaviorSpec : BehaviorSpec({
+
+    // Tagessoll 480m an jedem Kalendertag. Ohne diese Regel hängt das erwartete Tagessoll
+    // davon ab, an welchem Kalendertag die Suite läuft (am Wochenende ist es 0).
+    val allDaysRule = WorkTimeRule(
+        id = 99L,
+        validFrom = YearMonth.of(2020, 1),
+        dailyWorkMinutes = 480,
+        monthlyWorkMinutes = 9600,
+        workDays = DayOfWeek.entries.toSet()
+    )
 
     val defaultSettings = Settings(
         dailyWorkMinutes = 480, // 8h
@@ -39,8 +52,8 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
         val calculateFlextime = mockk<CalculateFlextimeUseCase>()
 
         every { settingsRepository.getSettings() } returns flowOf(defaultSettings)
-        every { settingsRepository.getWorkTimeRules() } returns flowOf(emptyList())
-        every { settingsRepository.getWorkTimeRuleForDate(any(), any()) } returns null
+        every { settingsRepository.getWorkTimeRules() } returns flowOf(listOf(allDaysRule))
+        every { settingsRepository.getWorkTimeRuleForDate(any(), any()) } returns allDaysRule
         every { workDayRepository.getWorkDaysForYear(any()) } returns flowOf(emptyList())
 
         val dataProvider = FlexWidgetDataProvider(
@@ -175,8 +188,8 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
         val calculateFlextime = mockk<CalculateFlextimeUseCase>()
 
         every { settingsRepository.getSettings() } returns flowOf(defaultSettings)
-        every { settingsRepository.getWorkTimeRules() } returns flowOf(emptyList())
-        every { settingsRepository.getWorkTimeRuleForDate(any(), any()) } returns null
+        every { settingsRepository.getWorkTimeRules() } returns flowOf(listOf(allDaysRule))
+        every { settingsRepository.getWorkTimeRuleForDate(any(), any()) } returns allDaysRule
         every { workDayRepository.getWorkDaysForYear(any()) } returns flowOf(emptyList())
 
         val dataProvider = FlexWidgetDataProvider(
@@ -282,8 +295,8 @@ class FlexWidgetBehaviorSpec : BehaviorSpec({
         val calculateProjectedEndTime = mockk<CalculateProjectedEndTimeUseCase>()
 
         every { settingsRepository.getSettings() } returns flowOf(defaultSettings)
-        every { settingsRepository.getWorkTimeRules() } returns flowOf(emptyList())
-        every { settingsRepository.getWorkTimeRuleForDate(any(), any()) } returns null
+        every { settingsRepository.getWorkTimeRules() } returns flowOf(listOf(allDaysRule))
+        every { settingsRepository.getWorkTimeRuleForDate(any(), any()) } returns allDaysRule
         every { workDayRepository.getWorkDaysForYear(any()) } returns flowOf(emptyList())
 
         val dataProvider = FlexWidgetDataProvider(
