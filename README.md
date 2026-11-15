@@ -34,7 +34,7 @@ Eine Android-App zur Erfassung von Arbeitszeiten mit Fokus auf Büro/Home-Office
 - Automatische Berechnung des Gleitzeit-Saldos
 - Separates Überstundenkonto
 - **Samstags-Bonus**: Arbeitszeit → Gleitzeit + 50% Bonus auf Überstundenkonto
-- **Überstundentag**: Freier Tag auf Kosten des Überstundenkontos (Gleitzeit neutral)
+- **Überstundentag**: Freier Tag, der das Tagessoll aus dem Überstundenkonto deckt. Reicht das Guthaben nicht, wird der Rest vom Gleitzeitkonto abgezogen
 - **Gleittag**: Freier Tag auf Kosten des Gleitzeit-Kontos
 - Konfigurierbarer Anfangssaldo für beide Konten
 

@@ -48,9 +48,18 @@ class CalculateAnalyticsUseCase @Inject constructor(
             )
         }
 
+        // Balances at the start of the analyzed period; prior days precede actualWorkDays.
+        val priorBalance = if (actualPriorDays.isNotEmpty()) {
+            calculateFlextimeUseCase(actualPriorDays, settings, null, workTimeRules)
+        } else {
+            null
+        }
+        val initialFlextime = priorBalance?.totalMinutes ?: settings.initialFlextimeMinutes.toLong()
+        val initialOvertime = priorBalance?.overtimeMinutes ?: settings.initialOvertimeMinutes.toLong()
+
         return AnalyticsData(
-            flextimeSeries = calculateFlextimeSeries(actualWorkDays, settings, timeRange, workTimeRules, actualPriorDays),
-            overtimeSeries = calculateOvertimeSeries(actualWorkDays, settings, timeRange, workTimeRules, actualPriorDays),
+            flextimeSeries = calculateFlextimeSeries(actualWorkDays, settings, timeRange, workTimeRules, initialFlextime, initialOvertime),
+            overtimeSeries = calculateOvertimeSeries(actualWorkDays, settings, timeRange, workTimeRules, initialOvertime),
             weeklyHours = calculateWeeklyHours(actualWorkDays),
             monthlyHours = calculateMonthlyHours(actualWorkDays, timeRange),
             locationDistribution = calculateLocationDistribution(actualWorkDays)
@@ -66,35 +75,34 @@ class CalculateAnalyticsUseCase @Inject constructor(
         settings: Settings,
         timeRange: TimeRange,
         workTimeRules: List<WorkTimeRule>,
-        priorWorkDays: List<WorkDay> = emptyList()
+        initialFlextime: Long,
+        initialOvertime: Long
     ): List<TimeSeriesPoint> {
-        val initialFlextime = if (priorWorkDays.isNotEmpty()) {
-            calculateFlextimeUseCase(
-                priorWorkDays,
-                settings,
-                null,
-                workTimeRules
-            ).totalMinutes
-        } else {
-            settings.initialFlextimeMinutes.toLong()
-        }
-
         return when (timeRange) {
             is TimeRange.Month -> {
                 val sortedDays = workDays.sortedBy { it.date }
                 var cumulativeFlextime = initialFlextime
+                var cumulativeOvertime = initialOvertime
                 sortedDays.map { day ->
-                    cumulativeFlextime += calculateDayFlextime(day, settings, workTimeRules)
+                    cumulativeFlextime += calculateDayFlextime(day, settings, workTimeRules, cumulativeOvertime)
+                    cumulativeOvertime += calculateDayOvertime(day, settings, workTimeRules, cumulativeOvertime)
                     TimeSeriesPoint(day.date, cumulativeFlextime)
                 }
             }
             else -> {
                 val monthlyGroups = workDays.groupBy { YearMonth.from(it.date) }.toSortedMap()
                 var cumulativeFlextime = initialFlextime
+                var cumulativeOvertime = initialOvertime
                 val series = mutableListOf<TimeSeriesPoint>()
                 for ((yearMonth, daysInMonth) in monthlyGroups) {
-                    val balance = calculateFlextimeUseCase(daysInMonth, settings, yearMonth, workTimeRules)
+                    val balance = calculateFlextimeUseCase(
+                        daysInMonth,
+                        settings.copy(initialOvertimeMinutes = cumulativeOvertime.toInt()),
+                        yearMonth,
+                        workTimeRules
+                    )
                     cumulativeFlextime += balance.earnedMinutes
+                    cumulativeOvertime += balance.earnedOvertimeMinutes
                     series.add(TimeSeriesPoint(yearMonth.atDay(1), cumulativeFlextime))
                 }
                 series
@@ -107,25 +115,14 @@ class CalculateAnalyticsUseCase @Inject constructor(
         settings: Settings,
         timeRange: TimeRange,
         workTimeRules: List<WorkTimeRule>,
-        priorWorkDays: List<WorkDay> = emptyList()
+        initialOvertime: Long
     ): List<TimeSeriesPoint> {
-        val initialOvertime = if (priorWorkDays.isNotEmpty()) {
-            calculateFlextimeUseCase(
-                priorWorkDays,
-                settings,
-                null,
-                workTimeRules
-            ).overtimeMinutes
-        } else {
-            settings.initialOvertimeMinutes.toLong()
-        }
-
         return when (timeRange) {
             is TimeRange.Month -> {
                 val sortedDays = workDays.sortedBy { it.date }
                 var cumulativeOvertime = initialOvertime
                 sortedDays.map { day ->
-                    cumulativeOvertime += calculateDayOvertime(day, settings, workTimeRules)
+                    cumulativeOvertime += calculateDayOvertime(day, settings, workTimeRules, cumulativeOvertime)
                     TimeSeriesPoint(day.date, cumulativeOvertime)
                 }
             }
@@ -134,7 +131,12 @@ class CalculateAnalyticsUseCase @Inject constructor(
                 var cumulativeOvertime = initialOvertime
                 val series = mutableListOf<TimeSeriesPoint>()
                 for ((yearMonth, daysInMonth) in monthlyGroups) {
-                    val balance = calculateFlextimeUseCase(daysInMonth, settings, yearMonth, workTimeRules)
+                    val balance = calculateFlextimeUseCase(
+                        daysInMonth,
+                        settings.copy(initialOvertimeMinutes = cumulativeOvertime.toInt()),
+                        yearMonth,
+                        workTimeRules
+                    )
                     cumulativeOvertime += balance.earnedOvertimeMinutes
                     series.add(TimeSeriesPoint(yearMonth.atDay(1), cumulativeOvertime))
                 }
@@ -143,7 +145,12 @@ class CalculateAnalyticsUseCase @Inject constructor(
         }
     }
 
-    private fun calculateDayFlextime(day: WorkDay, settings: Settings, workTimeRules: List<WorkTimeRule>): Long {
+    private fun calculateDayFlextime(
+        day: WorkDay,
+        settings: Settings,
+        workTimeRules: List<WorkTimeRule>,
+        overtimeBefore: Long
+    ): Long {
         val dailyTarget = getDailyTarget(day.date, settings, workTimeRules)
         return when (day.dayType) {
             DayType.WORK, DayType.BUSINESS_TRIP -> {
@@ -155,16 +162,24 @@ class CalculateAnalyticsUseCase @Inject constructor(
             }
             DayType.SATURDAY_BONUS -> calculateDayWorkTime(day.timeBlocks).netMinutes
             DayType.FLEX_DAY -> -dailyTarget.toLong()
-            DayType.OVERTIME_DAY -> 0L
+            DayType.OVERTIME_DAY -> {
+                val covered = CalculateFlextimeUseCase.overtimeCoverage(dailyTarget, overtimeBefore)
+                -(dailyTarget.toLong() - covered)
+            }
             DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY -> 0L
         }
     }
 
-    private fun calculateDayOvertime(day: WorkDay, settings: Settings, workTimeRules: List<WorkTimeRule>): Long {
+    private fun calculateDayOvertime(
+        day: WorkDay,
+        settings: Settings,
+        workTimeRules: List<WorkTimeRule>,
+        overtimeBefore: Long
+    ): Long {
         val dailyTarget = getDailyTarget(day.date, settings, workTimeRules)
         return when (day.dayType) {
             DayType.SATURDAY_BONUS -> (calculateDayWorkTime(day.timeBlocks).netMinutes * 0.5).roundToLong()
-            DayType.OVERTIME_DAY -> -dailyTarget.toLong()
+            DayType.OVERTIME_DAY -> -CalculateFlextimeUseCase.overtimeCoverage(dailyTarget, overtimeBefore)
             else -> 0L
         }
     }

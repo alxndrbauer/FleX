@@ -347,8 +347,8 @@ class DayTypeBehaviorSpecificationTest {
         private val weekday = LocalDate.of(2026, 9, 10) // Donnerstag
 
         @Test
-        @DisplayName("GIVEN DayType.OVERTIME_DAY, THEN volles Tagessoll (-426 min) wird von Überstunden abgezogen, Gleitzeit unberührt (0 delta)")
-        fun givenOvertimeDay_thenFullDailyTargetDeductedFromOvertimeAndFlextimeUntouched() {
+        @DisplayName("GIVEN DayType.OVERTIME_DAY ohne Überstundenguthaben, THEN volles Tagessoll (-426 min) wird vom Gleitzeitkonto abgezogen, Überstundenkonto bleibt 0")
+        fun givenOvertimeDay_withoutOvertimeBalance_thenFullDailyTargetDeductedFromFlextime() {
             // Given: Überstunden-Abbau-Tag
             val day = createWorkDay(
                 date = weekday,
@@ -358,11 +358,11 @@ class DayTypeBehaviorSpecificationTest {
             // When
             val balance = calculateFlextimeUseCase(listOf(day), defaultSettings)
 
-            // Then: Überstundenkonto wird um Tagessoll gemindert, Gleitzeitkonto bleibt bei 0 Delta
-            assertThat(balance.earnedMinutes).isEqualTo(0L)
-            assertThat(balance.totalMinutes).isEqualTo(0L)
-            assertThat(balance.earnedOvertimeMinutes).isEqualTo(-426L)
-            assertThat(balance.overtimeMinutes).isEqualTo(-426L)
+            // Then: ohne Überstundenguthaben deckt das Überstundenkonto nichts; das volle Tagessoll belastet Gleitzeit
+            assertThat(balance.earnedMinutes).isEqualTo(-426L)
+            assertThat(balance.totalMinutes).isEqualTo(-426L)
+            assertThat(balance.earnedOvertimeMinutes).isEqualTo(0L)
+            assertThat(balance.overtimeMinutes).isEqualTo(0L)
         }
 
         @Test

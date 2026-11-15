@@ -2,6 +2,7 @@ package com.flex.bdd.feature.flextime
 
 import com.flex.domain.model.DayType
 import com.flex.domain.model.Settings
+import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
@@ -9,6 +10,7 @@ import com.flex.domain.usecase.CalculateFlextimeUseCase
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.YearMonth
 
 class FlexDayBehaviorSpec : BehaviorSpec({
@@ -111,29 +113,25 @@ class FlexDayBehaviorSpec : BehaviorSpec({
         val overtimeDate = LocalDate.of(2026, 9, 10) // Donnerstag
         val overtimeDay = createNeutralDay(overtimeDate, DayType.OVERTIME_DAY)
 
-        When("die Konten für den Überstunden-Abbau berechnet werden") {
+        When("kein Überstundenguthaben vorhanden ist (0 Min)") {
             val balance = calculateFlextime(
                 workDays = listOf(overtimeDay),
                 settings = defaultSettings,
                 yearMonth = testMonth
             )
 
-            Then("wird das volle Tagessoll (-426 Min) vom Überstundenkonto abgezogen") {
-                balance.earnedOvertimeMinutes shouldBe -426L
-                balance.overtimeMinutes shouldBe -426L
+            Then("wird das volle Tagessoll (-426 Min) vom Gleitzeitkonto abgezogen") {
+                balance.earnedMinutes shouldBe -426L
+                balance.totalMinutes shouldBe -426L
             }
 
-            Then("bleibt das Gleitzeitkonto völlig neutral (0 Min Delta)") {
-                balance.earnedMinutes shouldBe 0L
-                balance.totalMinutes shouldBe 0L
-            }
-
-            Then("bleibt das Monatssoll (targetMinutes) unverändert") {
-                balance.targetMinutes shouldBe 22L * 426L
+            Then("bleibt das Überstundenkonto bei 0 Min") {
+                balance.earnedOvertimeMinutes shouldBe 0L
+                balance.overtimeMinutes shouldBe 0L
             }
         }
 
-        When("ein Überstunden-Abbau-Tag bei bestehendem Überstundenguthaben (+600 Min) genommen wird") {
+        When("das Überstundenguthaben das Tagessoll vollständig deckt (+600 Min)") {
             val settingsWithOvertime = defaultSettings.copy(
                 initialFlextimeMinutes = 80,
                 initialOvertimeMinutes = 600
@@ -152,6 +150,79 @@ class FlexDayBehaviorSpec : BehaviorSpec({
             Then("bleibt das Gleitzeitkonto unverändert beim Startguthaben von 80 Min") {
                 balance.earnedMinutes shouldBe 0L
                 balance.totalMinutes shouldBe 80L
+            }
+        }
+
+        When("das Überstundenguthaben das Tagessoll nur teilweise deckt (+360 Min)") {
+            val settingsWithOvertime = defaultSettings.copy(
+                initialFlextimeMinutes = 80,
+                initialOvertimeMinutes = 360
+            )
+            val balance = calculateFlextime(
+                workDays = listOf(overtimeDay),
+                settings = settingsWithOvertime,
+                yearMonth = testMonth
+            )
+
+            Then("wird das Überstundenkonto auf 0 Min geleert") {
+                balance.earnedOvertimeMinutes shouldBe -360L
+                balance.overtimeMinutes shouldBe 0L
+            }
+
+            Then("wird der nicht gedeckte Rest (-66 Min = 426 - 360) vom Gleitzeitkonto abgezogen") {
+                balance.earnedMinutes shouldBe -66L
+                balance.totalMinutes shouldBe 14L // 80 - 66
+            }
+        }
+
+        When("zwei Überstundentage hintereinander bei +600 Min Überstunden genommen werden") {
+            val secondOvertimeDay = createNeutralDay(LocalDate.of(2026, 9, 11), DayType.OVERTIME_DAY)
+            val balance = calculateFlextime(
+                workDays = listOf(overtimeDay, secondOvertimeDay),
+                settings = defaultSettings.copy(initialOvertimeMinutes = 600),
+                yearMonth = testMonth
+            )
+
+            Then("deckt der erste Tag 426 Min, der zweite die restlichen 174 Min; 252 Min gehen vom Gleitzeitkonto ab") {
+                balance.overtimeMinutes shouldBe 0L
+                balance.earnedMinutes shouldBe -252L
+                balance.totalMinutes shouldBe -252L
+            }
+        }
+
+        When("das Überstundenkonto bereits negativ ist (-100 Min)") {
+            val balance = calculateFlextime(
+                workDays = listOf(overtimeDay),
+                settings = defaultSettings.copy(initialOvertimeMinutes = -100),
+                yearMonth = testMonth
+            )
+
+            Then("wird das volle Tagessoll vom Gleitzeitkonto abgezogen") {
+                balance.earnedMinutes shouldBe -426L
+                balance.earnedOvertimeMinutes shouldBe 0L
+            }
+
+            Then("bleibt das Überstundenkonto bei -100 Min") {
+                balance.overtimeMinutes shouldBe -100L
+            }
+        }
+
+        When("ein Samstagsbonus (120 Min netto, +60 Min Überstunden) später im Monat liegt und die Liste unsortiert übergeben wird") {
+            val saturdayBonus = WorkDay(
+                id = 1L,
+                date = LocalDate.of(2026, 9, 12), // Samstag
+                dayType = DayType.SATURDAY_BONUS,
+                timeBlocks = listOf(TimeBlock(startTime = LocalTime.of(8, 0), endTime = LocalTime.of(10, 0)))
+            )
+            val balance = calculateFlextime(
+                workDays = listOf(saturdayBonus, overtimeDay),
+                settings = defaultSettings,
+                yearMonth = testMonth
+            )
+
+            Then("deckt der spätere Samstagsbonus den früheren Überstundentag nicht: volles Tagessoll vom Gleitzeitkonto") {
+                balance.earnedMinutes shouldBe -306L // -426 (Donnerstag) + 120 (Samstag)
+                balance.overtimeMinutes shouldBe 60L
             }
         }
     }

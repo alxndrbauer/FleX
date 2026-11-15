@@ -16,6 +16,8 @@ const val TOOLTIP_OVERTIME_TITLE = "Überstunden-Saldo"
 val TOOLTIP_OVERTIME = """
 Überstunden entstehen nur durch Samstagsarbeit (Typ "Samstag Bonus"): 50 % der Nettozeit werden als Überstunden gutgeschrieben.
 
+Abbau: Ein Überstundentag deckt das Tagessoll aus diesem Konto. Reicht das Guthaben nicht, wird der Rest vom Gleitzeitkonto abgezogen.
+
 Dazu kommt der eingetragene Anfangssaldo aus den Einstellungen.
 """.trim()
 

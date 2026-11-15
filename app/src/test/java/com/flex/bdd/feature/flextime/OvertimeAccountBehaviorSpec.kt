@@ -106,18 +106,18 @@ class OvertimeAccountBehaviorSpec : BehaviorSpec({
             }
         }
 
-        When("ein Überstunden-Abbau-Tag (DayType.OVERTIME_DAY) genommen wird") {
+        When("ein Überstunden-Abbau-Tag (DayType.OVERTIME_DAY) bei 200 Min Überstunden genommen wird") {
             val overtimeDay = createNeutralDay(weekday, DayType.OVERTIME_DAY)
             val balance = calculateFlextime(listOf(overtimeDay), initialSettings)
 
-            Then("wird das Tagessoll (-426 Min) ausschließlich vom Überstundenkonto abgezogen") {
-                balance.earnedOvertimeMinutes shouldBe -426L
-                balance.overtimeMinutes shouldBe -226L // 200 - 426 = -226
+            Then("wird das Überstundenkonto vollständig aufgebraucht (-200 Min)") {
+                balance.earnedOvertimeMinutes shouldBe -200L
+                balance.overtimeMinutes shouldBe 0L
             }
 
-            Then("bleibt das Gleitzeitkonto vollkommen unberührt (0 Min Veränderung)") {
-                balance.earnedMinutes shouldBe 0L
-                balance.totalMinutes shouldBe 100L // unverändert
+            Then("wird der nicht gedeckte Rest (-226 Min = 426 - 200) vom Gleitzeitkonto abgezogen") {
+                balance.earnedMinutes shouldBe -226L
+                balance.totalMinutes shouldBe -126L // 100 - 226
             }
         }
 
@@ -141,11 +141,11 @@ class OvertimeAccountBehaviorSpec : BehaviorSpec({
             val day2 = createNeutralDay(LocalDate.of(2026, 9, 3), DayType.OVERTIME_DAY) // 0 Gleitzeit, -426 ÜS
             val balance = calculateFlextime(listOf(day1, day2), initialSettings)
 
-            Then("entwickeln sich beide Konten unabhängig voneinander") {
-                balance.earnedMinutes shouldBe 54L
-                balance.totalMinutes shouldBe 154L // 100 + 54
-                balance.earnedOvertimeMinutes shouldBe -426L
-                balance.overtimeMinutes shouldBe -226L // 200 - 426
+            Then("verbraucht der Überstundentag die 200 Min Überstunden, der Rest (-226) belastet das Gleitzeitkonto") {
+                balance.earnedMinutes shouldBe -172L // 54 - 226
+                balance.totalMinutes shouldBe -72L // 100 - 172
+                balance.earnedOvertimeMinutes shouldBe -200L
+                balance.overtimeMinutes shouldBe 0L
             }
         }
     }

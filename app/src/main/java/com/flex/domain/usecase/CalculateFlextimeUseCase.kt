@@ -31,7 +31,8 @@ class CalculateFlextimeUseCase @Inject constructor(
             return workTimeRules.getRuleForDate(date)?.dailyWorkMinutes ?: settings.dailyWorkMinutes
         }
 
-        for (day in workDays) {
+        // Chronological order: an overtime day may only consume overtime earned before it.
+        for (day in workDays.sortedBy { it.date }) {
             val dailyTarget = getDailyTarget(day.date)
             when (day.dayType) {
                 DayType.WORK, DayType.BUSINESS_TRIP -> {
@@ -62,8 +63,12 @@ class CalculateFlextimeUseCase @Inject constructor(
                     earnedMinutes += -dailyTarget.toLong() // voller Tag wird abgezogen
                 }
                 DayType.OVERTIME_DAY -> {
-                    overtimeMinutes += -dailyTarget.toLong()
-                    // earnedMinutes bleibt unberührt → Gleitzeit neutral
+                    // Overtime covers the daily target up to the available balance (never below 0);
+                    // the uncovered remainder is deducted from the flextime account.
+                    val available = settings.initialOvertimeMinutes + overtimeMinutes
+                    val covered = overtimeCoverage(dailyTarget, available)
+                    overtimeMinutes -= covered
+                    earnedMinutes -= dailyTarget.toLong() - covered
                 }
                 DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY -> {
                     // neutral
@@ -94,5 +99,11 @@ class CalculateFlextimeUseCase @Inject constructor(
             overtimeMinutes = settings.initialOvertimeMinutes + overtimeMinutes,
             earnedOvertimeMinutes = overtimeMinutes
         )
+    }
+
+    companion object {
+        /** Minutes of a daily target covered by the overtime balance; a balance <= 0 covers nothing. */
+        fun overtimeCoverage(dailyTarget: Int, availableOvertime: Long): Long =
+            minOf(maxOf(availableOvertime, 0L), dailyTarget.toLong())
     }
 }
