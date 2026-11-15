@@ -646,6 +646,7 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
             every { getMonthWorkDays(any()) } returns flowOf(emptyList())
             every { settingsRepo.getQuotaRules() } returns flowOf(emptyList())
             every { settingsRepo.getWorkTimeRules() } returns flowOf(emptyList())
+            every { settingsRepo.getWorkTimeRuleForDate(any(), any()) } returns null
             every { repo.getWorkDaysForYear(any()) } returns flowOf(emptyList())
             coEvery { repo.getWorkDay(any()) } returns flowOf(null)
             every { calculateDayWorkTime(any()) } returns DayWorkTimeResult(0, 0, 0, false)
@@ -698,8 +699,105 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
                 vm.uiState.value.isOvertimeDayBlocked shouldBe false
             }
 
+            Then("werden verbrauchte und verbleibende Überstunden ausgewiesen") {
+                vm.uiState.value.overtimeDayTargetMinutes shouldBe 426
+                vm.uiState.value.overtimeDayUsedMinutes shouldBe 120
+                vm.uiState.value.overtimeDayRemainingMinutes shouldBe 0
+            }
+
             Then("wird der Überstundentag im Repository gespeichert") {
                 coVerify { repo.saveWorkDay(match { it.dayType == DayType.OVERTIME_DAY && it.date == date }) }
+            }
+        }
+        When("der Tag kein Tagessoll hat (Samstag)") {
+            val repo = mockk<WorkDayRepository>(relaxed = true)
+            val vm = buildViewModel(repo, overtimeMinutes = 120)
+            val saturday = LocalDate.of(2026, 6, 13)
+            vm.navigateToDate(saturday)
+            vm.setDayType(DayType.OVERTIME_DAY)
+            vm.saveDayType(DayType.OVERTIME_DAY)
+
+            Then("ist der Überstundentag gesperrt und hat kein Tagessoll") {
+                vm.uiState.value.overtimeDayTargetMinutes shouldBe 0
+                vm.uiState.value.isOvertimeDayBlocked shouldBe true
+            }
+
+            Then("wird kein Überstundentag im Repository gespeichert") {
+                coVerify(exactly = 0) { repo.saveWorkDay(match { it.dayType == DayType.OVERTIME_DAY }) }
+            }
+        }
+    }
+
+    Given("ein Überstundentag im Folgejahr vor dem Jahreswechsel") {
+        val decemberDay = WorkDay(
+            date = LocalDate.of(2026, 12, 15),
+            location = WorkLocation.HOME_OFFICE,
+            dayType = DayType.WORK
+        )
+
+        fun buildViewModel(): HomeViewModel {
+            val context = mockk<Context>(relaxed = true)
+            val repo = mockk<WorkDayRepository>(relaxed = true)
+            val settingsRepo = mockk<SettingsRepository>(relaxed = true)
+            val getMonthWorkDays = mockk<GetMonthWorkDaysUseCase>(relaxed = true)
+            val getSettings = mockk<GetSettingsUseCase>(relaxed = true)
+            val calculateDayWorkTime = mockk<CalculateDayWorkTimeUseCase>(relaxed = true)
+            val calculateFlextime = mockk<CalculateFlextimeUseCase>(relaxed = true)
+            val calculateQuota = mockk<CalculateQuotaUseCase>(relaxed = true)
+            val dataChangeEventBus = mockk<DataChangeEventBus>(relaxed = true)
+            val checkBreakViolation = mockk<CheckBreakViolationUseCase>(relaxed = true)
+            val breakWarningScheduler = mockk<BreakWarningScheduler>(relaxed = true)
+            val whatsNewPreferences = mockk<WhatsNewPreferences>(relaxed = true)
+            val backupPreferences = mockk<BackupPreferences>(relaxed = true)
+            val autoBookPlannedDays = mockk<AutoBookPlannedDaysUseCase>(relaxed = true)
+
+            every { getSettings() } returns flowOf(Settings(settingsYear = 2026))
+            every { getMonthWorkDays(any()) } returns flowOf(emptyList())
+            every { settingsRepo.getQuotaRules() } returns flowOf(emptyList())
+            every { settingsRepo.getWorkTimeRules() } returns flowOf(emptyList())
+            every { settingsRepo.getWorkTimeRuleForDate(any(), any()) } returns null
+            every { repo.getWorkDaysForYear(2026) } returns flowOf(listOf(decemberDay))
+            every { repo.getWorkDaysForYear(match { it != 2026 }) } returns flowOf(emptyList())
+            coEvery { repo.getWorkDay(any()) } returns flowOf(null)
+            every { calculateDayWorkTime(any()) } returns DayWorkTimeResult(0, 0, 0, false)
+            every { calculateDayWorkTime(any(), any()) } returns DayWorkTimeResult(0, 0, 0, false)
+            every { calculateFlextime(any(), any(), any(), any()) } answers {
+                if (firstArg<List<WorkDay>>().any { it.date == decemberDay.date }) FlextimeBalance(overtimeMinutes = 600)
+                else FlextimeBalance()
+            }
+            every { calculateQuota(any(), any(), any(), any(), any(), any()) } returns QuotaStatus()
+            every { dataChangeEventBus.events } returns MutableSharedFlow()
+            every { checkBreakViolation(any(), any()) } returns BreakCheckResult(emptyList(), skipped = false)
+            every { whatsNewPreferences.getLastSeenVersionCode() } returns 0
+            every { backupPreferences.isAutoBackupEnabled } returns false
+
+            return HomeViewModel(
+                context, repo, settingsRepo, getMonthWorkDays,
+                getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
+                dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
+                whatsNewPreferences, backupPreferences, autoBookPlannedDays,
+                CheckTimeBlockOverlapUseCase(),
+                clock = fixedClock()
+            )
+        }
+
+        When("der Tag im Januar liegt") {
+            val viewModel = buildViewModel()
+            viewModel.navigateToDate(LocalDate.of(2027, 1, 4))
+
+            Then("zählt der Dezember des Vorjahres zum verfügbaren Guthaben") {
+                viewModel.uiState.value.availableOvertimeMinutes shouldBe 600
+                viewModel.uiState.value.isOvertimeDayBlocked shouldBe false
+            }
+        }
+
+        When("der Tag im Februar liegt") {
+            val viewModel = buildViewModel()
+            viewModel.navigateToDate(LocalDate.of(2027, 2, 4))
+
+            Then("zählt der Dezember des Vorjahres zum verfügbaren Guthaben") {
+                viewModel.uiState.value.availableOvertimeMinutes shouldBe 600
+                viewModel.uiState.value.isOvertimeDayBlocked shouldBe false
             }
         }
     }

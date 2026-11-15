@@ -19,6 +19,7 @@ import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.getRuleForDate
 import com.flex.domain.model.getRuleForMonth
+import com.flex.domain.model.hasDailyWorkTarget
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.BuildPrognosisDaysUseCase
@@ -41,6 +42,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -79,8 +81,22 @@ data class MonthUiState(
     val showExportDialog: Boolean = false,
     val exportMessage: String? = null,
     val breakViolationDates: Set<LocalDate> = emptySet(),
-    val overlappingDates: Set<LocalDate> = emptySet()
-)
+    val overlappingDates: Set<LocalDate> = emptySet(),
+    val overtimeMinutesAtMonthStart: Long = 0L,
+    val overtimeMinutesAfterDate: Map<LocalDate, Long> = emptyMap()
+) {
+    /** Overtime balance available for an overtime day at [date]: balance after the previous day. */
+    fun overtimeMinutesBefore(date: LocalDate): Long =
+        overtimeMinutesAfterDate.entries
+            .filter { it.key.isBefore(date) }
+            .maxByOrNull { it.key }
+            ?.value
+            ?: overtimeMinutesAtMonthStart
+
+    /** An overtime day can only be booked on days that have a work target at all. */
+    fun hasDailyTarget(date: LocalDate): Boolean =
+        hasDailyWorkTarget(date, settings.dailyWorkMinutes, workTimeRules.getRuleForDate(date))
+}
 
 @HiltViewModel
 class MonthViewModel @Inject constructor(
@@ -131,11 +147,19 @@ private data class MonthConfig(
             ) { month, settings, rules, workTimeRules ->
                 MonthConfig(month, settings, rules, workTimeRules)
             }.flatMapLatest { (month, settings, rules, workTimeRules) ->
+                // In a year after settingsYear the balance includes the previous year's days
+                // as long as the year change has not moved the balance into settings yet.
+                val previousYearDaysFlow = if (settings.settingsYear < month.year) {
+                    workDayRepository.getWorkDaysForYear(month.year - 1)
+                } else {
+                    flowOf(emptyList())
+                }
                 combine(
                     getMonthWorkDays(month),
-                    workDayRepository.getWorkDaysForYear(month.year)
-                ) { days, yearDays ->
-                    arrayOf(month, settings, rules, workTimeRules, days, yearDays)
+                    workDayRepository.getWorkDaysForYear(month.year),
+                    previousYearDaysFlow
+                ) { days, yearDays, previousYearDays ->
+                    arrayOf(month, settings, rules, workTimeRules, days, yearDays + previousYearDays)
                 }
             }.collect { arr ->
                 @Suppress("UNCHECKED_CAST")
@@ -224,10 +248,12 @@ private data class MonthConfig(
                 val monthStartOvertime = baseFlex.overtimeMinutes
                 var currentFlex = baseFlextimeMinutes
                 var runningOvertime = monthStartOvertime
+                val overtimeAfterByDate = mutableMapOf<LocalDate, Long>()
                 for (day in prognosisDays.sortedBy { it.date }) {
                     val step = calculateFlextime(listOf(day), settings.copy(initialFlextimeMinutes = 0, initialOvertimeMinutes = runningOvertime.toInt()), null, workTimeRules)
                     val singleDayEarned = step.totalMinutes
                     runningOvertime = step.overtimeMinutes
+                    overtimeAfterByDate[day.date] = runningOvertime
                     dailyFlexByDate[day.date] = singleDayEarned
                     currentFlex += singleDayEarned
                     flexByDate[day.date] = currentFlex
@@ -329,7 +355,9 @@ private data class MonthConfig(
                     targetMinutesToDate = targetMinutesToDate,
                     differenceMinutesMonth = differenceMinutesMonth,
                     breakViolationDates = violationDates,
-                    overlappingDates = overlappingDates
+                    overlappingDates = overlappingDates,
+                    overtimeMinutesAtMonthStart = monthStartOvertime,
+                    overtimeMinutesAfterDate = overtimeAfterByDate
                 )
             }
         }
@@ -420,6 +448,15 @@ private data class MonthConfig(
                 return@launch
             }
             val existingDay = state.editingDay
+
+            // An overtime day needs a positive overtime balance before that date.
+            // An existing overtime day stays editable, e.g. to add a note.
+            if (dayType == DayType.OVERTIME_DAY &&
+                existingDay?.dayType != DayType.OVERTIME_DAY &&
+                (state.overtimeMinutesBefore(date) <= 0 || !state.hasDailyTarget(date))
+            ) {
+                return@launch
+            }
 
             // Derive day-level location: if all blocks agree → use that; otherwise first block
             val dayLocation = if (timeBlocks.isEmpty()) {

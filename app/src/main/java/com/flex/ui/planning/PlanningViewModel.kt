@@ -14,6 +14,7 @@ import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.getRuleForDate
 import com.flex.domain.model.getRuleForMonth
+import com.flex.domain.model.hasDailyWorkTarget
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.events.UndoEvent
@@ -34,6 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -96,8 +98,23 @@ data class PlanningUiState(
     val selectedPlanType: PlanType = PlanType.OFFICE,
     val editingDate: LocalDate? = null,
     val monthSummaries: List<MonthSummary> = emptyList(),
-    val canSyncPlannedDays: Boolean = false
-)
+    val canSyncPlannedDays: Boolean = false,
+    val hasOvertimeAvailable: Boolean = false,
+    val overtimeMinutesAtMonthStart: Long = 0L,
+    val overtimeMinutesAfterDate: Map<LocalDate, Long> = emptyMap()
+) {
+    /** Overtime balance available for an overtime day at [date]: balance after the previous day. */
+    fun overtimeMinutesBefore(date: LocalDate): Long =
+        overtimeMinutesAfterDate.entries
+            .filter { it.key.isBefore(date) }
+            .maxByOrNull { it.key }
+            ?.value
+            ?: overtimeMinutesAtMonthStart
+
+    /** An overtime day can only be planned on days that have a work target at all. */
+    fun hasDailyTarget(date: LocalDate): Boolean =
+        hasDailyWorkTarget(date, settings.dailyWorkMinutes, workTimeRules.getRuleForDate(date))
+}
 
 enum class PlanType(val label: String) {
     OFFICE("Büro"),
@@ -106,7 +123,8 @@ enum class PlanType(val label: String) {
     SPECIAL_VACATION("Sonderurlaub"),
     FLEX_DAY("Gleittag"),
     SATURDAY_BONUS("Samstag+"),
-    BUSINESS_TRIP("Dienstgang / Dienstreise")
+    BUSINESS_TRIP("Dienstgang / Dienstreise"),
+    OVERTIME_DAY("Überstundentag")
 }
 
 @HiltViewModel
@@ -128,6 +146,9 @@ class PlanningViewModel @Inject constructor(
 
     private val _undoEvent = MutableSharedFlow<UndoEvent>()
     val undoEvent: SharedFlow<UndoEvent> = _undoEvent.asSharedFlow()
+
+    private val _messages = MutableSharedFlow<String>()
+    val messages: SharedFlow<String> = _messages.asSharedFlow()
 
     private val _selectedMonth = MutableStateFlow(YearMonth.now(clock).plusMonths(1))
 
@@ -153,11 +174,19 @@ private data class PlanningConfig(
                 settingsRepository.getWorkTimeRules()
             ) { month, settings, rules, workTimeRules -> PlanningConfig(month, settings, rules, workTimeRules) }
                 .flatMapLatest { (month, settings, rules, workTimeRules) ->
+                    // In a year after settingsYear the balance includes the previous year's days
+                    // as long as the year change has not moved the balance into settings yet.
+                    val previousYearDaysFlow = if (settings.settingsYear < month.year) {
+                        workDayRepository.getWorkDaysForYear(month.year - 1)
+                    } else {
+                        flowOf(emptyList())
+                    }
                     combine(
                         getMonthWorkDays(month),
-                        workDayRepository.getWorkDaysForYear(month.year)
-                    ) { days, yearDays ->
-                        arrayOf(month, settings, rules, workTimeRules, days, yearDays)
+                        workDayRepository.getWorkDaysForYear(month.year),
+                        previousYearDaysFlow
+                    ) { days, yearDays, previousYearDays ->
+                        arrayOf(month, settings, rules, workTimeRules, days, yearDays + previousYearDays)
                     }
                 }
                 .collect { arr ->
@@ -186,6 +215,20 @@ private data class PlanningConfig(
                     val flextimeDays = previousMonthsDays + prognosisDays
                     val flextime = calculateFlextime(flextimeDays, settings, month, workTimeRules)
 
+                    // Overtime balance before each prognosis day, used to gate overtime days
+                    val monthStartOvertime = calculateFlextime(previousMonthsDays, settings, null, workTimeRules).overtimeMinutes
+                    val overtimeAfterByDate = mutableMapOf<LocalDate, Long>()
+                    var runningOvertime = monthStartOvertime
+                    for (day in prognosisDays.sortedBy { it.date }) {
+                        runningOvertime = calculateFlextime(
+                            listOf(day),
+                            settings.copy(initialFlextimeMinutes = 0, initialOvertimeMinutes = runningOvertime.toInt()),
+                            null,
+                            workTimeRules
+                        ).overtimeMinutes
+                        overtimeAfterByDate[day.date] = runningOvertime
+                    }
+
                     val actualRecordedDays = previousMonthsDays + days.filter { !it.isPlanned }
                     val actualFlextime = calculateFlextime(actualRecordedDays, settings, null, workTimeRules)
                     val actualMinutes = actualFlextime.totalMinutes
@@ -193,11 +236,12 @@ private data class PlanningConfig(
 
                     val officeHours = calculateOfficeHours(prognosisDays, qPercent, settings, workTimeRules, month)
                     val isSpecialVacationBlocked = settings.specialVacationPaidOut && settings.settingsYear == month.year
+                    val hasOvertimeAvailable = monthStartOvertime > 0 || overtimeAfterByDate.values.any { it > 0 }
                     val currentSelectedType = _uiState.value.selectedPlanType
-                    val selectedType = if (isSpecialVacationBlocked && currentSelectedType == PlanType.SPECIAL_VACATION) {
-                        PlanType.OFFICE
-                    } else {
-                        currentSelectedType
+                    val selectedType = when {
+                        isSpecialVacationBlocked && currentSelectedType == PlanType.SPECIAL_VACATION -> PlanType.OFFICE
+                        !hasOvertimeAvailable && currentSelectedType == PlanType.OVERTIME_DAY -> PlanType.OFFICE
+                        else -> currentSelectedType
                     }
                     val canSync = checkCanSyncPlannedDays(days, month, workTimeRules, settings)
                     _uiState.value = _uiState.value.copy(
@@ -211,7 +255,10 @@ private data class PlanningConfig(
                         plannedContributionMinutes = plannedContribution,
                         officeHours = officeHours,
                         selectedPlanType = selectedType,
-                        canSyncPlannedDays = canSync
+                        canSyncPlannedDays = canSync,
+                        hasOvertimeAvailable = hasOvertimeAvailable,
+                        overtimeMinutesAtMonthStart = monthStartOvertime,
+                        overtimeMinutesAfterDate = overtimeAfterByDate
                     )
                     refreshMonthSummaries(settings, rules, workTimeRules)
                 }
@@ -340,6 +387,9 @@ private data class PlanningConfig(
         if (type == PlanType.SPECIAL_VACATION && state.settings.specialVacationPaidOut && state.settings.settingsYear == state.yearMonth.year) {
             return
         }
+        if (type == PlanType.OVERTIME_DAY && !state.hasOvertimeAvailable) {
+            return
+        }
         _uiState.value = _uiState.value.copy(selectedPlanType = type)
     }
 
@@ -352,6 +402,21 @@ private data class PlanningConfig(
                 return@launch
             }
 
+            val existing = state.workDays.find { it.date == date }
+
+            // An overtime day needs a daily target and a positive overtime balance before that date.
+            // An already planned overtime day stays editable.
+            if (planType == PlanType.OVERTIME_DAY && existing?.dayType != DayType.OVERTIME_DAY) {
+                if (!state.hasDailyTarget(date)) {
+                    _messages.emit("Überstundentag nicht möglich: an diesem Tag kein Tagessoll")
+                    return@launch
+                }
+                if (state.overtimeMinutesBefore(date) <= 0) {
+                    _messages.emit("Überstundentag nicht möglich: kein Überstundenguthaben vorhanden")
+                    return@launch
+                }
+            }
+
             val (location, dayType) = when (planType) {
                 PlanType.OFFICE -> WorkLocation.OFFICE to DayType.WORK
                 PlanType.HOME_OFFICE -> WorkLocation.HOME_OFFICE to DayType.WORK
@@ -360,9 +425,9 @@ private data class PlanningConfig(
                 PlanType.FLEX_DAY -> WorkLocation.HOME_OFFICE to DayType.FLEX_DAY
                 PlanType.SATURDAY_BONUS -> WorkLocation.OFFICE to DayType.SATURDAY_BONUS
                 PlanType.BUSINESS_TRIP -> WorkLocation.OFFICE to DayType.BUSINESS_TRIP
+                PlanType.OVERTIME_DAY -> WorkLocation.HOME_OFFICE to DayType.OVERTIME_DAY
             }
 
-            val existing = state.workDays.find { it.date == date }
             val workDayId = workDayRepository.saveWorkDay(
                 WorkDay(
                     id = existing?.id ?: 0,

@@ -136,6 +136,32 @@ class OvertimeAccountBehaviorSpec : BehaviorSpec({
             }
         }
 
+        When("ein Überstundentag auf einen Tag ohne Tagessoll fällt (Samstag)") {
+            val saturday = LocalDate.of(2026, 9, 5)
+            val overtimeDay = createNeutralDay(saturday, DayType.OVERTIME_DAY)
+            val balance = calculateFlextime(listOf(overtimeDay), initialSettings)
+
+            Then("bleiben Gleitzeit- und Überstundenkonto unverändert") {
+                balance.earnedMinutes shouldBe 0L
+                balance.totalMinutes shouldBe 100L
+                balance.earnedOvertimeMinutes shouldBe 0L
+                balance.overtimeMinutes shouldBe 200L
+            }
+        }
+
+        When("ein Überstundentag auf einen Feiertag fällt (Christi Himmelfahrt)") {
+            val holiday = LocalDate.of(2026, 5, 14)
+            val overtimeDay = createNeutralDay(holiday, DayType.OVERTIME_DAY)
+            val balance = calculateFlextime(listOf(overtimeDay), initialSettings)
+
+            Then("bleiben Gleitzeit- und Überstundenkonto unverändert") {
+                balance.earnedMinutes shouldBe 0L
+                balance.totalMinutes shouldBe 100L
+                balance.earnedOvertimeMinutes shouldBe 0L
+                balance.overtimeMinutes shouldBe 200L
+            }
+        }
+
         When("verschiedene Tage kombiniert werden (Mehrarbeit am Arbeitstag und Überstunden-Abbau)") {
             val day1 = createDurationDay(LocalDate.of(2026, 9, 2), 480, DayType.WORK) // +54 Gleitzeit, 0 ÜS
             val day2 = createNeutralDay(LocalDate.of(2026, 9, 3), DayType.OVERTIME_DAY) // 0 Gleitzeit, -426 ÜS

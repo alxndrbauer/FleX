@@ -12,6 +12,7 @@ import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.getRuleForDate
+import com.flex.domain.model.hasDailyWorkTarget
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -163,8 +164,13 @@ class CalculateAnalyticsUseCase @Inject constructor(
             DayType.SATURDAY_BONUS -> calculateDayWorkTime(day.timeBlocks).netMinutes
             DayType.FLEX_DAY -> -dailyTarget.toLong()
             DayType.OVERTIME_DAY -> {
-                val covered = CalculateFlextimeUseCase.overtimeCoverage(dailyTarget, overtimeBefore)
-                -(dailyTarget.toLong() - covered)
+                val ruleForDate = workTimeRules.getRuleForDate(day.date)
+                if (hasDailyWorkTarget(day.date, settings.dailyWorkMinutes, ruleForDate)) {
+                    val covered = CalculateFlextimeUseCase.overtimeCoverage(dailyTarget, overtimeBefore)
+                    -(dailyTarget.toLong() - covered)
+                } else {
+                    0L
+                }
             }
             DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY -> 0L
         }
@@ -179,7 +185,14 @@ class CalculateAnalyticsUseCase @Inject constructor(
         val dailyTarget = getDailyTarget(day.date, settings, workTimeRules)
         return when (day.dayType) {
             DayType.SATURDAY_BONUS -> (calculateDayWorkTime(day.timeBlocks).netMinutes * 0.5).roundToLong()
-            DayType.OVERTIME_DAY -> -CalculateFlextimeUseCase.overtimeCoverage(dailyTarget, overtimeBefore)
+            DayType.OVERTIME_DAY -> {
+                val ruleForDate = workTimeRules.getRuleForDate(day.date)
+                if (hasDailyWorkTarget(day.date, settings.dailyWorkMinutes, ruleForDate)) {
+                    -CalculateFlextimeUseCase.overtimeCoverage(dailyTarget, overtimeBefore)
+                } else {
+                    0L
+                }
+            }
             else -> 0L
         }
     }

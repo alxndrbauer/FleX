@@ -9,6 +9,7 @@ import com.flex.ui.theme.BusinessTripColor
 import com.flex.ui.theme.FlexDayColor
 import com.flex.ui.theme.HomeOfficeColor
 import com.flex.ui.theme.OfficeColor
+import com.flex.ui.theme.OvertimeDayColor
 import com.flex.ui.theme.PublicHolidayColor
 import com.flex.ui.theme.SaturdayBonusColor
 import com.flex.ui.theme.SickDayColor
@@ -37,6 +38,7 @@ fun getDayCellBackgroundColor(
         workDay.dayType == DayType.FLEX_DAY -> FlexDayColor.copy(alpha = 0.3f)
         workDay.dayType == DayType.SATURDAY_BONUS -> SaturdayBonusColor.copy(alpha = 0.3f)
         workDay.dayType == DayType.SICK_DAY -> SickDayColor.copy(alpha = 0.3f)
+        workDay.dayType == DayType.OVERTIME_DAY -> OvertimeDayColor.copy(alpha = 0.3f)
         else -> {
             val blocks = workDay.timeBlocks.filter { it.endTime != null }
             if (blocks.isEmpty()) {

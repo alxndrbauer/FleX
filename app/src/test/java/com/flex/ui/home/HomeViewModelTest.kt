@@ -490,7 +490,7 @@ class HomeViewModelTest : BaseUnitTest() {
         viewModel.navigateToDate(selectedDate)
         advanceUntilIdle()
 
-        verify(workDayRepository).getWorkDaysForYear(selectedDate.year)
+        verify(workDayRepository, atLeastOnce()).getWorkDaysForYear(selectedDate.year)
         assertThat(viewModel.uiState.value.selectedDateFlextimeBalance).isEqualTo(expectedBalance)
     }
 

@@ -154,6 +154,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
+import kotlin.math.roundToLong
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -592,6 +593,21 @@ fun HomeScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            val netMinutes = state.dayWorkTime.netMinutes
+                            if (netMinutes > 0) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Netto: ${formatWorkTime(netMinutes)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Überstunden-Gutschrift (50 %): ${formatWorkTime((netMinutes * 0.5).roundToLong())}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = SaturdayBonusColor
+                                )
+                            }
                         }
                     }
                 }
@@ -768,6 +784,21 @@ fun HomeScreen(
                                     )
                                     Text(
                                         text = desc,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            if (activeType == DayType.OVERTIME_DAY) {
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        text = "Aufgewendet: ${formatWorkTime(state.overtimeDayUsedMinutes)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Verbleibendes Überstunden-Guthaben: ${formatFlextimeBalance(state.overtimeDayRemainingMinutes)}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -978,6 +1009,7 @@ private fun HeroCard(
                         val blockedReason = when {
                             type == DayType.SPECIAL_VACATION && isSpecialVacationBlocked ->
                                 if (isPaidOut) "bereits ausgezahlt" else "nach dem 31.10. nicht mehr wählbar"
+                            type == DayType.OVERTIME_DAY && state.overtimeDayTargetMinutes <= 0 -> "an diesem Tag kein Tagessoll"
                             type == DayType.OVERTIME_DAY && state.isOvertimeDayBlocked -> "kein Überstundenguthaben vorhanden"
                             else -> null
                         }

@@ -13,6 +13,7 @@ import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.getDailyWorkTargetMinutes
+import com.flex.domain.model.hasDailyWorkTarget
 import com.flex.domain.model.ProjectedEndTime
 import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.repository.SettingsRepository
@@ -49,6 +50,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -86,12 +88,22 @@ data class HomeUiState(
     val permissionIssues: List<String> = emptyList(),
     val hasTimeBlockOverlap: Boolean = false,
     val dailyTargetMinutes: Int = 426,
+    val overtimeDayTargetMinutes: Int = 0,
     val projectedEndTime: ProjectedEndTime? = null,
     val availableOvertimeMinutes: Long = 0
 ) {
-    /** An overtime day needs a positive overtime balance before the selected date. An existing overtime day stays selectable so it can be changed. */
+    /** An overtime day needs a positive overtime balance and a daily target before the selected date. An existing overtime day stays selectable so it can be changed. */
     val isOvertimeDayBlocked: Boolean
-        get() = availableOvertimeMinutes <= 0 && selectedDayType != DayType.OVERTIME_DAY
+        get() = (availableOvertimeMinutes <= 0 || overtimeDayTargetMinutes <= 0) &&
+            selectedDayType != DayType.OVERTIME_DAY
+
+    /** Overtime minutes this overtime day takes from the account. */
+    val overtimeDayUsedMinutes: Long
+        get() = CalculateFlextimeUseCase.overtimeCoverage(overtimeDayTargetMinutes, availableOvertimeMinutes)
+
+    /** Overtime balance left after this overtime day. */
+    val overtimeDayRemainingMinutes: Long
+        get() = availableOvertimeMinutes - overtimeDayUsedMinutes
 }
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -283,6 +295,9 @@ class HomeViewModel @Inject constructor(
                     } else {
                         workDayRepository.getWorkDaysForYear(date.year)
                     }
+                    // In a year after settingsYear the balance includes the previous year's days
+                    // as long as the year change has not moved the balance into settings yet.
+                    val previousYearDaysFlow = workDayRepository.getWorkDaysForYear(date.year - 1)
                     combine(
                         workDayRepository.getWorkDay(date),
                         getSettings(),
@@ -290,6 +305,7 @@ class HomeViewModel @Inject constructor(
                         settingsRepository.getQuotaRules(),
                         currentYearDaysFlow,
                         selectedYearDaysFlow,
+                        previousYearDaysFlow,
                         settingsRepository.getWorkTimeRules()
                     ) { arr ->
                         val workDay = arr[0] as WorkDay?
@@ -301,9 +317,16 @@ class HomeViewModel @Inject constructor(
                         @Suppress("UNCHECKED_CAST")
                         val currentYearDays = arr[4] as List<WorkDay>
                         @Suppress("UNCHECKED_CAST")
-                        val yearDays = arr[5] as List<WorkDay>
+                        val selectedYearDays = arr[5] as List<WorkDay>
                         @Suppress("UNCHECKED_CAST")
-                        val workTimeRules = arr[6] as List<com.flex.domain.model.WorkTimeRule>
+                        val previousYearDays = arr[6] as List<WorkDay>
+                        @Suppress("UNCHECKED_CAST")
+                        val workTimeRules = arr[7] as List<com.flex.domain.model.WorkTimeRule>
+                        val yearDays = if (settings.settingsYear < date.year) {
+                            selectedYearDays + previousYearDays
+                        } else {
+                            selectedYearDays
+                        }
 
                         val rule = settingsRepository.getQuotaRuleForMonth(yearMonth, rules)
                         val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
@@ -477,7 +500,12 @@ class HomeViewModel @Inject constructor(
                                 requiredOfficeMinutes = requiredMin,
                                 breakCheckResult = breakCheckResult,
                                 hasTimeBlockOverlap = hasOverlap,
-                                dailyTargetMinutes = dailyTarget
+                                dailyTargetMinutes = dailyTarget,
+                                overtimeDayTargetMinutes = if (hasDailyWorkTarget(date, settings.dailyWorkMinutes, ruleForDate)) {
+                                    ruleForDate?.dailyWorkMinutes ?: settings.dailyWorkMinutes
+                                } else {
+                                    0
+                                }
                             ),
                             workTimeRules
                         )

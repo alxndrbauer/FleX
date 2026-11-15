@@ -144,6 +144,7 @@ import com.flex.ui.theme.BusinessTripColor
 import com.flex.ui.theme.FlexDayColor
 import com.flex.ui.theme.HomeOfficeColor
 import com.flex.ui.theme.OfficeColor
+import com.flex.ui.theme.OvertimeDayColor
 import com.flex.ui.theme.PublicHolidayColor
 import com.flex.ui.theme.SaturdayBonusColor
 import com.flex.ui.theme.SickDayColor
@@ -668,7 +669,9 @@ fun MonthScreen(
             LegendItem(color = BusinessTripColor, label = "Dienstgang / Dienstreise")
             LegendItem(color = VacationColor, label = "Urlaub")
             LegendItem(color = SpecialVacationColor, label = "Sonderurlaub")
+            LegendItem(color = OvertimeDayColor, label = "Überstundentag")
             LegendItem(color = FlexDayColor, label = "Gleittag")
+            LegendItem(color = SaturdayBonusColor, label = "Samstag+")
             LegendItem(color = SickDayColor, label = "Krank")
             LegendItem(color = PublicHolidayColor, label = "Feiertag")
         }
@@ -898,6 +901,8 @@ fun MonthScreen(
             dailyWorkMinutes = activeDailyTarget,
             defaultStartTime = state.settings.defaultStartTime,
             isSpecialVacationBlocked = state.settings.specialVacationPaidOut && state.settings.settingsYear == editDay.date.year,
+            availableOvertimeMinutes = state.overtimeMinutesBefore(editDay.date),
+            hasDailyTarget = state.hasDailyTarget(editDay.date),
             onDismiss = { viewModel.clearEditing() },
             onSave = { dayType, note, timeBlocks ->
                 viewModel.saveDay(editDay.date, dayType, note, timeBlocks)
@@ -1320,6 +1325,8 @@ fun EditDayDialog(
     dailyWorkMinutes: Int = 426,
     defaultStartTime: java.time.LocalTime = java.time.LocalTime.of(8, 0),
     isSpecialVacationBlocked: Boolean = false,
+    availableOvertimeMinutes: Long = 0,
+    hasDailyTarget: Boolean = true,
     onDismiss: () -> Unit,
     onSave: (DayType, String?, List<TimeBlockInput>) -> Unit,
     onDelete: (() -> Unit)? = null
@@ -1427,6 +1434,14 @@ fun EditDayDialog(
                         },
                         label = { Text("Gleittag") })
                     FilterChip(
+                        selected = dayType == DayType.OVERTIME_DAY,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            dayType = DayType.OVERTIME_DAY
+                        },
+                        enabled = (hasDailyTarget && availableOvertimeMinutes > 0) || dayType == DayType.OVERTIME_DAY,
+                        label = { Text("Überstundentag") })
+                    FilterChip(
                         selected = dayType == DayType.SATURDAY_BONUS,
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -1440,6 +1455,20 @@ fun EditDayDialog(
                             dayType = DayType.SICK_DAY
                         },
                         label = { Text("Krank") })
+                }
+                if (dayType != DayType.OVERTIME_DAY) {
+                    when {
+                        !hasDailyTarget -> Text(
+                            text = "Überstundentag: an diesem Tag kein Tagessoll",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        availableOvertimeMinutes <= 0 -> Text(
+                            text = "Überstundentag: kein Überstundenguthaben vorhanden",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
 
                 // Time entry — only for work day types

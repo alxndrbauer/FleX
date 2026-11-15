@@ -73,7 +73,9 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
         monthWorkDays: List<WorkDay> = emptyList(),
         calculateDayWorkTime: CalculateDayWorkTimeUseCase = CalculateDayWorkTimeUseCase(),
         settings: Settings = Settings(dailyWorkMinutes = 420),
-        workTimeRules: List<com.flex.domain.model.WorkTimeRule> = emptyList()
+        workTimeRules: List<com.flex.domain.model.WorkTimeRule> = emptyList(),
+        yearWorkDays: Map<Int, List<WorkDay>> = emptyMap(),
+        flextimeBalance: ((List<WorkDay>) -> FlextimeBalance)? = null
     ): Pair<WorkDayRepository, PlanningViewModel> {
         val getMonthWorkDays = mockk<GetMonthWorkDaysUseCase>(relaxed = true)
         val getSettings = mockk<GetSettingsUseCase>(relaxed = true)
@@ -86,8 +88,10 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
         every { settingsRepository.getWorkTimeRules() } returns flowOf(workTimeRules)
         every { settingsRepository.getQuotaRuleForMonth(any(), any()) } returns null
         every { settingsRepository.getWorkTimeRuleForDate(any(), any()) } returns null
-        every { workDayRepository.getWorkDaysForYear(any()) } returns flowOf(emptyList())
-        every { calculateFlextime(any(), any(), any(), any()) } returns FlextimeBalance(totalMinutes = 120)
+        every { workDayRepository.getWorkDaysForYear(any()) } answers { flowOf(yearWorkDays[firstArg<Int>()] ?: emptyList()) }
+        every { calculateFlextime(any(), any(), any(), any()) } answers {
+            flextimeBalance?.invoke(firstArg()) ?: FlextimeBalance(totalMinutes = 120)
+        }
         every { calculateQuota(any(), any(), any(), any(), any(), any()) } returns QuotaStatus()
         every { buildPrognosisDays(any(), any(), any(), any()) } answers { secondArg() }
         every { getMonthWorkDays(any()) } returns flowOf(monthWorkDays)
@@ -465,6 +469,197 @@ class PlanningViewModelBehaviorSpec : BehaviorSpec({
             Then("ist canSyncPlannedDays true (Button wird aktiv)") {
                 vm.uiState.value.canSyncPlannedDays shouldBe true
             }
+        }
+    }
+
+    Given("das Planen eines Überstundentags") {
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
+        val date = nextMonth.atDay(13)
+
+        When("im Monat kein Überstundenguthaben vorhanden ist") {
+            val (_, viewModel) = setupPlanningViewModel()
+
+            Then("wird der Überstundentag nicht angeboten") {
+                viewModel.uiState.value.hasOvertimeAvailable shouldBe false
+            }
+
+            viewModel.setSelectedPlanType(PlanType.OVERTIME_DAY)
+
+            Then("bleibt der Planungstyp unverändert") {
+                viewModel.uiState.value.selectedPlanType shouldBe PlanType.OFFICE
+            }
+        }
+
+        When("mit Überstundenguthaben vor dem Tag geplant wird") {
+            val (workDayRepository, viewModel) = setupPlanningViewModel(
+                flextimeBalance = { days ->
+                    if (days.size <= 1) FlextimeBalance(overtimeMinutes = 600) else FlextimeBalance()
+                }
+            )
+            coEvery { workDayRepository.saveWorkDay(any()) } returns 101L
+
+            viewModel.setSelectedPlanType(PlanType.OVERTIME_DAY)
+            viewModel.planDay(date)
+
+            Then("wird ein geplanter Überstundentag gespeichert") {
+                val daySlot = slot<WorkDay>()
+                coVerify { workDayRepository.saveWorkDay(capture(daySlot)) }
+                daySlot.captured.date shouldBe date
+                daySlot.captured.dayType shouldBe DayType.OVERTIME_DAY
+                daySlot.captured.isPlanned.shouldBeTrue()
+            }
+
+            Then("wird der Überstundentag angeboten und das Guthaben vor dem Tag gemeldet") {
+                viewModel.uiState.value.hasOvertimeAvailable shouldBe true
+                viewModel.uiState.value.overtimeMinutesBefore(date) shouldBe 600
+            }
+        }
+
+        When("das Guthaben vor dem Tag bereits aufgebraucht ist") {
+            val daysBefore = (1..12).map {
+                WorkDay(
+                    id = it.toLong(),
+                    date = nextMonth.atDay(it),
+                    location = WorkLocation.HOME_OFFICE,
+                    dayType = DayType.WORK,
+                    isPlanned = true
+                )
+            }
+            val (workDayRepository, viewModel) = setupPlanningViewModel(
+                monthWorkDays = daysBefore,
+                flextimeBalance = { days ->
+                    if (days.isEmpty()) FlextimeBalance(overtimeMinutes = 600)
+                    else FlextimeBalance(overtimeMinutes = 600 - days.first().date.dayOfMonth * 100L)
+                }
+            )
+            coEvery { workDayRepository.saveWorkDay(any()) } returns 101L
+            var message: String? = null
+            val collectJob = launch(UnconfinedTestDispatcher()) {
+                viewModel.messages.collect { message = it }
+            }
+
+            Then("wird das verbrauchte Guthaben vor dem Tag gemeldet") {
+                viewModel.uiState.value.overtimeMinutesBefore(date) shouldBe -600
+            }
+
+            viewModel.setSelectedPlanType(PlanType.OVERTIME_DAY)
+            viewModel.planDay(date)
+
+            Then("wird kein Tag gespeichert") {
+                coVerify(exactly = 0) { workDayRepository.saveWorkDay(any()) }
+            }
+
+            Then("erklärt eine Meldung die Sperre") {
+                message shouldBe "Überstundentag nicht möglich: kein Überstundenguthaben vorhanden"
+            }
+
+            collectJob.cancel()
+        }
+
+        When("der Vortag das Guthaben vollständig aufbraucht") {
+            val target = nextMonth.atDay(14)
+            val days = (1..14).map {
+                WorkDay(
+                    id = it.toLong(),
+                    date = nextMonth.atDay(it),
+                    location = WorkLocation.HOME_OFFICE,
+                    dayType = DayType.WORK,
+                    isPlanned = true
+                )
+            }
+            val (workDayRepository, viewModel) = setupPlanningViewModel(
+                monthWorkDays = days,
+                flextimeBalance = { plannedDays ->
+                    when {
+                        plannedDays.isEmpty() -> FlextimeBalance(overtimeMinutes = 600)
+                        plannedDays.first().date.dayOfMonth == 13 -> FlextimeBalance(overtimeMinutes = 0)
+                        else -> FlextimeBalance(overtimeMinutes = 600)
+                    }
+                }
+            )
+            coEvery { workDayRepository.saveWorkDay(any()) } returns 101L
+
+            Then("ist vor dem Tag kein Guthaben mehr verfügbar") {
+                viewModel.uiState.value.overtimeMinutesBefore(target) shouldBe 0
+            }
+
+            viewModel.setSelectedPlanType(PlanType.OVERTIME_DAY)
+            viewModel.planDay(target)
+
+            Then("wird kein Tag gespeichert") {
+                coVerify(exactly = 0) { workDayRepository.saveWorkDay(any()) }
+            }
+        }
+
+        When("der Tag kein Tagessoll hat (Samstag)") {
+            val saturday = nextMonth.atDay(7)
+            val (workDayRepository, viewModel) = setupPlanningViewModel(
+                flextimeBalance = { FlextimeBalance(overtimeMinutes = 600) }
+            )
+            coEvery { workDayRepository.saveWorkDay(any()) } returns 101L
+            var message: String? = null
+            val collectJob = launch(UnconfinedTestDispatcher()) {
+                viewModel.messages.collect { message = it }
+            }
+
+            viewModel.setSelectedPlanType(PlanType.OVERTIME_DAY)
+            viewModel.planDay(saturday)
+
+            Then("wird kein Tag gespeichert") {
+                coVerify(exactly = 0) { workDayRepository.saveWorkDay(any()) }
+            }
+
+            Then("erklärt eine Meldung das fehlende Tagessoll") {
+                message shouldBe "Überstundentag nicht möglich: an diesem Tag kein Tagessoll"
+            }
+
+            collectJob.cancel()
+        }
+    }
+
+    Given("die Planung liegt im Januar des Folgejahres") {
+        val january = YearMonth.of(2027, 1)
+        val decemberDay = WorkDay(
+            date = LocalDate.of(2026, 12, 15),
+            location = WorkLocation.HOME_OFFICE,
+            dayType = DayType.WORK
+        )
+        val (_, viewModel) = setupPlanningViewModel(
+            settings = Settings(settingsYear = 2026),
+            yearWorkDays = mapOf(2026 to listOf(decemberDay)),
+            flextimeBalance = { days ->
+                if (days.any { it.date == decemberDay.date }) FlextimeBalance(overtimeMinutes = 600)
+                else FlextimeBalance()
+            }
+        )
+        viewModel.navigateToMonth(january)
+
+        Then("ist der Überstundentag im Januar verfügbar") {
+            viewModel.uiState.value.hasOvertimeAvailable shouldBe true
+            viewModel.uiState.value.overtimeMinutesBefore(january.atDay(4)) shouldBe 600
+        }
+    }
+
+    Given("die Planung liegt im Februar des Folgejahres") {
+        val february = YearMonth.of(2027, 2)
+        val decemberDay = WorkDay(
+            date = LocalDate.of(2026, 12, 15),
+            location = WorkLocation.HOME_OFFICE,
+            dayType = DayType.WORK
+        )
+        val (_, viewModel) = setupPlanningViewModel(
+            settings = Settings(settingsYear = 2026),
+            yearWorkDays = mapOf(2026 to listOf(decemberDay)),
+            flextimeBalance = { days ->
+                if (days.any { it.date == decemberDay.date }) FlextimeBalance(overtimeMinutes = 600)
+                else FlextimeBalance()
+            }
+        )
+        viewModel.navigateToMonth(february)
+
+        Then("ist der Überstundentag im Februar verfügbar") {
+            viewModel.uiState.value.hasOvertimeAvailable shouldBe true
+            viewModel.uiState.value.overtimeMinutesBefore(february.atDay(4)) shouldBe 600
         }
     }
 })

@@ -36,6 +36,17 @@ fun List<WorkTimeRule>.getRuleForDate(date: LocalDate): WorkTimeRule? {
     return filter { !it.validFrom.isAfter(ym) }.maxByOrNull { it.validFrom }
 }
 
+/**
+ * True when [date] has a work target: an active work day, no public holiday and a positive target.
+ * Used to decide whether an overtime day can be booked at all.
+ */
+fun hasDailyWorkTarget(date: LocalDate, defaultDailyWorkMinutes: Int, rule: WorkTimeRule?): Boolean {
+    if (PublicHolidays.isHoliday(date)) return false
+    val workDays = rule?.workDays ?: DEFAULT_WORK_DAYS
+    if (date.dayOfWeek !in workDays) return false
+    return (rule?.dailyWorkMinutes ?: defaultDailyWorkMinutes) > 0
+}
+
 fun List<WorkTimeRule>.getRuleForMonth(ym: YearMonth): WorkTimeRule? {
     return filter { !it.validFrom.isAfter(ym) }.maxByOrNull { it.validFrom }
 }

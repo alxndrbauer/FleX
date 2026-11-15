@@ -107,6 +107,7 @@ import com.flex.ui.theme.BusinessTripColor
 import com.flex.ui.theme.FlexDayColor
 import com.flex.ui.theme.HomeOfficeColor
 import com.flex.ui.theme.OfficeColor
+import com.flex.ui.theme.OvertimeDayColor
 import com.flex.ui.theme.PublicHolidayColor
 import com.flex.ui.theme.SaturdayBonusColor
 import com.flex.ui.theme.SickDayColor
@@ -141,6 +142,14 @@ fun PlanningScreen(
         if (initialMonth != null) {
             viewModel.navigateToMonth(initialMonth)
             onInitialMonthConsumed()
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.messages.collect { message ->
+            scope.launch {
+                snackbarHostState.showSnackbar(message = message, duration = SnackbarDuration.Short)
+            }
         }
     }
 
@@ -263,8 +272,13 @@ fun PlanningScreen(
                         PlanType.FLEX_DAY -> FlexDayColor
                         PlanType.SATURDAY_BONUS -> SaturdayBonusColor
                         PlanType.BUSINESS_TRIP -> BusinessTripColor
+                        PlanType.OVERTIME_DAY -> OvertimeDayColor
                     }
-                    val isEnabled = if (type == PlanType.SPECIAL_VACATION) !isSpecialVacationBlocked else true
+                    val isEnabled = when (type) {
+                        PlanType.SPECIAL_VACATION -> !isSpecialVacationBlocked
+                        PlanType.OVERTIME_DAY -> state.hasOvertimeAvailable
+                        else -> true
+                    }
                     FilterChip(
                         selected = state.selectedPlanType == type,
                         onClick = {
@@ -343,7 +357,10 @@ fun PlanningScreen(
                                                 else Modifier
                                             )
                                             .combinedClickable(
-                                                enabled = !isHoliday,
+                                                enabled = !isHoliday && !(
+                                                    state.selectedPlanType == PlanType.OVERTIME_DAY &&
+                                                        !state.hasDailyTarget(date)
+                                                    ),
                                                 onClick = {
                                                     when {
                                                         workDay?.isPlanned == true -> {

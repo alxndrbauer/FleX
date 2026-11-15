@@ -8,6 +8,7 @@ import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.getRuleForDate
+import com.flex.domain.model.hasDailyWorkTarget
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -65,10 +66,14 @@ class CalculateFlextimeUseCase @Inject constructor(
                 DayType.OVERTIME_DAY -> {
                     // Overtime covers the daily target up to the available balance (never below 0);
                     // the uncovered remainder is deducted from the flextime account.
-                    val available = settings.initialOvertimeMinutes + overtimeMinutes
-                    val covered = overtimeCoverage(dailyTarget, available)
-                    overtimeMinutes -= covered
-                    earnedMinutes -= dailyTarget.toLong() - covered
+                    // Days without a target (weekend, off-day, holiday) are neutral.
+                    val ruleForDate = workTimeRules.getRuleForDate(day.date)
+                    if (hasDailyWorkTarget(day.date, settings.dailyWorkMinutes, ruleForDate)) {
+                        val available = settings.initialOvertimeMinutes + overtimeMinutes
+                        val covered = overtimeCoverage(dailyTarget, available)
+                        overtimeMinutes -= covered
+                        earnedMinutes -= dailyTarget.toLong() - covered
+                    }
                 }
                 DayType.VACATION, DayType.SPECIAL_VACATION, DayType.SICK_DAY -> {
                     // neutral

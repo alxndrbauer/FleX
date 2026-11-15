@@ -1,6 +1,8 @@
 package com.flex.bdd.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -75,6 +77,81 @@ class EditDayDialogBddTest {
 
             Then("wird der Tag als Urlaubstag gespeichert") {
                 assertThat(savedDayType).isEqualTo(DayType.VACATION)
+            }
+        }
+    }
+
+    @Test
+    fun overtimeDayChipIsDisabledWithoutBalance() {
+        val testDay = WorkDay(
+            id = 3L,
+            date = LocalDate.of(2026, 9, 17),
+            dayType = DayType.WORK,
+            location = WorkLocation.OFFICE
+        )
+
+        bddScenario("Überstundentag ohne Guthaben: Chip ist gesperrt") {
+            Given("der Dialog ohne Überstundenguthaben geöffnet ist") {
+                composeTestRule.setContent {
+                    FlexTheme {
+                        EditDayDialog(
+                            workDay = testDay,
+                            availableOvertimeMinutes = 0,
+                            onDismiss = {},
+                            onSave = { _, _, _ -> },
+                            onDelete = {}
+                        )
+                    }
+                }
+                composeTestRule.waitForIdle()
+            }
+
+            Then("ist der Überstundentag-Chip nicht wählbar") {
+                composeTestRule.onNodeWithText("Überstundentag").assertIsNotEnabled()
+            }
+
+            Then("wird der Grund angezeigt") {
+                composeTestRule
+                    .onNodeWithText("Überstundentag: kein Überstundenguthaben vorhanden")
+                    .assertIsDisplayed()
+            }
+        }
+    }
+
+    @Test
+    fun overtimeDayChipIsSelectableWithBalance() {
+        var savedDayType: DayType? = null
+        val testDay = WorkDay(
+            id = 4L,
+            date = LocalDate.of(2026, 9, 18),
+            dayType = DayType.WORK,
+            location = WorkLocation.OFFICE
+        )
+
+        bddScenario("Überstundentag mit Guthaben: Chip ist wählbar") {
+            Given("der Dialog mit Überstundenguthaben geöffnet ist") {
+                composeTestRule.setContent {
+                    FlexTheme {
+                        EditDayDialog(
+                            workDay = testDay,
+                            availableOvertimeMinutes = 600,
+                            onDismiss = {},
+                            onSave = { type, _, _ -> savedDayType = type },
+                            onDelete = {}
+                        )
+                    }
+                }
+                composeTestRule.waitForIdle()
+            }
+
+            When("der Benutzer den Überstundentag wählt und speichert") {
+                composeTestRule.onNodeWithText("Überstundentag").assertIsEnabled().performClick()
+                composeTestRule.onNodeWithText("Speichern").performClick()
+                composeTestRule.waitForIdle()
+            }
+
+            Then("wird der Tag als Überstundentag gespeichert") {
+                assertThat(savedDayType).isEqualTo(DayType.OVERTIME_DAY)
             }
         }
     }
