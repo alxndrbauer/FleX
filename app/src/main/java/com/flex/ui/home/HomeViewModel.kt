@@ -86,8 +86,13 @@ data class HomeUiState(
     val permissionIssues: List<String> = emptyList(),
     val hasTimeBlockOverlap: Boolean = false,
     val dailyTargetMinutes: Int = 426,
-    val projectedEndTime: ProjectedEndTime? = null
-)
+    val projectedEndTime: ProjectedEndTime? = null,
+    val availableOvertimeMinutes: Long = 0
+) {
+    /** An overtime day needs a positive overtime balance before the selected date. An existing overtime day stays selectable so it can be changed. */
+    val isOvertimeDayBlocked: Boolean
+        get() = availableOvertimeMinutes <= 0 && selectedDayType != DayType.OVERTIME_DAY
+}
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -126,6 +131,7 @@ class HomeViewModel @Inject constructor(
     private var cachedWorkTimeRules: List<WorkTimeRule> = emptyList()
     private var cachedMonthDays: List<WorkDay> = emptyList()
     private var cachedYearDays: List<WorkDay> = emptyList()
+    private var cachedMonthStartOvertime: Long = 0L
 
     private fun computeRemainingMinutes(state: HomeUiState, workTimeRules: List<WorkTimeRule> = cachedWorkTimeRules): Int? {
         val today = LocalDate.now(clock)
@@ -229,7 +235,7 @@ class HomeViewModel @Inject constructor(
             val liveMonthDays = cachedMonthDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
             val liveYearDays = cachedYearDays.filter { !it.isPlanned && it.date != today } + listOf(todayWithNow)
             val liveFlextime = calculateFlextime(liveYearDays, state.settings, todayYearMonth, cachedWorkTimeRules)
-            val liveMonthlyFlextime = calculateFlextime(liveMonthDays, state.settings, selectedYearMonth, cachedWorkTimeRules)
+            val liveMonthlyFlextime = calculateFlextime(liveMonthDays, state.settings.copy(initialOvertimeMinutes = cachedMonthStartOvertime.toInt()), selectedYearMonth, cachedWorkTimeRules)
             val liveOverlap = checkTimeBlockOverlap(state.timeBlocks, now)
 
             _uiState.update {
@@ -364,6 +370,10 @@ class HomeViewModel @Inject constructor(
 
                         val baseYDays = yearDays.filter { !it.isPlanned && it.date.isBefore(date) }
                         val baseFlextime = calculateFlextime(baseYDays, settings, yearMonth, workTimeRules)
+                        // Monthly sums start from the overtime balance at the beginning of the month
+                        val monthStartOvertime = calculateFlextime.overtimeBalanceAtStart(yearDays, settings, yearMonth, workTimeRules)
+                        cachedMonthStartOvertime = monthStartOvertime
+                        val monthSettings = settings.copy(initialOvertimeMinutes = monthStartOvertime.toInt())
 
                         val (flextime, monthlyFlextime, liveFlextime, liveMonthlyFlextime) = if (isRunning && isToday) {
                             val todayWithNow = (workDay ?: WorkDay(date = today, location = workDay?.location ?: WorkLocation.OFFICE, dayType = selectedDayType))
@@ -373,14 +383,14 @@ class HomeViewModel @Inject constructor(
                             val baseMDays = monthDays.filter { !it.isPlanned && it.date.isBefore(today) }
                             listOf(
                                 baseFlextime,
-                                calculateFlextime(baseMDays, settings, yearMonth, workTimeRules),
+                                calculateFlextime(baseMDays, monthSettings, yearMonth, workTimeRules),
                                 calculateFlextime(liveYDays, settings, todayYearMonth, workTimeRules),
-                                calculateFlextime(liveMDays, settings, yearMonth, workTimeRules)
+                                calculateFlextime(liveMDays, monthSettings, yearMonth, workTimeRules)
                             )
                         } else {
                             listOf(
                                 calculateFlextime(actualYearDays, settings, todayYearMonth, workTimeRules),
-                                calculateFlextime(actualMonthDays, settings, yearMonth, workTimeRules),
+                                calculateFlextime(actualMonthDays, monthSettings, yearMonth, workTimeRules),
                                 null,
                                 null
                             )
@@ -454,6 +464,7 @@ class HomeViewModel @Inject constructor(
                                 liveFlextimeDelta = initialLiveDelta,
                                 flextimeBalance = flextime ?: FlextimeBalance(),
                                 baseFlextimeBalance = baseFlextime,
+                                availableOvertimeMinutes = baseFlextime.overtimeMinutes,
                                 selectedDateFlextimeBalance = selectedDateFlextime,
                                 monthlyFlextimeBalance = monthlyFlextime ?: FlextimeBalance(),
                                 liveFlextimeBalance = liveFlextime,
@@ -646,6 +657,9 @@ class HomeViewModel @Inject constructor(
     fun setDayType(dayType: DayType) {
         val state = _uiState.value
         if (dayType == DayType.SPECIAL_VACATION && isSpecialVacationBlocked(state.selectedDate, state.settings)) {
+            return
+        }
+        if (dayType == DayType.OVERTIME_DAY && state.isOvertimeDayBlocked) {
             return
         }
         _localDayTypeOverride.value = dayType
@@ -895,6 +909,9 @@ class HomeViewModel @Inject constructor(
     fun saveDayType(dayType: DayType) {
         val state = _uiState.value
         if (dayType == DayType.SPECIAL_VACATION && isSpecialVacationBlocked(state.selectedDate, state.settings)) {
+            return
+        }
+        if (dayType == DayType.OVERTIME_DAY && state.isOvertimeDayBlocked) {
             return
         }
         viewModelScope.launch {

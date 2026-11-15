@@ -219,10 +219,15 @@ private data class MonthConfig(
 
                 val flexByDate = mutableMapOf<LocalDate, Long>()
                 val dailyFlexByDate = mutableMapOf<LocalDate, Long>()
-                val baseFlextimeMinutes = calculateFlextime(previousMonthsDays, settings, null, workTimeRules).totalMinutes
+                val baseFlex = calculateFlextime(previousMonthsDays, settings, null, workTimeRules)
+                val baseFlextimeMinutes = baseFlex.totalMinutes
+                val monthStartOvertime = baseFlex.overtimeMinutes
                 var currentFlex = baseFlextimeMinutes
+                var runningOvertime = monthStartOvertime
                 for (day in prognosisDays.sortedBy { it.date }) {
-                    val singleDayEarned = calculateFlextime(listOf(day), settings.copy(initialFlextimeMinutes = 0), null, workTimeRules).totalMinutes
+                    val step = calculateFlextime(listOf(day), settings.copy(initialFlextimeMinutes = 0, initialOvertimeMinutes = runningOvertime.toInt()), null, workTimeRules)
+                    val singleDayEarned = step.totalMinutes
+                    runningOvertime = step.overtimeMinutes
                     dailyFlexByDate[day.date] = singleDayEarned
                     currentFlex += singleDayEarned
                     flexByDate[day.date] = currentFlex
@@ -297,8 +302,8 @@ private data class MonthConfig(
                     }
                 }
 
-                // Monthly flextime earned in this month (initialFlextime = 0)
-                val monthlyFlextime = calculateFlextime(daysForCalc, settings.copy(initialFlextimeMinutes = 0), month, workTimeRules)
+                // Monthly flextime earned in this month (initialFlextime = 0, overtime = balance at month start)
+                val monthlyFlextime = calculateFlextime(daysForCalc, settings.copy(initialFlextimeMinutes = 0, initialOvertimeMinutes = monthStartOvertime.toInt()), month, workTimeRules)
                 val differenceMinutesMonth = monthlyFlextime.totalMinutes
 
                 _uiState.value = _uiState.value.copy(

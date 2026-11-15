@@ -975,7 +975,13 @@ private fun HeroCard(
                     dayTypes.forEach { (type, info) ->
                         val (label, icon, color) = info
                         val isSelected = sheetSelectedType == type
-                        val isBlocked = type == DayType.SPECIAL_VACATION && isSpecialVacationBlocked
+                        val blockedReason = when {
+                            type == DayType.SPECIAL_VACATION && isSpecialVacationBlocked ->
+                                if (isPaidOut) "bereits ausgezahlt" else "nach dem 31.10. nicht mehr wählbar"
+                            type == DayType.OVERTIME_DAY && state.isOvertimeDayBlocked -> "kein Überstundenguthaben vorhanden"
+                            else -> null
+                        }
+                        val isBlocked = blockedReason != null
 
                         Surface(
                             shape = RoundedCornerShape(12.dp),
@@ -1011,9 +1017,9 @@ private fun HeroCard(
                                         color = if (isBlocked) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                         else MaterialTheme.colorScheme.onSurface
                                     )
-                                    if (isBlocked) {
+                                    if (blockedReason != null) {
                                         Text(
-                                            text = if (isPaidOut) "bereits ausgezahlt" else "nach dem 31.10. nicht mehr wählbar",
+                                            text = blockedReason,
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.error
                                         )

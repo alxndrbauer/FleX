@@ -226,4 +226,44 @@ class FlexDayBehaviorSpec : BehaviorSpec({
             }
         }
     }
+
+    Given("Überstunden aus einem Vormonat (Samstagsbonus 120 Min netto, +60 Min Überstunden am 15.08.2026)") {
+        val augustBonus = WorkDay(
+            id = 2L,
+            date = LocalDate.of(2026, 8, 15), // Samstag
+            dayType = DayType.SATURDAY_BONUS,
+            timeBlocks = listOf(TimeBlock(startTime = LocalTime.of(8, 0), endTime = LocalTime.of(10, 0)))
+        )
+        val septemberOvertimeDay = createNeutralDay(LocalDate.of(2026, 9, 10), DayType.OVERTIME_DAY)
+
+        When("der Monatsanfang für September berechnet wird") {
+            val startOvertime = calculateFlextime.overtimeBalanceAtStart(
+                workDays = listOf(augustBonus, septemberOvertimeDay),
+                settings = defaultSettings,
+                yearMonth = testMonth
+            )
+
+            Then("ist das Überstundenguthaben 60 Min; Tage des Zielmonats zählen nicht dazu") {
+                startOvertime shouldBe 60L
+            }
+        }
+
+        When("der September mit diesem Startguthaben berechnet wird") {
+            val startOvertime = calculateFlextime.overtimeBalanceAtStart(
+                workDays = listOf(augustBonus, septemberOvertimeDay),
+                settings = defaultSettings,
+                yearMonth = testMonth
+            )
+            val september = calculateFlextime(
+                workDays = listOf(septemberOvertimeDay),
+                settings = defaultSettings.copy(initialOvertimeMinutes = startOvertime.toInt()),
+                yearMonth = testMonth
+            )
+
+            Then("deckt der Überstundentag nur die 60 Min Guthaben; 366 Min gehen vom Gleitzeitkonto ab") {
+                september.overtimeMinutes shouldBe 0L
+                september.earnedMinutes shouldBe -366L
+            }
+        }
+    }
 })

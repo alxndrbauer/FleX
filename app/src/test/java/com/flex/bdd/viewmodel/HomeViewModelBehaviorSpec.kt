@@ -623,4 +623,84 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
             }
         }
     }
+
+    Given("das Eintragen eines Überstundentags über den Home-Screen (HomeViewModel)") {
+        val date = LocalDate.of(2026, 6, 15)
+
+        fun buildViewModel(repo: WorkDayRepository, overtimeMinutes: Long): HomeViewModel {
+            val context = mockk<Context>(relaxed = true)
+            val settingsRepo = mockk<SettingsRepository>(relaxed = true)
+            val getMonthWorkDays = mockk<GetMonthWorkDaysUseCase>(relaxed = true)
+            val getSettings = mockk<GetSettingsUseCase>(relaxed = true)
+            val calculateDayWorkTime = mockk<CalculateDayWorkTimeUseCase>(relaxed = true)
+            val calculateFlextime = mockk<CalculateFlextimeUseCase>(relaxed = true)
+            val calculateQuota = mockk<CalculateQuotaUseCase>(relaxed = true)
+            val dataChangeEventBus = mockk<DataChangeEventBus>(relaxed = true)
+            val checkBreakViolation = mockk<CheckBreakViolationUseCase>(relaxed = true)
+            val breakWarningScheduler = mockk<BreakWarningScheduler>(relaxed = true)
+            val whatsNewPreferences = mockk<WhatsNewPreferences>(relaxed = true)
+            val backupPreferences = mockk<BackupPreferences>(relaxed = true)
+            val autoBookPlannedDays = mockk<AutoBookPlannedDaysUseCase>(relaxed = true)
+
+            every { getSettings() } returns flowOf(Settings(settingsYear = 2026))
+            every { getMonthWorkDays(any()) } returns flowOf(emptyList())
+            every { settingsRepo.getQuotaRules() } returns flowOf(emptyList())
+            every { settingsRepo.getWorkTimeRules() } returns flowOf(emptyList())
+            every { repo.getWorkDaysForYear(any()) } returns flowOf(emptyList())
+            coEvery { repo.getWorkDay(any()) } returns flowOf(null)
+            every { calculateDayWorkTime(any()) } returns DayWorkTimeResult(0, 0, 0, false)
+            every { calculateDayWorkTime(any(), any()) } returns DayWorkTimeResult(0, 0, 0, false)
+            every { calculateFlextime(any(), any(), any(), any()) } returns FlextimeBalance(overtimeMinutes = overtimeMinutes)
+            every { calculateQuota(any(), any(), any(), any(), any(), any()) } returns QuotaStatus()
+            every { dataChangeEventBus.events } returns MutableSharedFlow()
+            every { checkBreakViolation(any(), any()) } returns BreakCheckResult(emptyList(), skipped = false)
+            every { whatsNewPreferences.getLastSeenVersionCode() } returns 0
+            every { backupPreferences.isAutoBackupEnabled } returns false
+
+            return HomeViewModel(
+                context, repo, settingsRepo, getMonthWorkDays,
+                getSettings, calculateDayWorkTime, calculateFlextime, calculateQuota,
+                dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
+                whatsNewPreferences, backupPreferences, autoBookPlannedDays,
+                CheckTimeBlockOverlapUseCase(),
+                clock = fixedClock()
+            )
+        }
+
+        When("kein Überstundenguthaben vorhanden ist") {
+            val repo = mockk<WorkDayRepository>(relaxed = true)
+            val vm = buildViewModel(repo, overtimeMinutes = 0)
+            vm.navigateToDate(date)
+            vm.setDayType(DayType.OVERTIME_DAY)
+            vm.saveDayType(DayType.OVERTIME_DAY)
+
+            Then("ist der Überstundentag im UI-State gesperrt") {
+                vm.uiState.value.isOvertimeDayBlocked shouldBe true
+            }
+
+            Then("wird kein Überstundentag im Repository gespeichert") {
+                coVerify(exactly = 0) { repo.saveWorkDay(match { it.dayType == DayType.OVERTIME_DAY }) }
+            }
+
+            Then("wird der ausgewählte Tagestyp nicht auf OVERTIME_DAY gesetzt") {
+                vm.uiState.value.selectedDayType shouldNotBe DayType.OVERTIME_DAY
+            }
+        }
+
+        When("ein Überstundenguthaben vorhanden ist") {
+            val repo = mockk<WorkDayRepository>(relaxed = true)
+            val vm = buildViewModel(repo, overtimeMinutes = 120)
+            vm.navigateToDate(date)
+            vm.setDayType(DayType.OVERTIME_DAY)
+            vm.saveDayType(DayType.OVERTIME_DAY)
+
+            Then("ist der Überstundentag nicht gesperrt") {
+                vm.uiState.value.isOvertimeDayBlocked shouldBe false
+            }
+
+            Then("wird der Überstundentag im Repository gespeichert") {
+                coVerify { repo.saveWorkDay(match { it.dayType == DayType.OVERTIME_DAY && it.date == date }) }
+            }
+        }
+    }
 })

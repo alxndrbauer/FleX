@@ -101,6 +101,20 @@ class CalculateFlextimeUseCase @Inject constructor(
         )
     }
 
+    /**
+     * Overtime balance at the start of [yearMonth]: the settings' initial balance plus all earlier
+     * actual (non-planned) days. Days in [yearMonth] or later are ignored.
+     */
+    fun overtimeBalanceAtStart(
+        workDays: List<WorkDay>,
+        settings: Settings,
+        yearMonth: YearMonth,
+        workTimeRules: List<WorkTimeRule> = emptyList()
+    ): Long {
+        val earlier = workDays.filter { !it.isPlanned && YearMonth.from(it.date).isBefore(yearMonth) }
+        return invoke(earlier, settings, null, workTimeRules).overtimeMinutes
+    }
+
     companion object {
         /** Minutes of a daily target covered by the overtime balance; a balance <= 0 covers nothing. */
         fun overtimeCoverage(dailyTarget: Int, availableOvertime: Long): Long =

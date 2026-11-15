@@ -26,6 +26,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Add setting for work gauge ring colour
 - Add flextime ±25h warning, improve overtime gauge contrast, fix quota font scaling, and update widget previews
 - Overtime day covers target only up to overtime balance
+- Gate overtime day on balance and start monthly sums from month-start overtime
 
 ### Verbesserungen
 
