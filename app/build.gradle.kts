@@ -16,6 +16,10 @@ android {
         versionCode = 25
         versionName = "2.0.3"
 
+        val updateManifestUrl = providers.gradleProperty("flexUpdateManifestUrl")
+            .getOrElse("https://gist.githubusercontent.com/alxndrbauer/1eddf47c2c689bdc8b27ca2ef7395b02/raw/version.json")
+        buildConfigField("String", "UPDATE_MANIFEST_URL", "\"$updateManifestUrl\"")
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true

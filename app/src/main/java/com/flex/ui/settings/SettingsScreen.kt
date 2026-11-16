@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ChevronRight
@@ -126,6 +127,7 @@ fun SettingsScreen(
     val workTimeRules by viewModel.workTimeRules.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
     val gaugeColorScheme by viewModel.gaugeColorScheme.collectAsState()
+    val betaUpdatesEnabled by viewModel.betaUpdatesEnabled.collectAsState()
     val appIconVariant by viewModel.appIconVariant.collectAsState()
     val yearChangeState by yearChangeViewModel.uiState.collectAsState()
 
@@ -149,6 +151,7 @@ fun SettingsScreen(
     var showOvertimeDialog by remember { mutableStateOf(false) }
     var showVacationDialog by remember { mutableStateOf(false) }
     var showFederalStateDialog by remember { mutableStateOf(false) }
+    var showBetaOptInDialog by remember { mutableStateOf(false) }
 
     // Format helpers
     fun Int.toHoursMinutes(): String {
@@ -536,11 +539,46 @@ fun SettingsScreen(
                         if (!isCheckingUpdate) {
                             scope.launch {
                                 isCheckingUpdate = true
-                                val update = UpdateChecker.checkForUpdate(BuildConfig.VERSION_CODE)
+                                val update = UpdateChecker.checkForUpdate(
+                                    BuildConfig.VERSION_CODE,
+                                    includeBeta = betaUpdatesEnabled
+                                )
                                 isCheckingUpdate = false
                                 if (update != null) pendingUpdate = update else noUpdateFound = true
                             }
                         }
+                    }
+                )
+                SettingsGroupDivider()
+                SettingsItem(
+                    title = "Beta-Updates",
+                    subtitle = if (betaUpdatesEnabled) {
+                        "Aktiviert · Vorabversionen werden angeboten"
+                    } else {
+                        "Deaktiviert · Nur stabile Versionen"
+                    },
+                    icon = Icons.Default.BugReport,
+                    iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    onClick = {
+                        if (betaUpdatesEnabled) {
+                            viewModel.setBetaUpdatesEnabled(false)
+                        } else {
+                            showBetaOptInDialog = true
+                        }
+                    },
+                    trailing = {
+                        Switch(
+                            checked = betaUpdatesEnabled,
+                            onCheckedChange = { enabled ->
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                if (enabled) {
+                                    showBetaOptInDialog = true
+                                } else {
+                                    viewModel.setBetaUpdatesEnabled(false)
+                                }
+                            }
+                        )
                     }
                 )
                 SettingsGroupDivider()
@@ -597,6 +635,35 @@ fun SettingsScreen(
                     noUpdateFound = false
                 }) {
                     Text("OK")
+                }
+            }
+        )
+    }
+
+    if (showBetaOptInDialog) {
+        AlertDialog(
+            onDismissRequest = { showBetaOptInDialog = false },
+            title = { Text("Beta-Updates aktivieren?") },
+            text = {
+                Text(
+                    "Du erhältst Vorabversionen vor dem regulären Release. " +
+                        "Diese können instabile Änderungen enthalten. " +
+                        "Du kannst Beta-Updates jederzeit wieder deaktivieren; " +
+                        "der Wechsel zurück auf eine stabile Version erfolgt mit dem nächsten regulären Release."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    viewModel.setBetaUpdatesEnabled(true)
+                    showBetaOptInDialog = false
+                }) {
+                    Text("Aktivieren")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBetaOptInDialog = false }) {
+                    Text("Abbrechen")
                 }
             }
         )

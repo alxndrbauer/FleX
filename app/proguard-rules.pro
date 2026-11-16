@@ -14,7 +14,7 @@
 
 # DTOs ohne @SerializedName
 -keep class com.flex.data.holidays.NagerHolidayDto { <fields>; }
--keep class com.flex.data.update.UpdateInfo { <fields>; }
+-keep class com.flex.data.update.** { <fields>; }
 
 # Enum-Werte (WorkLocation, DayType etc.)
 -keepclassmembers enum * { *; }

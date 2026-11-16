@@ -8,6 +8,7 @@ import com.flex.domain.model.Settings
 import com.flex.domain.repository.SettingsRepository
 import android.content.Context
 import com.flex.data.local.AppIconPreferences
+import com.flex.data.local.BetaPreferences
 import com.flex.data.local.GeofencePreferences
 import com.flex.data.local.GeofenceRegistrationInfo
 import com.flex.data.local.ThemePreferences
@@ -65,6 +66,9 @@ class SettingsViewModelTest : BaseUnitTest() {
     private lateinit var themePreferences: ThemePreferences
 
     @Mock
+    private lateinit var betaPreferences: BetaPreferences
+
+    @Mock
     private lateinit var geofencePreferences: GeofencePreferences
 
     @Mock
@@ -98,9 +102,9 @@ class SettingsViewModelTest : BaseUnitTest() {
 
     private fun createViewModel(): SettingsViewModel = SettingsViewModel(
         context, getSettings, settingsRepository, themePreferences,
-        appIconPreferences, geofencePreferences, geofenceManager, wifiMonitor,
-        wifiConnectionInfo, calendarSyncService, workDayRepository, icsExportService,
-        syncPlannedDaysWithWorkTimeRuleUseCase, widgetUpdater
+        betaPreferences, appIconPreferences, geofencePreferences, geofenceManager,
+        wifiMonitor, wifiConnectionInfo, calendarSyncService, workDayRepository,
+        icsExportService, syncPlannedDaysWithWorkTimeRuleUseCase, widgetUpdater
     )
 
     @BeforeEach
@@ -112,6 +116,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
         whenever(themePreferences.themeModeFlow).thenReturn(MutableStateFlow(ThemeMode.SYSTEM))
         whenever(themePreferences.gaugeColorSchemeFlow).thenReturn(MutableStateFlow(GaugeColorScheme.THEME))
+        whenever(betaPreferences.betaUpdatesEnabledFlow).thenReturn(MutableStateFlow(false))
         whenever(appIconPreferences.variantFlow).thenReturn(MutableStateFlow(AppIconVariant.CLASSIC))
         whenever(geofencePreferences.registration).thenReturn(MutableStateFlow(GeofenceRegistrationInfo()))
     }
@@ -634,6 +639,26 @@ class SettingsViewModelTest : BaseUnitTest() {
 
         assertThat(emittedResult).isEqualTo(expectedResult)
         job.cancel()
+    }
+
+    @Test
+    fun `setBetaUpdatesEnabled delegates to betaPreferences`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.setBetaUpdatesEnabled(true)
+
+        verify(betaPreferences).setBetaUpdatesEnabled(true)
+    }
+
+    @Test
+    fun `betaUpdatesEnabled state exposes opt-in from betaPreferences`() = runTest {
+        whenever(betaPreferences.betaUpdatesEnabledFlow).thenReturn(MutableStateFlow(true))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.betaUpdatesEnabled.value).isTrue()
     }
 
     @Test

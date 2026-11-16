@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.flex.calendar.CalendarInfo
 import com.flex.calendar.CalendarSyncService
 import com.flex.data.local.AppIconPreferences
+import com.flex.data.local.BetaPreferences
 import com.flex.data.local.GeofencePreferences
 import com.flex.data.local.GeofenceRegistrationInfo
 import com.flex.data.local.ThemePreferences
@@ -57,6 +58,7 @@ class SettingsViewModel @Inject constructor(
     private val getSettings: GetSettingsUseCase,
     private val settingsRepository: SettingsRepository,
     private val themePreferences: ThemePreferences,
+    private val betaPreferences: BetaPreferences,
     private val appIconPreferences: AppIconPreferences,
     private val geofencePreferences: GeofencePreferences,
     private val geofenceManager: GeofenceManager,
@@ -87,6 +89,7 @@ class SettingsViewModel @Inject constructor(
 
     val themeMode: StateFlow<ThemeMode> = themePreferences.themeModeFlow
     val gaugeColorScheme: StateFlow<GaugeColorScheme> = themePreferences.gaugeColorSchemeFlow
+    val betaUpdatesEnabled: StateFlow<Boolean> = betaPreferences.betaUpdatesEnabledFlow
     val appIconVariant: StateFlow<AppIconVariant> = appIconPreferences.variantFlow
 
     init {
@@ -205,6 +208,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeMode(mode: ThemeMode) {
         themePreferences.setThemeMode(mode)
+    }
+
+    fun setBetaUpdatesEnabled(enabled: Boolean) {
+        betaPreferences.setBetaUpdatesEnabled(enabled)
     }
 
     fun setGaugeColorScheme(scheme: GaugeColorScheme) {

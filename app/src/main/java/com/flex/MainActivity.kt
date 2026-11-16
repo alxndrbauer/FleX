@@ -13,6 +13,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import android.content.Intent
+import com.flex.data.local.BetaPreferences
 import com.flex.data.local.OnboardingPreferences
 import com.flex.data.local.ThemePreferences
 import com.flex.data.update.UpdateChecker
@@ -43,6 +45,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var themePreferences: ThemePreferences
+    @Inject lateinit var betaPreferences: BetaPreferences
     @Inject lateinit var onboardingPreferences: OnboardingPreferences
     @Inject lateinit var clockInUseCase: ClockInUseCase
     @Inject lateinit var settingsRepository: SettingsRepository
@@ -146,8 +149,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            lifecycleScope.launch {
-                pendingUpdate = UpdateChecker.checkForUpdate(BuildConfig.VERSION_CODE)
+            LaunchedEffect(Unit) {
+                pendingUpdate = UpdateChecker.checkForUpdate(
+                    currentVersionCode = BuildConfig.VERSION_CODE,
+                    includeBeta = betaPreferences.betaUpdatesEnabledFlow.first()
+                )
             }
         }
     }

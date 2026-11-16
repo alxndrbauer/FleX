@@ -65,6 +65,39 @@ class UpdateDialogBddTest {
     }
 
     @Test
+    fun betaUpdateDialogShowsBetaChannelAndWarning() {
+        val updateInfo = UpdateInfo(
+            versionCode = 26,
+            versionName = "2.1.0-beta.1",
+            changelog = "- Neues Beta-Feature",
+            downloadUrl = "https://example.com/flex-beta.apk",
+            isBeta = true
+        )
+
+        bddScenario("App-Update Dialog: Beta-Version wird als solche gekennzeichnet") {
+            Given("ein Update-Dialog für die Beta-Version 2.1.0-beta.1 ist geöffnet") {
+                composeTestRule.setContent {
+                    FlexTheme {
+                        UpdateDialog(
+                            updateInfo = updateInfo,
+                            isDownloading = false,
+                            onDismiss = {},
+                            onUpdate = {}
+                        )
+                    }
+                }
+                composeTestRule.waitForIdle()
+
+                composeTestRule.onNodeWithText("Beta-Update verfügbar").assertIsDisplayed()
+                composeTestRule.onNodeWithText("Beta-Version 2.1.0-beta.1 ist verfügbar.").assertIsDisplayed()
+                composeTestRule
+                    .onNodeWithText("Vorabversion – kann instabile Änderungen enthalten.")
+                    .assertIsDisplayed()
+            }
+        }
+    }
+
+    @Test
     fun updateDialogDismissWorkflow() {
         var dismissed = false
 

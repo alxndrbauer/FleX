@@ -69,6 +69,19 @@ jobs:
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "name=${VERSION}" >> "$GITHUB_OUTPUT"
 
+      - name: Determine release channel
+        id: channel
+        run: |
+          VERSION="${{ steps.version.outputs.name }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          if [[ "$VERSION" == *-beta* || "$TAG" == *-beta* ]]; then
+            echo "is_beta=true" >> "$GITHUB_OUTPUT"
+            echo "label=Beta" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_beta=false" >> "$GITHUB_OUTPUT"
+            echo "label=Release" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Push tag (manual trigger only)
         if: github.event_name == 'workflow_dispatch'
         run: |
@@ -82,7 +95,8 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: Release ${{ steps.version.outputs.tag }}
+          name: ${{ steps.channel.outputs.label }} ${{ steps.version.outputs.tag }}
+          prerelease: ${{ steps.channel.outputs.is_beta }}
           files: app/build/outputs/apk/release/renamed/*.apk
           generate_release_notes: true
 
@@ -97,19 +111,47 @@ jobs:
         env:
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
           GIST_ID: ${{ secrets.GIST_ID }}
+          IS_BETA: ${{ steps.channel.outputs.is_beta }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          TAG: ${{ steps.version.outputs.tag }}
+          CHANGELOG: ${{ steps.cliff_manifest.outputs.content }}
         run: |
-          VERSION_NAME="${{ steps.version.outputs.name }}"
+          set -euo pipefail
           VERSION_CODE=$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)
-          TAG="${{ steps.version.outputs.tag }}"
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/flex-v${VERSION_NAME}.apk"
-          CHANGELOG="${{ steps.cliff_manifest.outputs.content }}"
-          jq -n \
+
+          CHANNEL=$(jq -n \
             --argjson vc "$VERSION_CODE" \
             --arg vn "$VERSION_NAME" \
             --arg dl "$DOWNLOAD_URL" \
             --arg cl "$CHANGELOG" \
-            '{files: {"version.json": {content: ({"versionCode": $vc, "versionName": $vn, "changelog": $cl, "downloadUrl": $dl} | tostring)}}}' \
-          | curl -s -X PATCH \
+            '{versionCode: $vc, versionName: $vn, changelog: $cl, downloadUrl: $dl}')
+
+          GIST=$(curl -sf -H "Authorization: token $GIST_TOKEN" \
+            "https://api.github.com/gists/$GIST_ID")
+          CURRENT=$(echo "$GIST" | jq -r '.files["version.json"].content // empty')
+          if ! echo "$CURRENT" | jq -e . >/dev/null 2>&1; then
+            echo "::error::version.json im Gist konnte nicht gelesen werden"
+            exit 1
+          fi
+
+          if [ "$IS_BETA" = "true" ]; then
+            # Stabilen Kanal unverändert lassen, nur Beta-Kanal ersetzen.
+            UPDATED=$(echo "$CURRENT" | jq --argjson channel "$CHANNEL" '.beta = $channel')
+          else
+            # Stabilen Kanal ersetzen; Beta nur behalten, wenn er neuer ist.
+            UPDATED=$(echo "$CURRENT" | jq --argjson channel "$CHANNEL" '
+              ($channel + {
+                beta: (if .beta != null and .beta.versionCode > $channel.versionCode
+                       then .beta else null end)
+              })
+              | if .beta == null then del(.beta) else . end
+            ')
+          fi
+
+          jq -n --arg content "$(echo "$UPDATED" | jq -c .)" \
+            '{files: {"version.json": {content: $content}}}' \
+          | curl -sf -X PATCH \
               -H "Authorization: token $GIST_TOKEN" \
               -H "Content-Type: application/json" \
               "https://api.github.com/gists/$GIST_ID" \

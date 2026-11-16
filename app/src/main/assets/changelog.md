@@ -28,6 +28,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Overtime day covers target only up to overtime balance
 - Gate overtime day on balance and start monthly sums from month-start overtime
 - Add overtime days to month and planning views
+- Add opt-in beta update channel
 
 ### Verbesserungen
 

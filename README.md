@@ -71,6 +71,7 @@ Eine Android-App zur Erfassung von Arbeitszeiten mit Fokus auf Büro/Home-Office
 - JSON-Export/Import für Backups, PDF-Export, ICS-Kalender-Export
 - Automatische Sicherungen via WorkManager (max. 5 lokale Backups)
 - In-App Update-Checker mit automatischem APK-Download
+- Optionaler Beta-Kanal mit Opt-in (Einstellungen → Info → Beta-Updates)
 
 ### 🎨 Design
 - Material 3
@@ -140,6 +141,26 @@ Der Build-Workflow läuft bei Pushes auf `main`, wenn überwachte Quell- oder Bu
 Ein GitHub Release mit `flex-vX.Y.Z.apk` wird separat bei einem Push eines `v*`-Tags oder durch manuellen Start des Release-Workflows erstellt. Dabei müssen Build und Unit Tests erfolgreich sein.
 
 Releases: https://github.com/alxndrbauer/FleX/releases
+
+### Beta-Releases
+
+Beta-Updates sind in der App optional zuschaltbar (Einstellungen → Info → Beta-Updates). Veröffentlicht wird der Beta-Kanal über GitHub-Prereleases:
+
+1. In `app/build.gradle.kts` `versionName` auf z. B. `2.1.0-beta.1` und `versionCode` auf eine Zahl größer als die aktuelle stabile Version setzen.
+2. Tag `v2.1.0-beta.1` pushen (oder den Release-Workflow manuell starten).
+3. Der Workflow erstellt ein Prerelease und aktualisiert nur den `beta`-Block im Versions-Manifest. Opt-in-Nutzer erhalten die Beta, alle anderen bleiben auf dem stabilen Kanal.
+
+Wichtig: Der `versionCode` muss monoton steigen. Ein reguläres Release entfernt den Beta-Eintrag automatisch, sobald dessen `versionCode` nicht mehr größer ist.
+
+Zum lokalen Testen des Update-Flows kann die Manifest-URL beim Debug-Build überschrieben werden:
+
+```bash
+python3 -m http.server 8080 --directory /tmp/flex-manifest
+adb reverse tcp:8080 tcp:8080
+./gradlew assembleDebug -PflexUpdateManifestUrl=http://127.0.0.1:8080/version.json
+```
+
+Das Debug-Netzwerkprofil erlaubt Cleartext ausschließlich für `127.0.0.1`, `localhost` und `10.0.2.2`.
 
 ## Database Migrations
 

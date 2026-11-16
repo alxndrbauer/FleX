@@ -28,7 +28,9 @@ fun UpdateDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isDownloading) onDismiss() },
-        title = { Text("Update verfügbar") },
+        title = {
+            Text(if (updateInfo.isBeta) "Beta-Update verfügbar" else "Update verfügbar")
+        },
         text = {
             if (isDownloading) {
                 Box(
@@ -46,9 +48,21 @@ fun UpdateDialog(
                         .verticalScroll(rememberScrollState())
                 ) {
                     Text(
-                        text = "Version ${updateInfo.versionName} ist verfügbar.",
+                        text = if (updateInfo.isBeta) {
+                            "Beta-Version ${updateInfo.versionName} ist verfügbar."
+                        } else {
+                            "Version ${updateInfo.versionName} ist verfügbar."
+                        },
                         style = MaterialTheme.typography.bodyMedium
                     )
+                    if (updateInfo.isBeta) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Vorabversion – kann instabile Änderungen enthalten.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     if (updateInfo.changelog.isNotBlank()) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(

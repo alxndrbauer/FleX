@@ -4,6 +4,7 @@ import android.content.Context
 import com.flex.calendar.CalendarSyncService
 import com.flex.data.export.IcsExportService
 import com.flex.data.local.AppIconPreferences
+import com.flex.data.local.BetaPreferences
 import com.flex.data.local.GeofencePreferences
 import com.flex.data.local.GeofenceRegistrationInfo
 import com.flex.data.local.ThemePreferences
@@ -64,6 +65,7 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
         getSettings: GetSettingsUseCase = mockk(),
         settingsRepository: SettingsRepository = mockk(relaxed = true),
         themePreferences: ThemePreferences = mockk(relaxed = true),
+        betaPreferences: BetaPreferences = mockk(relaxed = true),
         appIconPreferences: AppIconPreferences = mockk(relaxed = true),
         geofencePreferences: GeofencePreferences = mockk(relaxed = true),
         geofenceRegistration: GeofenceRegistrationInfo = GeofenceRegistrationInfo(),
@@ -83,6 +85,7 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
         every { settingsRepository.getQuotaRules() } returns flowOf(initialQuotaRules)
         every { settingsRepository.getWorkTimeRules() } returns flowOf(initialWorkTimeRules)
         every { themePreferences.themeModeFlow } returns MutableStateFlow(ThemeMode.SYSTEM)
+        every { betaPreferences.betaUpdatesEnabledFlow } returns MutableStateFlow(false)
         every { appIconPreferences.variantFlow } returns MutableStateFlow(AppIconVariant.CLASSIC)
         every { geofencePreferences.registration } returns MutableStateFlow(geofenceRegistration)
 
@@ -91,6 +94,7 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
             getSettings = getSettings,
             settingsRepository = settingsRepository,
             themePreferences = themePreferences,
+            betaPreferences = betaPreferences,
             appIconPreferences = appIconPreferences,
             geofencePreferences = geofencePreferences,
             geofenceManager = geofenceManager,
