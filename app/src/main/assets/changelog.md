@@ -32,6 +32,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 ### Verbesserungen
 
 - Inject a Clock instead of reading the system clock
+- Remove obsolete GeofenceBootReceiver
 
 ### Bugfixes
 
