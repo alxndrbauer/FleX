@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
@@ -48,6 +49,8 @@ import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings as SettingsIcon
 import androidx.compose.material3.Button
@@ -69,6 +72,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -89,8 +93,17 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.location.LocationManagerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 import kotlinx.coroutines.delay
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -101,6 +114,7 @@ fun GeofenceSettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsState()
     val geofenceStatus by viewModel.geofenceStatus.collectAsState()
+    val geofenceRegistration by viewModel.geofenceRegistration.collectAsState()
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
 
@@ -120,6 +134,16 @@ fun GeofenceSettingsScreen(
 
     val currentRadiusFloat = (geofenceRadius.replace(',', '.').toFloatOrNull() ?: 150f).coerceIn(50f, 1000f)
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var statusRefreshKey by remember { mutableStateOf(0) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) statusRefreshKey++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     LaunchedEffect(geofenceSaved) {
         if (geofenceSaved) {
             delay(2500)
@@ -130,6 +154,7 @@ fun GeofenceSettingsScreen(
     val backgroundLocationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
+        statusRefreshKey++
         if (granted) {
             geofenceEnabled = true
             val lat = geofenceLat.replace(',', '.').toDoubleOrNull() ?: settings.geofenceLat
@@ -144,6 +169,7 @@ fun GeofenceSettingsScreen(
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
+        statusRefreshKey++
         if (granted) {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
@@ -159,10 +185,34 @@ fun GeofenceSettingsScreen(
         }
     }
 
-    val hasFineLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-    val hasBackgroundLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
-    val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-    val isIgnoringBatteryOpt = powerManager.isIgnoringBatteryOptimizations(context.packageName)
+    val hasFineLocation = remember(statusRefreshKey) {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    }
+    val hasBackgroundLocation = remember(statusRefreshKey) {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+    }
+    val hasNotificationPermission = remember(statusRefreshKey) {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    }
+    val isLocationEnabled = remember(statusRefreshKey) {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        LocationManagerCompat.isLocationEnabled(locationManager)
+    }
+    val isIgnoringBatteryOpt = remember(statusRefreshKey) {
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        powerManager.isIgnoringBatteryOptimizations(context.packageName)
+    }
+    val hasPlayServices = remember(statusRefreshKey) {
+        GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
+    }
+    val registrationTime = remember(geofenceRegistration.atEpochMs) {
+        geofenceRegistration.atEpochMs?.let { epochMs ->
+            Instant.ofEpochMilli(epochMs)
+                .atZone(ZoneId.systemDefault())
+                .toLocalTime()
+                .format(DateTimeFormatter.ofPattern("HH:mm"))
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -306,6 +356,25 @@ fun GeofenceSettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // System-Standortdienste
+                        if (isLocationEnabled) {
+                            GeofenceBadge(
+                                icon = Icons.Default.LocationOn,
+                                text = "Standortdienste an",
+                                badgeType = BadgeType.SUCCESS
+                            )
+                        } else {
+                            GeofenceBadge(
+                                icon = Icons.Default.LocationOff,
+                                text = "Standortdienste aus",
+                                badgeType = BadgeType.ERROR,
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                                }
+                            )
+                        }
+
                         // GPS & Hintergrund-Berechtigung
                         when {
                             hasFineLocation && hasBackgroundLocation -> {
@@ -339,29 +408,66 @@ fun GeofenceSettingsScreen(
                             }
                         }
 
-                        // Registrierungsstatus
+                        // Registrierungsstatus inkl. Zeitpunkt des letzten Versuchs
                         when (geofenceStatus) {
                             GeofenceStatus.REGISTERED -> {
                                 GeofenceBadge(
                                     icon = Icons.Default.CheckCircle,
-                                    text = "Geofence registriert",
+                                    text = "Geofence registriert${registrationTime?.let { " · $it" }.orEmpty()}",
                                     badgeType = BadgeType.SUCCESS
                                 )
                             }
                             GeofenceStatus.FAILED -> {
                                 GeofenceBadge(
                                     icon = Icons.Default.Error,
-                                    text = "Registrierung fehlgeschlagen",
+                                    text = "Registrierung fehlgeschlagen${registrationTime?.let { " · $it" }.orEmpty()}",
                                     badgeType = BadgeType.ERROR
                                 )
                             }
                             GeofenceStatus.UNKNOWN -> {
                                 GeofenceBadge(
                                     icon = Icons.Default.LocationOn,
-                                    text = if (geofenceEnabled) "Bereit zum Speichern" else "Dienst inaktiv",
+                                    text = if (geofenceEnabled) "Noch nicht registriert" else "Dienst inaktiv",
                                     badgeType = BadgeType.NEUTRAL
                                 )
                             }
+                        }
+
+                        // Google Play Services
+                        if (hasPlayServices) {
+                            GeofenceBadge(
+                                icon = Icons.Default.CheckCircle,
+                                text = "Play Services OK",
+                                badgeType = BadgeType.SUCCESS
+                            )
+                        } else {
+                            GeofenceBadge(
+                                icon = Icons.Default.Error,
+                                text = "Play Services fehlen",
+                                badgeType = BadgeType.ERROR
+                            )
+                        }
+
+                        // Benachrichtigungen für den Stempel-Feedback
+                        if (hasNotificationPermission) {
+                            GeofenceBadge(
+                                icon = Icons.Default.Notifications,
+                                text = "Benachrichtigungen an",
+                                badgeType = BadgeType.SUCCESS
+                            )
+                        } else {
+                            GeofenceBadge(
+                                icon = Icons.Default.NotificationsOff,
+                                text = "Benachrichtigungen fehlen",
+                                badgeType = BadgeType.WARNING,
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            )
                         }
 
                         // Akku-Optimierung

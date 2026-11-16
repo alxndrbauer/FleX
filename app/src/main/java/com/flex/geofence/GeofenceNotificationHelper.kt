@@ -10,6 +10,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.flex.R
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.time.Clock
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
@@ -17,7 +18,8 @@ import javax.inject.Singleton
 
 @Singleton
 class GeofenceNotificationHelper @Inject constructor(
-    @param:ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
+    private val clock: Clock
 ) {
     companion object {
         const val NOTIF_ID = 1001
@@ -47,7 +49,7 @@ class GeofenceNotificationHelper @Inject constructor(
     }
 
     fun showClockInNotification() {
-        val time = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
+        val time = LocalTime.now(clock).format(DateTimeFormatter.ofPattern("HH:mm"))
         val undoIntent = Intent(context, GeofenceUndoReceiver::class.java)
         val undoPending = PendingIntent.getBroadcast(
             context, 0, undoIntent,
@@ -67,7 +69,7 @@ class GeofenceNotificationHelper @Inject constructor(
     }
 
     fun showClockOutNotification() {
-        val time = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
+        val time = LocalTime.now(clock).format(DateTimeFormatter.ofPattern("HH:mm"))
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("FleX")

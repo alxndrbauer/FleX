@@ -8,11 +8,14 @@ import com.flex.domain.model.Settings
 import com.flex.domain.repository.SettingsRepository
 import android.content.Context
 import com.flex.data.local.AppIconPreferences
+import com.flex.data.local.GeofencePreferences
+import com.flex.data.local.GeofenceRegistrationInfo
 import com.flex.data.local.ThemePreferences
 import com.flex.domain.model.AppIconVariant
 import com.flex.domain.model.GaugeColorScheme
 import com.flex.domain.model.ThemeMode
 import com.flex.geofence.GeofenceManager
+import com.flex.wifi.WifiConnectionInfo
 import com.flex.wifi.WifiMonitor
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.calendar.CalendarSyncService
@@ -62,10 +65,16 @@ class SettingsViewModelTest : BaseUnitTest() {
     private lateinit var themePreferences: ThemePreferences
 
     @Mock
+    private lateinit var geofencePreferences: GeofencePreferences
+
+    @Mock
     private lateinit var geofenceManager: GeofenceManager
 
     @Mock
     private lateinit var wifiMonitor: WifiMonitor
+
+    @Mock
+    private lateinit var wifiConnectionInfo: WifiConnectionInfo
 
     @Mock
     private lateinit var appIconPreferences: AppIconPreferences
@@ -89,9 +98,9 @@ class SettingsViewModelTest : BaseUnitTest() {
 
     private fun createViewModel(): SettingsViewModel = SettingsViewModel(
         context, getSettings, settingsRepository, themePreferences,
-        appIconPreferences, geofenceManager, wifiMonitor, calendarSyncService,
-        workDayRepository, icsExportService, syncPlannedDaysWithWorkTimeRuleUseCase,
-        widgetUpdater
+        appIconPreferences, geofencePreferences, geofenceManager, wifiMonitor,
+        wifiConnectionInfo, calendarSyncService, workDayRepository, icsExportService,
+        syncPlannedDaysWithWorkTimeRuleUseCase, widgetUpdater
     )
 
     @BeforeEach
@@ -104,6 +113,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(themePreferences.themeModeFlow).thenReturn(MutableStateFlow(ThemeMode.SYSTEM))
         whenever(themePreferences.gaugeColorSchemeFlow).thenReturn(MutableStateFlow(GaugeColorScheme.THEME))
         whenever(appIconPreferences.variantFlow).thenReturn(MutableStateFlow(AppIconVariant.CLASSIC))
+        whenever(geofencePreferences.registration).thenReturn(MutableStateFlow(GeofenceRegistrationInfo()))
     }
 
     // ========== Initial State Tests ==========

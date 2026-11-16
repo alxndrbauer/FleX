@@ -162,8 +162,14 @@ private fun storedGeofencePreferences(values: MutableMap<String, Any>): Geofence
     every {
         context.getSharedPreferences("geofence_prefs", Context.MODE_PRIVATE)
     } returns sharedPreferences
+    every { sharedPreferences.contains(any()) } answers {
+        values.containsKey(firstArg<String>())
+    }
     every { sharedPreferences.getLong(any(), any()) } answers {
         values[firstArg()] as? Long ?: secondArg()
+    }
+    every { sharedPreferences.getBoolean(any(), any()) } answers {
+        values[firstArg()] as? Boolean ?: secondArg()
     }
     every { sharedPreferences.getString(any(), null) } answers {
         values[firstArg()] as? String ?: secondArg()

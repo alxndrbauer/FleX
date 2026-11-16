@@ -4,6 +4,8 @@ import android.content.Context
 import com.flex.calendar.CalendarSyncService
 import com.flex.data.export.IcsExportService
 import com.flex.data.local.AppIconPreferences
+import com.flex.data.local.GeofencePreferences
+import com.flex.data.local.GeofenceRegistrationInfo
 import com.flex.data.local.ThemePreferences
 import com.flex.domain.model.AppIconVariant
 import com.flex.domain.model.FederalState
@@ -20,6 +22,7 @@ import com.flex.geofence.GeofenceManager
 import com.flex.ui.settings.GeofenceStatus
 import com.flex.ui.settings.SettingsViewModel
 import com.flex.widget.WidgetUpdater
+import com.flex.wifi.WifiConnectionInfo
 import com.flex.wifi.WifiMonitor
 import com.flex.support.TestDates
 import io.kotest.core.spec.style.BehaviorSpec
@@ -62,8 +65,11 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
         settingsRepository: SettingsRepository = mockk(relaxed = true),
         themePreferences: ThemePreferences = mockk(relaxed = true),
         appIconPreferences: AppIconPreferences = mockk(relaxed = true),
+        geofencePreferences: GeofencePreferences = mockk(relaxed = true),
+        geofenceRegistration: GeofenceRegistrationInfo = GeofenceRegistrationInfo(),
         geofenceManager: GeofenceManager = mockk(relaxed = true),
         wifiMonitor: WifiMonitor = mockk(relaxed = true),
+        wifiConnectionInfo: WifiConnectionInfo = mockk(relaxed = true),
         calendarSyncService: CalendarSyncService = mockk(relaxed = true),
         workDayRepository: WorkDayRepository = mockk(relaxed = true),
         icsExportService: IcsExportService = mockk(relaxed = true),
@@ -78,6 +84,7 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
         every { settingsRepository.getWorkTimeRules() } returns flowOf(initialWorkTimeRules)
         every { themePreferences.themeModeFlow } returns MutableStateFlow(ThemeMode.SYSTEM)
         every { appIconPreferences.variantFlow } returns MutableStateFlow(AppIconVariant.CLASSIC)
+        every { geofencePreferences.registration } returns MutableStateFlow(geofenceRegistration)
 
         return SettingsViewModel(
             context = context,
@@ -85,8 +92,10 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
             settingsRepository = settingsRepository,
             themePreferences = themePreferences,
             appIconPreferences = appIconPreferences,
+            geofencePreferences = geofencePreferences,
             geofenceManager = geofenceManager,
             wifiMonitor = wifiMonitor,
+            wifiConnectionInfo = wifiConnectionInfo,
             calendarSyncService = calendarSyncService,
             workDayRepository = workDayRepository,
             icsExportService = icsExportService,
@@ -163,11 +172,31 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
             geofenceRadiusMeters = 100f
         )
 
+        val viewModel = createViewModel(
+            initialSettings = geofenceSettings,
+            geofenceRegistration = GeofenceRegistrationInfo(success = true, atEpochMs = 1_700_000_000_000L)
+        )
+
+        When("das ViewModel startet") {
+            Then("wird der Geofence-Status aus der letzten erfolgreichen Registrierung auf REGISTERED gesetzt") {
+                viewModel.geofenceStatus.value shouldBe GeofenceStatus.REGISTERED
+            }
+        }
+    }
+
+    Given("Settings mit aktivem Geofencing, aber ohne Registrierungsnachweis") {
+        val geofenceSettings = Settings(
+            geofenceEnabled = true,
+            geofenceLat = 53.5511,
+            geofenceLon = 9.9937,
+            geofenceRadiusMeters = 100f
+        )
+
         val viewModel = createViewModel(initialSettings = geofenceSettings)
 
         When("das ViewModel startet") {
-            Then("wird der Geofence-Status direkt auf REGISTERED gesetzt") {
-                viewModel.geofenceStatus.value shouldBe GeofenceStatus.REGISTERED
+            Then("bleibt der Geofence-Status UNKNOWN statt optimistisch REGISTERED") {
+                viewModel.geofenceStatus.value shouldBe GeofenceStatus.UNKNOWN
             }
         }
     }
@@ -369,9 +398,9 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
 
         When("Geofencing erfolgreich aktiviert und registriert wird") {
             every {
-                geofenceManager.registerGeofence(any(), any(), any(), any(), any())
+                geofenceManager.registerGeofence(any(), any(), any(), any(), any(), any())
             } answers {
-                val onSuccess = invocation.args[3] as () -> Unit
+                val onSuccess = invocation.args[4] as () -> Unit
                 onSuccess()
             }
 
@@ -399,7 +428,7 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
             }
 
             Then("wird geofenceManager.registerGeofence mit den Parametern aufgerufen") {
-                coVerify { geofenceManager.registerGeofence(53.5511, 9.9937, 120f, any(), any()) }
+                coVerify { geofenceManager.registerGeofence(53.5511, 9.9937, 120f, 0, any(), any()) }
             }
 
             Then("wechselt der Geofence-Status auf REGISTERED") {
@@ -409,9 +438,9 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
 
         When("die Geofence-Registrierung fehlschlägt") {
             every {
-                geofenceManager.registerGeofence(any(), any(), any(), any(), any())
+                geofenceManager.registerGeofence(any(), any(), any(), any(), any(), any())
             } answers {
-                val onFailure = invocation.args[4] as (Exception) -> Unit
+                val onFailure = invocation.args[5] as (Exception) -> Unit
                 onFailure(RuntimeException("Play Services unavailable"))
             }
 

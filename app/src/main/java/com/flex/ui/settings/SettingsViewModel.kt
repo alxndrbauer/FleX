@@ -3,14 +3,14 @@ package com.flex.ui.settings
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Geocoder
-import android.net.ConnectivityManager
-import android.net.wifi.WifiInfo
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.flex.calendar.CalendarInfo
 import com.flex.calendar.CalendarSyncService
 import com.flex.data.local.AppIconPreferences
+import com.flex.data.local.GeofencePreferences
+import com.flex.data.local.GeofenceRegistrationInfo
 import com.flex.data.local.ThemePreferences
 import com.flex.data.export.IcsExportService
 import com.flex.domain.model.AppIconVariant
@@ -27,6 +27,7 @@ import com.flex.domain.repository.WorkDayRepository
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.usecase.SyncPlannedDaysWithWorkTimeRuleUseCase
 import com.flex.geofence.GeofenceManager
+import com.flex.wifi.WifiConnectionInfo
 import com.flex.wifi.WifiMonitor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -57,8 +58,10 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val themePreferences: ThemePreferences,
     private val appIconPreferences: AppIconPreferences,
+    private val geofencePreferences: GeofencePreferences,
     private val geofenceManager: GeofenceManager,
     private val wifiMonitor: WifiMonitor,
+    private val wifiConnectionInfo: WifiConnectionInfo,
     private val calendarSyncService: CalendarSyncService,
     private val workDayRepository: WorkDayRepository,
     private val icsExportService: IcsExportService,
@@ -80,6 +83,7 @@ class SettingsViewModel @Inject constructor(
 
     private val _geofenceStatus = MutableStateFlow(GeofenceStatus.UNKNOWN)
     val geofenceStatus: StateFlow<GeofenceStatus> = _geofenceStatus.asStateFlow()
+    val geofenceRegistration: StateFlow<GeofenceRegistrationInfo> = geofencePreferences.registration
 
     val themeMode: StateFlow<ThemeMode> = themePreferences.themeModeFlow
     val gaugeColorScheme: StateFlow<GaugeColorScheme> = themePreferences.gaugeColorSchemeFlow
@@ -89,20 +93,29 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             getSettings().collect { s ->
                 _settings.value = s
-                Log.d("GeoDebug", "Settings loaded: enabled=${s.geofenceEnabled}, status=${_geofenceStatus.value}")
-                if (_geofenceStatus.value == GeofenceStatus.UNKNOWN &&
-                    s.geofenceEnabled && s.geofenceLat != 0.0 && s.geofenceLon != 0.0
-                ) {
-                    Log.d("GeoDebug", "Init: setting status → REGISTERED")
-                    _geofenceStatus.value = GeofenceStatus.REGISTERED
-                }
+                updateGeofenceStatus(s)
             }
+        }
+        viewModelScope.launch {
+            geofencePreferences.registration.collect { updateGeofenceStatus(_settings.value) }
         }
         viewModelScope.launch {
             settingsRepository.getQuotaRules().collect { _quotaRules.value = it }
         }
         viewModelScope.launch {
             settingsRepository.getWorkTimeRules().collect { _workTimeRules.value = it }
+        }
+    }
+
+    private fun updateGeofenceStatus(settings: Settings) {
+        val registration = geofencePreferences.registration.value
+        _geofenceStatus.value = when {
+            !settings.geofenceEnabled ||
+                settings.geofenceLat == 0.0 ||
+                settings.geofenceLon == 0.0 -> GeofenceStatus.UNKNOWN
+            registration.success == true -> GeofenceStatus.REGISTERED
+            registration.success == false -> GeofenceStatus.FAILED
+            else -> GeofenceStatus.UNKNOWN
         }
     }
 
@@ -241,15 +254,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    @SuppressLint("MissingPermission")
-    fun getCurrentWifiSsid(): String? {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-        val network = cm?.activeNetwork
-        val capabilities = cm?.getNetworkCapabilities(network)
-        val wifiInfo = capabilities?.transportInfo as? WifiInfo
-        return wifiInfo?.ssid?.removeSurrounding("\"")
-            ?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
-    }
+    fun getCurrentWifiSsid(): String? = wifiConnectionInfo.currentSsid()
 
     fun saveWifiSettings(enabled: Boolean, ssid: String) {
         viewModelScope.launch {

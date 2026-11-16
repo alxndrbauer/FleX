@@ -6,10 +6,18 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import com.flex.domain.model.AutoClockInPlannedDaySnapshot
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkLocation
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 import java.time.LocalDate
 import java.time.LocalTime
+
+data class GeofenceRegistrationInfo(
+    val success: Boolean? = null,
+    val atEpochMs: Long? = null
+)
 
 @Singleton
 class GeofencePreferences @Inject constructor(
@@ -17,6 +25,35 @@ class GeofencePreferences @Inject constructor(
 ) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("geofence_prefs", Context.MODE_PRIVATE)
+
+    private val _registration = MutableStateFlow(loadRegistration())
+    val registration: StateFlow<GeofenceRegistrationInfo> = _registration.asStateFlow()
+
+    fun markRegistrationPending() = persistRegistration(null, null)
+
+    fun markRegistrationSuccess(atEpochMs: Long) = persistRegistration(true, atEpochMs)
+
+    fun markRegistrationFailure(atEpochMs: Long) = persistRegistration(false, atEpochMs)
+
+    fun clearRegistration() = persistRegistration(null, null)
+
+    private fun loadRegistration(): GeofenceRegistrationInfo {
+        val success = if (prefs.contains(KEY_REGISTRATION_SUCCESS)) {
+            prefs.getBoolean(KEY_REGISTRATION_SUCCESS, false)
+        } else {
+            null
+        }
+        val atEpochMs = prefs.getLong(KEY_REGISTRATION_AT, 0L).takeIf { it > 0L }
+        return GeofenceRegistrationInfo(success, atEpochMs)
+    }
+
+    private fun persistRegistration(success: Boolean?, atEpochMs: Long?) {
+        prefs.edit().apply {
+            if (success == null) remove(KEY_REGISTRATION_SUCCESS) else putBoolean(KEY_REGISTRATION_SUCCESS, success)
+            if (atEpochMs == null) remove(KEY_REGISTRATION_AT) else putLong(KEY_REGISTRATION_AT, atEpochMs)
+        }.apply()
+        _registration.value = GeofenceRegistrationInfo(success, atEpochMs)
+    }
 
     var lastAutoTimeBlockId: Long
         get() = prefs.getLong("last_auto_block_id", -1L)
@@ -92,6 +129,8 @@ class GeofencePreferences @Inject constructor(
 
     private companion object {
         const val KEY_AUTO_CLOCK_IN_PLANNED_DAY_SNAPSHOT = "last_auto_planned_day_snapshot"
+        const val KEY_REGISTRATION_SUCCESS = "geofence_registration_success"
+        const val KEY_REGISTRATION_AT = "geofence_registration_at"
         const val SNAPSHOT_VERSION = "1"
         const val SNAPSHOT_HEADER_PARTS = 5
     }

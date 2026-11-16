@@ -40,6 +40,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Align tracking and year overview
 - Remove redundant null checks in home screen
 - Decouple settings widget update from Glance for unit tests
+- Restore geofence stamping after app updates
 
 ## [1.8.2] - 2026-10-08
 
