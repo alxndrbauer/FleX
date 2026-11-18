@@ -76,6 +76,33 @@ Für komplexe Aufgaben wird folgende Strategie verwendet:
 - Build-Workflow (`.github/workflows/build.yml`): path-gefilterter Push zu `main`, Unit Tests und Release-APK als Artifact
 - GitHub Release (`.github/workflows/release.yml`): nur bei `v*`-Tag oder manuellem Workflow-Start
 
+### Beta-Releases
+
+Beta-Updates sind in der App opt-in (Einstellungen → Info → Beta-Updates, gespeichert in `BetaPreferences`). Es gibt keinen separaten Beta-Branch; Beta-Versionen werden von `main` getaggt.
+
+1. In `app/build.gradle.kts`:
+   - `versionName` auf eine SemVer-Prerelease setzen, z. B. `2.0.4-beta.1`
+   - `versionCode` monoton erhöhen und **größer als die aktuelle stabile Version** setzen (z. B. stabil `25` → Beta `26`)
+2. Änderungen committen.
+3. Tag erstellen und pushen – **der User pusht, Agents führen niemals `git push` aus**:
+   ```bash
+   git tag v2.0.4-beta.1
+   git push origin v2.0.4-beta.1
+   ```
+4. Der Release-Workflow erkennt `-beta` im Versionsnamen oder Tag und erstellt ein GitHub-Prerelease. Im Gist-Manifest (`version.json`) wird **nur der `beta`-Block** ersetzt; der stabile Kanal bleibt unverändert.
+5. Ein reguläres Release entfernt den Beta-Eintrag automatisch, sobald dessen `versionCode` nicht mehr größer als der stabile ist.
+
+Wichtig:
+- `UpdateChecker` bietet nur Versionen mit höherer `versionCode` an. Eine zu niedrige Beta-`versionCode` wird nie ausgeliefert.
+- Bei aktivem Beta-Opt-in gewinnt die höchste `versionCode`; eine neuere stabile Version hat Vorrang vor einer älteren Beta.
+- `app/src/main/assets/changelog.md` wird in CI von git-cliff aus Conventional Commits erzeugt und nicht manuell gepflegt.
+- Lokaler Test des Update-Flows:
+  ```bash
+  python3 -m http.server 8080 --directory /tmp/flex-manifest
+  adb reverse tcp:8080 tcp:8080
+  ./gradlew assembleDebug -PflexUpdateManifestUrl=http://127.0.0.1:8080/version.json
+  ```
+
 ### Important Files
 - `gradle/libs.versions.toml` - Version Catalog (alle Dependency-Versionen zentral)
 - `app/build.gradle.kts` - App-Dependencies, Signing Config
