@@ -32,10 +32,12 @@ import com.flex.domain.usecase.AutoBookPlannedDaysUseCase
 import com.flex.BuildConfig
 import com.flex.data.local.WhatsNewPreferences
 import com.flex.notification.BreakWarningScheduler
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import com.flex.notification.WorkTimerService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -543,8 +545,21 @@ class HomeViewModel @Inject constructor(
         val issues = buildList {
             if (settings.geofenceEnabled) {
                 val bgOk = granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                if (!granted(Manifest.permission.ACCESS_FINE_LOCATION) || !bgOk)
+                if (!granted(Manifest.permission.ACCESS_FINE_LOCATION) || !bgOk) {
                     add("Geofencing")
+                } else {
+                    val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+                    if (powerManager != null &&
+                        !powerManager.isIgnoringBatteryOptimizations(context.packageName)
+                    ) {
+                        add("Akku-Optimierung")
+                    }
+                    val activityManager =
+                        context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+                    if (activityManager?.isBackgroundRestricted == true) {
+                        add("Hintergrund eingeschränkt")
+                    }
+                }
             }
             if (settings.wifiAutoStampEnabled && !granted(Manifest.permission.ACCESS_FINE_LOCATION))
                 add("WLAN-Stempel")

@@ -10,6 +10,7 @@ import com.flex.calendar.CalendarInfo
 import com.flex.calendar.CalendarSyncService
 import com.flex.data.local.AppIconPreferences
 import com.flex.data.local.BetaPreferences
+import com.flex.data.local.GeofenceEventInfo
 import com.flex.data.local.GeofencePreferences
 import com.flex.data.local.GeofenceRegistrationInfo
 import com.flex.data.local.ThemePreferences
@@ -30,6 +31,7 @@ import com.flex.domain.usecase.SyncPlannedDaysWithWorkTimeRuleUseCase
 import com.flex.geofence.GeofenceManager
 import com.flex.wifi.WifiConnectionInfo
 import com.flex.wifi.WifiMonitor
+import com.google.android.gms.location.GeofencingRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import java.time.LocalDate
@@ -86,6 +88,7 @@ class SettingsViewModel @Inject constructor(
     private val _geofenceStatus = MutableStateFlow(GeofenceStatus.UNKNOWN)
     val geofenceStatus: StateFlow<GeofenceStatus> = _geofenceStatus.asStateFlow()
     val geofenceRegistration: StateFlow<GeofenceRegistrationInfo> = geofencePreferences.registration
+    val geofenceLastEvent: StateFlow<GeofenceEventInfo> = geofencePreferences.lastEvent
 
     val themeMode: StateFlow<ThemeMode> = themePreferences.themeModeFlow
     val gaugeColorScheme: StateFlow<GaugeColorScheme> = themePreferences.gaugeColorSchemeFlow
@@ -357,7 +360,10 @@ class SettingsViewModel @Inject constructor(
             )
             if (enabled && lat != 0.0 && lon != 0.0) {
                 geofenceManager.registerGeofence(
-                    lat, lon, radius,
+                    lat = lat,
+                    lon = lon,
+                    radiusMeters = radius,
+                    initialTrigger = GeofencingRequest.INITIAL_TRIGGER_ENTER,
                     onSuccess = {
                         Log.d("GeoDebug", "registerGeofence SUCCESS → REGISTERED")
                         _geofenceStatus.value = GeofenceStatus.REGISTERED

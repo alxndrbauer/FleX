@@ -43,6 +43,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Remove redundant null checks in home screen
 - Decouple settings widget update from Glance for unit tests
 - Restore geofence stamping after app updates
+- Add event diagnostics and catch-up triggers
 
 ## [1.8.2] - 2026-10-08
 

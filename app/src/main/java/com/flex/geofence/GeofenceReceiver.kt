@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.flex.data.local.GeofencePreferences
 import com.flex.domain.usecase.AutoClockInUseCase
 import com.flex.notification.BreakWarningScheduler
 import com.flex.tile.QuickSettingsTileService
@@ -29,19 +30,31 @@ class GeofenceReceiver : BroadcastReceiver() {
     @Inject lateinit var autoClockIn: AutoClockInUseCase
     @Inject lateinit var notificationHelper: GeofenceNotificationHelper
     @Inject lateinit var breakWarningScheduler: BreakWarningScheduler
+    @Inject lateinit var geofencePreferences: GeofencePreferences
     @Inject lateinit var clock: Clock
 
     override fun onReceive(context: Context, intent: Intent) {
         val event = GeofencingEvent.fromIntent(intent)
         if (event == null) {
             Log.e(TAG, "GeofencingEvent.fromIntent returned null")
+            geofencePreferences.recordEvent(transition = null, errorCode = -1, atEpochMs = clock.millis())
             return
         }
         if (event.hasError()) {
             Log.e(TAG, "Geofence event error: ${event.errorCode}")
+            geofencePreferences.recordEvent(
+                transition = null,
+                errorCode = event.errorCode,
+                atEpochMs = clock.millis()
+            )
             return
         }
 
+        geofencePreferences.recordEvent(
+            transition = event.geofenceTransition,
+            errorCode = null,
+            atEpochMs = clock.millis()
+        )
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {

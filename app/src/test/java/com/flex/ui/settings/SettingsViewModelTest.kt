@@ -9,6 +9,7 @@ import com.flex.domain.repository.SettingsRepository
 import android.content.Context
 import com.flex.data.local.AppIconPreferences
 import com.flex.data.local.BetaPreferences
+import com.flex.data.local.GeofenceEventInfo
 import com.flex.data.local.GeofencePreferences
 import com.flex.data.local.GeofenceRegistrationInfo
 import com.flex.data.local.ThemePreferences
@@ -119,6 +120,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(betaPreferences.betaUpdatesEnabledFlow).thenReturn(MutableStateFlow(false))
         whenever(appIconPreferences.variantFlow).thenReturn(MutableStateFlow(AppIconVariant.CLASSIC))
         whenever(geofencePreferences.registration).thenReturn(MutableStateFlow(GeofenceRegistrationInfo()))
+        whenever(geofencePreferences.lastEvent).thenReturn(MutableStateFlow(GeofenceEventInfo()))
     }
 
     // ========== Initial State Tests ==========

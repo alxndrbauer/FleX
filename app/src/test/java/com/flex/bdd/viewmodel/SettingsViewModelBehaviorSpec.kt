@@ -5,6 +5,7 @@ import com.flex.calendar.CalendarSyncService
 import com.flex.data.export.IcsExportService
 import com.flex.data.local.AppIconPreferences
 import com.flex.data.local.BetaPreferences
+import com.flex.data.local.GeofenceEventInfo
 import com.flex.data.local.GeofencePreferences
 import com.flex.data.local.GeofenceRegistrationInfo
 import com.flex.data.local.ThemePreferences
@@ -26,6 +27,7 @@ import com.flex.widget.WidgetUpdater
 import com.flex.wifi.WifiConnectionInfo
 import com.flex.wifi.WifiMonitor
 import com.flex.support.TestDates
+import com.google.android.gms.location.GeofencingRequest
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
@@ -69,6 +71,7 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
         appIconPreferences: AppIconPreferences = mockk(relaxed = true),
         geofencePreferences: GeofencePreferences = mockk(relaxed = true),
         geofenceRegistration: GeofenceRegistrationInfo = GeofenceRegistrationInfo(),
+        geofenceLastEvent: GeofenceEventInfo = GeofenceEventInfo(),
         geofenceManager: GeofenceManager = mockk(relaxed = true),
         wifiMonitor: WifiMonitor = mockk(relaxed = true),
         wifiConnectionInfo: WifiConnectionInfo = mockk(relaxed = true),
@@ -88,6 +91,7 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
         every { betaPreferences.betaUpdatesEnabledFlow } returns MutableStateFlow(false)
         every { appIconPreferences.variantFlow } returns MutableStateFlow(AppIconVariant.CLASSIC)
         every { geofencePreferences.registration } returns MutableStateFlow(geofenceRegistration)
+        every { geofencePreferences.lastEvent } returns MutableStateFlow(geofenceLastEvent)
 
         return SettingsViewModel(
             context = context,
@@ -432,7 +436,16 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
             }
 
             Then("wird geofenceManager.registerGeofence mit den Parametern aufgerufen") {
-                coVerify { geofenceManager.registerGeofence(53.5511, 9.9937, 120f, 0, any(), any()) }
+                coVerify {
+                    geofenceManager.registerGeofence(
+                        53.5511,
+                        9.9937,
+                        120f,
+                        GeofencingRequest.INITIAL_TRIGGER_ENTER,
+                        any(),
+                        any()
+                    )
+                }
             }
 
             Then("wechselt der Geofence-Status auf REGISTERED") {

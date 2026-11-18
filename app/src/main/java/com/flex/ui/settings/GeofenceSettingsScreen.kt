@@ -1,6 +1,7 @@
 package com.flex.ui.settings
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -115,6 +116,7 @@ fun GeofenceSettingsScreen(
     val settings by viewModel.settings.collectAsState()
     val geofenceStatus by viewModel.geofenceStatus.collectAsState()
     val geofenceRegistration by viewModel.geofenceRegistration.collectAsState()
+    val geofenceLastEvent by viewModel.geofenceLastEvent.collectAsState()
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
 
@@ -205,8 +207,20 @@ fun GeofenceSettingsScreen(
     val hasPlayServices = remember(statusRefreshKey) {
         GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
     }
+    val isBackgroundRestricted = remember(statusRefreshKey) {
+        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        activityManager.isBackgroundRestricted
+    }
     val registrationTime = remember(geofenceRegistration.atEpochMs) {
         geofenceRegistration.atEpochMs?.let { epochMs ->
+            Instant.ofEpochMilli(epochMs)
+                .atZone(ZoneId.systemDefault())
+                .toLocalTime()
+                .format(DateTimeFormatter.ofPattern("HH:mm"))
+        }
+    }
+    val lastEventTime = remember(geofenceLastEvent.atEpochMs) {
+        geofenceLastEvent.atEpochMs?.let { epochMs ->
             Instant.ofEpochMilli(epochMs)
                 .atZone(ZoneId.systemDefault())
                 .toLocalTime()
@@ -433,6 +447,43 @@ fun GeofenceSettingsScreen(
                             }
                         }
 
+                        // Letztes tatsächlich empfangenes Geofence-Event
+                        when {
+                            geofenceLastEvent.atEpochMs == null -> {
+                                GeofenceBadge(
+                                    icon = Icons.Default.Info,
+                                    text = "Noch kein Geofence-Event",
+                                    badgeType = BadgeType.NEUTRAL
+                                )
+                            }
+                            geofenceLastEvent.errorCode != null -> {
+                                val errorText = when (geofenceLastEvent.errorCode) {
+                                    1000 -> "Standort nicht verfügbar"
+                                    1001 -> "Zu viele Geofences"
+                                    1002 -> "Zu viele PendingIntents"
+                                    else -> "Geofence-Fehler ${geofenceLastEvent.errorCode}"
+                                }
+                                GeofenceBadge(
+                                    icon = Icons.Default.Error,
+                                    text = "$errorText${lastEventTime?.let { " · $it" }.orEmpty()}",
+                                    badgeType = BadgeType.ERROR
+                                )
+                            }
+                            else -> {
+                                val transitionText = when (geofenceLastEvent.transition) {
+                                    1 -> "ENTER"
+                                    2 -> "EXIT"
+                                    4 -> "DWELL"
+                                    else -> "Transition ${geofenceLastEvent.transition}"
+                                }
+                                GeofenceBadge(
+                                    icon = Icons.Default.Info,
+                                    text = "Letztes Event: $transitionText${lastEventTime?.let { " · $it" }.orEmpty()}",
+                                    badgeType = BadgeType.NEUTRAL
+                                )
+                            }
+                        }
+
                         // Google Play Services
                         if (hasPlayServices) {
                             GeofenceBadge(
@@ -486,6 +537,22 @@ fun GeofenceSettingsScreen(
                                     haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                                     val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                                         data = Uri.parse("package:${context.packageName}")
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            )
+                        }
+
+                        // Android-App-Standby: "Restricted" blockiert Hintergrundarbeit
+                        if (isBackgroundRestricted) {
+                            GeofenceBadge(
+                                icon = Icons.Default.BatterySaver,
+                                text = "Hintergrund eingeschränkt",
+                                badgeType = BadgeType.ERROR,
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", context.packageName, null)
                                     }
                                     context.startActivity(intent)
                                 }

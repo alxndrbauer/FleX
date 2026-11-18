@@ -19,6 +19,12 @@ data class GeofenceRegistrationInfo(
     val atEpochMs: Long? = null
 )
 
+data class GeofenceEventInfo(
+    val transition: Int? = null,
+    val errorCode: Int? = null,
+    val atEpochMs: Long? = null
+)
+
 @Singleton
 class GeofencePreferences @Inject constructor(
     @ApplicationContext context: Context
@@ -28,6 +34,33 @@ class GeofencePreferences @Inject constructor(
 
     private val _registration = MutableStateFlow(loadRegistration())
     val registration: StateFlow<GeofenceRegistrationInfo> = _registration.asStateFlow()
+
+    private val _lastEvent = MutableStateFlow(loadLastEvent())
+    val lastEvent: StateFlow<GeofenceEventInfo> = _lastEvent.asStateFlow()
+
+    fun recordEvent(transition: Int?, errorCode: Int?, atEpochMs: Long) {
+        prefs.edit().apply {
+            if (transition == null) remove(KEY_EVENT_TRANSITION) else putInt(KEY_EVENT_TRANSITION, transition)
+            if (errorCode == null) remove(KEY_EVENT_ERROR) else putInt(KEY_EVENT_ERROR, errorCode)
+            putLong(KEY_EVENT_AT, atEpochMs)
+        }.apply()
+        _lastEvent.value = GeofenceEventInfo(transition, errorCode, atEpochMs)
+    }
+
+    private fun loadLastEvent(): GeofenceEventInfo {
+        val atEpochMs = prefs.getLong(KEY_EVENT_AT, 0L).takeIf { it > 0L } ?: return GeofenceEventInfo()
+        val transition = if (prefs.contains(KEY_EVENT_TRANSITION)) {
+            prefs.getInt(KEY_EVENT_TRANSITION, 0)
+        } else {
+            null
+        }
+        val errorCode = if (prefs.contains(KEY_EVENT_ERROR)) {
+            prefs.getInt(KEY_EVENT_ERROR, 0)
+        } else {
+            null
+        }
+        return GeofenceEventInfo(transition, errorCode, atEpochMs)
+    }
 
     fun markRegistrationPending() = persistRegistration(null, null)
 
@@ -131,6 +164,9 @@ class GeofencePreferences @Inject constructor(
         const val KEY_AUTO_CLOCK_IN_PLANNED_DAY_SNAPSHOT = "last_auto_planned_day_snapshot"
         const val KEY_REGISTRATION_SUCCESS = "geofence_registration_success"
         const val KEY_REGISTRATION_AT = "geofence_registration_at"
+        const val KEY_EVENT_TRANSITION = "geofence_event_transition"
+        const val KEY_EVENT_ERROR = "geofence_event_error"
+        const val KEY_EVENT_AT = "geofence_event_at"
         const val SNAPSHOT_VERSION = "1"
         const val SNAPSHOT_HEADER_PARTS = 5
     }
