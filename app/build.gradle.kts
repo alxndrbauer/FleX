@@ -13,8 +13,8 @@ android {
         applicationId = "com.flex"
         minSdk = 33
         targetSdk = 37
-        versionCode = 26
-        versionName = "2.0.4-beta.1"
+        versionCode = 27
+        versionName = "2.0.4-beta.2"
 
         val updateManifestUrl = providers.gradleProperty("flexUpdateManifestUrl")
             .getOrElse("https://gist.githubusercontent.com/alxndrbauer/1eddf47c2c689bdc8b27ca2ef7395b02/raw/version.json")
