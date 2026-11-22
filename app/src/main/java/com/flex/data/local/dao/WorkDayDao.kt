@@ -15,6 +15,9 @@ interface WorkDayDao {
     @Query("SELECT * FROM work_days WHERE date BETWEEN :startDate AND :endDate ORDER BY date")
     fun getWorkDaysBetween(startDate: String, endDate: String): Flow<List<WorkDayEntity>>
 
+    @Query("SELECT * FROM work_days WHERE date BETWEEN :startDate AND :endDate ORDER BY date")
+    suspend fun getWorkDaysBetweenSync(startDate: String, endDate: String): List<WorkDayEntity>
+
     @Query("SELECT * FROM work_days WHERE date = :date LIMIT 1")
     fun getWorkDayByDate(date: String): Flow<WorkDayEntity?>
 
@@ -32,6 +35,9 @@ interface WorkDayDao {
 
     @Query("UPDATE work_days SET isPlanned = 0 WHERE date >= :startDate AND date <= :endDate AND isPlanned = 1")
     suspend fun confirmPlannedDays(startDate: String, endDate: String)
+
+    @Query("SELECT MIN(date) FROM work_days WHERE date <= :date AND isPlanned = 1")
+    suspend fun getEarliestPlannedDateUpTo(date: String): String?
 
     @Query("UPDATE work_days SET isPlanned = 0 WHERE date <= :date AND isPlanned = 1")
     suspend fun confirmPlannedDaysUpTo(date: String): Int

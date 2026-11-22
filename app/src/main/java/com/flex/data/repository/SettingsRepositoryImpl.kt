@@ -1,30 +1,37 @@
 package com.flex.data.repository
 
+import androidx.room.withTransaction
+import com.flex.data.local.FlexDatabase
 import com.flex.data.local.dao.QuotaRuleDao
 import com.flex.data.local.dao.SettingsDao
 import com.flex.data.local.dao.WorkTimeRuleDao
+import com.flex.data.local.dao.YearClosingDao
 import com.flex.data.local.entity.QuotaRuleEntity
 import com.flex.data.local.entity.SettingsEntity
 import com.flex.data.local.entity.WorkTimeRuleEntity
+import com.flex.data.local.entity.YearClosingEntity
 import com.flex.domain.model.FederalState
 import com.flex.domain.model.DEFAULT_WORK_DAYS
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.Settings
 import com.flex.domain.model.WorkTimeRule
+import com.flex.domain.model.YearClosing
 import com.flex.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
-import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SettingsRepositoryImpl @Inject constructor(
+class SettingsRepositoryImpl(
     private val settingsDao: SettingsDao,
     private val quotaRuleDao: QuotaRuleDao,
-    private val workTimeRuleDao: WorkTimeRuleDao
+    private val workTimeRuleDao: WorkTimeRuleDao,
+    private val yearClosingDao: YearClosingDao? = null,
+    private val database: FlexDatabase? = null
 ) : SettingsRepository {
 
     override fun getSettings(): Flow<Settings> {
@@ -76,6 +83,32 @@ class SettingsRepositoryImpl @Inject constructor(
         return rules
             .filter { !it.validFrom.isAfter(ym) }
             .maxByOrNull { it.validFrom }
+    }
+
+    override fun getYearClosings(): Flow<List<YearClosing>> {
+        val dao = yearClosingDao ?: return flowOf(emptyList())
+        return dao.getAllClosings().map { entities -> entities.map { it.toDomain() } }
+    }
+
+    override fun getYearClosing(year: Int): Flow<YearClosing?> {
+        val dao = yearClosingDao ?: return flowOf(null)
+        return dao.getClosingForYear(year).map { it?.toDomain() }
+    }
+
+    override suspend fun saveYearClosing(closing: YearClosing) {
+        yearClosingDao?.insert(closing.toEntity())
+    }
+
+    override suspend fun applyYearClosing(closing: YearClosing, newSettings: Settings) {
+        if (database != null) {
+            database.withTransaction {
+                yearClosingDao?.insert(closing.toEntity())
+                settingsDao.insert(newSettings.toEntity())
+            }
+        } else {
+            yearClosingDao?.insert(closing.toEntity())
+            settingsDao.insert(newSettings.toEntity())
+        }
     }
 
     private fun SettingsEntity.toDomain() = Settings(
@@ -184,5 +217,35 @@ class SettingsRepositoryImpl @Inject constructor(
         dailyWorkMinutes = dailyWorkMinutes,
         monthlyWorkMinutes = monthlyWorkMinutes,
         workDays = workDays.joinToString(",") { it.name }
+    )
+
+    private fun YearClosingEntity.toDomain() = YearClosing(
+        year = year,
+        annualVacationDays = annualVacationDays,
+        carryOverVacationDays = carryOverVacationDays,
+        specialVacationDays = specialVacationDays,
+        specialVacationPaidOut = specialVacationPaidOut,
+        startFlextimeMinutes = startFlextimeMinutes,
+        startOvertimeMinutes = startOvertimeMinutes,
+        endFlextimeMinutes = endFlextimeMinutes,
+        endOvertimeMinutes = endOvertimeMinutes,
+        usedVacationDays = usedVacationDays,
+        carryOverToNextYearManual = carryOverToNextYearManual,
+        closedAt = closedAt
+    )
+
+    private fun YearClosing.toEntity() = YearClosingEntity(
+        year = year,
+        annualVacationDays = annualVacationDays,
+        carryOverVacationDays = carryOverVacationDays,
+        specialVacationDays = specialVacationDays,
+        specialVacationPaidOut = specialVacationPaidOut,
+        startFlextimeMinutes = startFlextimeMinutes,
+        startOvertimeMinutes = startOvertimeMinutes,
+        endFlextimeMinutes = endFlextimeMinutes,
+        endOvertimeMinutes = endOvertimeMinutes,
+        usedVacationDays = usedVacationDays,
+        carryOverToNextYearManual = carryOverToNextYearManual,
+        closedAt = closedAt
     )
 }

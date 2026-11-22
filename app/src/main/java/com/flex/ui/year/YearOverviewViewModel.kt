@@ -8,6 +8,7 @@ import com.flex.domain.model.PublicHolidays
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
+import com.flex.domain.repository.observeYearClosingsOrEmpty
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -96,11 +97,14 @@ class YearOverviewViewModel @Inject constructor(
         viewModelScope.launch {
             _year.flatMapLatest { year ->
                 val rulesFlow = settingsRepository?.getWorkTimeRules() ?: flowOf(emptyList())
+                val closingsFlow = settingsRepository?.observeYearClosingsOrEmpty() ?: flowOf(emptyList())
                 combine(
                     workDayRepository.getWorkDaysForYear(year),
                     getSettings(),
-                    rulesFlow
-                ) { workDays, settings, workTimeRules ->
+                    rulesFlow,
+                    closingsFlow
+                ) { workDays, settings, workTimeRules, closings ->
+                    val closing = closings.find { it.year == year }
                     val holidays = PublicHolidays.getHolidaysForYear(year)
                     val workDayMap = workDays.filter { !it.isPlanned }.associateBy { it.date }
 
@@ -154,7 +158,8 @@ class YearOverviewViewModel @Inject constructor(
                         totalWorkMinutes = totalWorkMinutes,
                         vacationDays = actualDays.count { it.dayType == DayType.VACATION },
                         specialVacationDays = actualDays.count { it.dayType == DayType.SPECIAL_VACATION },
-                        specialVacationPaidOut = settings.specialVacationPaidOut && (settings.settingsYear == year),
+                        specialVacationPaidOut = closing?.specialVacationPaidOut
+                            ?: (settings.specialVacationPaidOut && (settings.settingsYear == year)),
                         sickDays = actualDays.count { it.dayType == DayType.SICK_DAY },
                         flexDays = actualDays.count { it.dayType == DayType.FLEX_DAY },
                         saturdayBonusDays = actualDays.count { it.dayType == DayType.SATURDAY_BONUS },

@@ -228,7 +228,7 @@ class SpecialVacationPayoutBehaviorSpec : BehaviorSpec({
 
             Then("ist specialVacationPaidOut im neuen Jahr wieder false") {
                 val settingsSlot = slot<Settings>()
-                coVerify { settingsRepository.saveSettings(capture(settingsSlot)) }
+                coVerify { settingsRepository.applyYearClosing(any(), capture(settingsSlot)) }
                 settingsSlot.captured.specialVacationPaidOut.shouldBeFalse()
             }
         }

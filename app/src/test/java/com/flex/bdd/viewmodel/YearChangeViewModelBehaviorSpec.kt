@@ -90,8 +90,11 @@ class YearChangeViewModelBehaviorSpec : BehaviorSpec({
             earnedOvertimeMinutes = 120
         )
 
+        val savedClosingSlot = slot<com.flex.domain.model.YearClosing>()
         val savedSettingsSlot = slot<Settings>()
-        coEvery { settingsRepository.saveSettings(capture(savedSettingsSlot)) } returns Unit
+        coEvery {
+            settingsRepository.applyYearClosing(capture(savedClosingSlot), capture(savedSettingsSlot))
+        } returns Unit
 
         val viewModel = YearChangeViewModel(
             workDayRepository = workDayRepository,
@@ -137,6 +140,12 @@ class YearChangeViewModelBehaviorSpec : BehaviorSpec({
                 captured.carryOverVacationDays shouldBe 10
                 captured.annualVacationDays shouldBe 28
                 captured.specialVacationDays shouldBe 0
+                savedClosingSlot.captured.year shouldBe 2025
+                savedClosingSlot.captured.carryOverToNextYearManual shouldBe false
+            }
+
+            Then("werden geplante Tage nur bis maximal zum 31.12. des Quelljahres bestätigt") {
+                io.mockk.coVerify { workDayRepository.confirmPlannedDaysUpTo(LocalDate.of(2025, 12, 31)) }
             }
 
             Then("wird der Gleitzeitsaldo als initialFlextimeMinutes übernommen") {
@@ -226,8 +235,11 @@ class YearChangeViewModelBehaviorSpec : BehaviorSpec({
             earnedOvertimeMinutes = 0
         )
 
+        val savedClosingSlot = slot<com.flex.domain.model.YearClosing>()
         val savedSettingsSlot = slot<Settings>()
-        coEvery { settingsRepository.saveSettings(capture(savedSettingsSlot)) } returns Unit
+        coEvery {
+            settingsRepository.applyYearClosing(capture(savedClosingSlot), capture(savedSettingsSlot))
+        } returns Unit
 
         val viewModel = YearChangeViewModel(
             workDayRepository = workDayRepository,

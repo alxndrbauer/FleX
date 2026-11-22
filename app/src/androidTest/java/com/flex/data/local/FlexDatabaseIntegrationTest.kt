@@ -49,7 +49,7 @@ class FlexDatabaseIntegrationTest {
     @Test
     fun database_creation_and_version() {
         assertThat(database).isNotNull()
-        assertThat(database.openHelper.readableDatabase.version).isEqualTo(20)
+        assertThat(database.openHelper.readableDatabase.version).isEqualTo(21)
     }
 
     @Test
@@ -325,5 +325,34 @@ class FlexDatabaseIntegrationTest {
 
         assertThat(blocks1).isEmpty()
         assertThat(blocks2).hasSize(1)
+    }
+
+    @Test
+    fun yearClosing_crud_operations() = runTest {
+        val dao = database.yearClosingDao()
+        val closing = com.flex.data.local.entity.YearClosingEntity(
+            year = 2025,
+            annualVacationDays = 30,
+            carryOverVacationDays = 4,
+            specialVacationDays = 5,
+            specialVacationPaidOut = true,
+            startFlextimeMinutes = 60,
+            startOvertimeMinutes = 30,
+            endFlextimeMinutes = 360,
+            endOvertimeMinutes = 150,
+            usedVacationDays = 26,
+            carryOverToNextYearManual = false,
+            closedAt = 1_700_000_000_000L
+        )
+        dao.insert(closing)
+
+        val loaded = dao.getClosingForYearSync(2025)
+        assertThat(loaded).isEqualTo(closing)
+
+        val all = dao.getAllClosings().first()
+        assertThat(all).containsExactly(closing)
+
+        dao.deleteAll()
+        assertThat(dao.getAllClosingsSync()).isEmpty()
     }
 }

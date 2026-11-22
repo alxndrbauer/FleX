@@ -11,6 +11,7 @@ import com.flex.data.local.dao.SettingsDao
 import com.flex.data.local.dao.TimeBlockDao
 import com.flex.data.local.dao.WorkDayDao
 import com.flex.data.local.dao.WorkTimeRuleDao
+import com.flex.data.local.dao.YearClosingDao
 import com.flex.data.local.entity.CalendarEventEntity
 import com.flex.data.local.entity.HolidayCacheEntity
 import com.flex.data.local.entity.QuotaRuleEntity
@@ -18,6 +19,7 @@ import com.flex.data.local.entity.SettingsEntity
 import com.flex.data.local.entity.TimeBlockEntity
 import com.flex.data.local.entity.WorkDayEntity
 import com.flex.data.local.entity.WorkTimeRuleEntity
+import com.flex.data.local.entity.YearClosingEntity
 
 @Database(
     entities = [
@@ -27,9 +29,10 @@ import com.flex.data.local.entity.WorkTimeRuleEntity
         QuotaRuleEntity::class,
         CalendarEventEntity::class,
         HolidayCacheEntity::class,
-        WorkTimeRuleEntity::class
+        WorkTimeRuleEntity::class,
+        YearClosingEntity::class
     ],
-    version = 20,
+    version = 21,
     exportSchema = false
 )
 abstract class FlexDatabase : RoomDatabase() {
@@ -40,6 +43,7 @@ abstract class FlexDatabase : RoomDatabase() {
     abstract fun calendarEventDao(): CalendarEventDao
     abstract fun holidayCacheDao(): HolidayCacheDao
     abstract fun workTimeRuleDao(): WorkTimeRuleDao
+    abstract fun yearClosingDao(): YearClosingDao
 
     companion object {
         val MIGRATION_15_16 = object : Migration(15, 16) {
@@ -86,6 +90,27 @@ abstract class FlexDatabase : RoomDatabase() {
         val MIGRATION_19_20 = object : Migration(19, 20) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE settings ADD COLUMN specialVacationPaidOut INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS year_closings (
+                        year INTEGER NOT NULL PRIMARY KEY,
+                        annualVacationDays INTEGER NOT NULL,
+                        carryOverVacationDays INTEGER NOT NULL,
+                        specialVacationDays INTEGER NOT NULL,
+                        specialVacationPaidOut INTEGER NOT NULL,
+                        startFlextimeMinutes INTEGER NOT NULL,
+                        startOvertimeMinutes INTEGER NOT NULL,
+                        endFlextimeMinutes INTEGER NOT NULL,
+                        endOvertimeMinutes INTEGER NOT NULL,
+                        usedVacationDays INTEGER NOT NULL,
+                        carryOverToNextYearManual INTEGER NOT NULL DEFAULT 0,
+                        closedAt INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
             }
         }
     }

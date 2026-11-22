@@ -525,4 +525,82 @@ class MonthViewModelBehaviorSpec : BehaviorSpec({
             viewModel.uiState.value.overtimeMinutesBefore(february.atDay(4)) shouldBe 600
         }
     }
+
+    Given("ein MonthViewModel beim Navigieren in ein abgeschlossenes Vorjahr mit YearClosing-Snapshot") {
+        val realCalc = CalculateFlextimeUseCase(CalculateDayWorkTimeUseCase())
+        val settings2026 = Settings(
+            dailyWorkMinutes = 420,
+            settingsYear = 2026,
+            initialFlextimeMinutes = 360,
+            specialVacationPaidOut = false
+        )
+        val closing2025 = com.flex.domain.model.YearClosing(
+            year = 2025,
+            annualVacationDays = 30,
+            carryOverVacationDays = 4,
+            specialVacationDays = 5,
+            specialVacationPaidOut = true,
+            startFlextimeMinutes = 60,
+            startOvertimeMinutes = 0,
+            endFlextimeMinutes = 360,
+            endOvertimeMinutes = 0,
+            usedVacationDays = 20
+        )
+        val day2025 = WorkDay(
+            id = 1L,
+            date = LocalDate.of(2025, 3, 3),
+            dayType = DayType.BUSINESS_TRIP,
+            location = WorkLocation.OFFICE,
+            isPlanned = false,
+            timeBlocks = listOf(
+                TimeBlock(
+                    workDayId = 1L,
+                    startTime = java.time.LocalTime.of(8, 0),
+                    endTime = java.time.LocalTime.of(20, 0),
+                    isDuration = true
+                )
+            )
+        )
+
+        val getMonthWorkDays = mockk<GetMonthWorkDaysUseCase>(relaxed = true)
+        val getSettings = mockk<GetSettingsUseCase>(relaxed = true)
+        val workDayRepo = mockk<WorkDayRepository>(relaxed = true)
+        val settingsRepo = mockk<SettingsRepository>(relaxed = true)
+        val calculateDayWorkTime = CalculateDayWorkTimeUseCase()
+        val calculateQuota = mockk<CalculateQuotaUseCase>(relaxed = true)
+        val dataChangeEventBus = mockk<DataChangeEventBus>(relaxed = true)
+        val prepareExportData = mockk<PrepareExportDataUseCase>(relaxed = true)
+        val exportService = mockk<ExportService>(relaxed = true)
+        val checkBreakViolation = mockk<CheckBreakViolationUseCase>(relaxed = true)
+        val buildPrognosisDays = mockk<BuildPrognosisDaysUseCase>(relaxed = true)
+
+        every { getSettings() } returns flowOf(settings2026)
+        every { settingsRepo.getYearClosings() } returns flowOf(listOf(closing2025))
+        every { settingsRepo.getQuotaRules() } returns flowOf(emptyList())
+        every { settingsRepo.getWorkTimeRules() } returns flowOf(emptyList())
+        every { getMonthWorkDays(YearMonth.of(2025, 3)) } returns flowOf(listOf(day2025))
+        every { getMonthWorkDays(match { it != YearMonth.of(2025, 3) }) } returns flowOf(emptyList())
+        every { workDayRepo.getWorkDaysForYear(2025) } returns flowOf(listOf(day2025))
+        every { workDayRepo.getWorkDaysForYear(match { it != 2025 }) } returns flowOf(emptyList())
+        every { buildPrognosisDays(any(), any(), any(), any()) } answers { secondArg() }
+        every { calculateQuota(any(), any(), any(), any(), any(), any()) } returns QuotaStatus()
+        every { checkBreakViolation(any(), any()) } returns com.flex.domain.model.BreakCheckResult(emptyList(), skipped = false)
+
+        val vm = MonthViewModel(
+            getMonthWorkDays, getSettings, workDayRepo, settingsRepo,
+            calculateDayWorkTime, calculateQuota, realCalc,
+            dataChangeEventBus, prepareExportData, exportService,
+            checkBreakViolation, buildPrognosisDays,
+            clock = fixedClock()
+        )
+
+        When("der Monat März 2025 ausgewählt wird") {
+            vm.selectMonth(YearMonth.of(2025, 3))
+
+            Then("beträgt die Prognose-Gleitzeit 360 Min ohne Doppelzählung und isSpecialVacationPaidOut ist true") {
+                vm.uiState.value.prognosisFlextime.totalMinutes shouldBe 360L
+                vm.uiState.value.isSpecialVacationPaidOut shouldBe true
+            }
+        }
+    }
 })

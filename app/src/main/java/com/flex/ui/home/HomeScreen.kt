@@ -234,7 +234,10 @@ fun HomeScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) viewModel.onResume()
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.onResume()
+                yearChangeViewModel.refreshDateCheck()
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -984,7 +987,7 @@ private fun HeroCard(
     var sheetSelectedType by remember(state.selectedDayType) { mutableStateOf(state.selectedDayType) }
     var showFlextimeDetailsSheet by remember { mutableStateOf(false) }
 
-    val isPaidOut = state.settings.specialVacationPaidOut && state.settings.settingsYear == state.selectedDate.year
+    val isPaidOut = state.isSpecialVacationPaidOut
     val isAfterOct31 = state.selectedDate.isAfter(LocalDate.of(state.selectedDate.year, 10, 31))
     val isSpecialVacationBlocked = isPaidOut || isAfterOct31
 

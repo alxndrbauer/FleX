@@ -29,6 +29,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Gate overtime day on balance and start monthly sums from month-start overtime
 - Add overtime days to month and planning views
 - Add opt-in beta update channel
+- Add persistent year closings, YearContextResolver, and scoped TimeBlock queries
 
 ### Verbesserungen
 

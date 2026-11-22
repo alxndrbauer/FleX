@@ -21,6 +21,7 @@ import com.flex.domain.model.WorkTimeRule
 import com.flex.domain.model.getRuleForMonth
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
+import com.flex.domain.repository.observeYearClosingsOrEmpty
 import com.flex.domain.usecase.CalculateAnalyticsUseCase
 import com.flex.domain.usecase.CalculateDashboardMetricsUseCase
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
@@ -28,6 +29,8 @@ import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
+import com.flex.domain.usecase.YearContextResolver
+import com.flex.domain.model.YearClosing
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,11 +53,12 @@ data class VacationInfo(
     val usedSpecialDays: Int = 0,
     val plannedVacationDays: Int = 0,
     val plannedSpecialDays: Int = 0,
-    val isSpecialPaidOut: Boolean = false
+    val isSpecialPaidOut: Boolean = false,
+    val canModifySpecialVacationPayout: Boolean = true
 ) {
     val remainingVacationDays: Int get() = annualDays + carryOverDays - usedVacationDays
     val remainingSpecialDays: Int get() = if (isSpecialPaidOut) 0 else (specialDays - usedSpecialDays).coerceAtLeast(0)
-    val canPayoutSpecialDays: Boolean get() = !isSpecialPaidOut && usedSpecialDays == 0 && specialDays > 0
+    val canPayoutSpecialDays: Boolean get() = canModifySpecialVacationPayout && !isSpecialPaidOut && usedSpecialDays == 0 && specialDays > 0
 }
 
 data class DashboardUiState(
@@ -97,7 +101,8 @@ class DashboardViewModel @Inject constructor(
     private val calculateFlextime: CalculateFlextimeUseCase,
     private val calculateDashboardMetrics: CalculateDashboardMetricsUseCase = CalculateDashboardMetricsUseCase(CalculateDayWorkTimeUseCase()),
     private val calculateAnalytics: CalculateAnalyticsUseCase = CalculateAnalyticsUseCase(CalculateDayWorkTimeUseCase(), calculateFlextime),
-    private val clock: Clock = Clock.systemDefaultZone()
+    private val clock: Clock = Clock.systemDefaultZone(),
+    private val yearContextResolver: YearContextResolver = YearContextResolver(calculateFlextime)
 ) : ViewModel() {
 
     private val _dateSelection = MutableStateFlow(
@@ -114,23 +119,72 @@ class DashboardViewModel @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun loadData() {
         viewModelScope.launch {
-            _dateSelection.flatMapLatest { (year, yearMonth) ->
+            combine(
+                _dateSelection,
+                getSettings(),
+                settingsRepository.observeYearClosingsOrEmpty()
+            ) { dateSelection, settings, closings ->
+                Triple(dateSelection, settings, closings)
+            }.flatMapLatest { (dateSelection, settings, closings) ->
+                val (year, yearMonth) = dateSelection
+                val closingsByYear = closings.associateBy { it.year }
+                val extraYearsFlow = when {
+                    year > settings.settingsYear -> {
+                        if (year == settings.settingsYear + 1) {
+                            runCatching { workDayRepository.getWorkDaysForYear(settings.settingsYear) }.getOrNull()
+                                ?: kotlinx.coroutines.flow.flowOf(emptyList())
+                        } else {
+                            runCatching {
+                                workDayRepository.getWorkDaysInRange(
+                                    LocalDate.of(settings.settingsYear, 1, 1),
+                                    LocalDate.of(year - 1, 12, 31)
+                                )
+                            }.getOrNull() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+                        }
+                    }
+                    year < settings.settingsYear && closingsByYear[year] == null -> {
+                        val anchorYear = closingsByYear.keys
+                            .filter { it > year && it < settings.settingsYear }
+                            .minOrNull() ?: settings.settingsYear
+                        if (anchorYear > year + 1) {
+                            runCatching {
+                                workDayRepository.getWorkDaysInRange(
+                                    LocalDate.of(year + 1, 1, 1),
+                                    LocalDate.of(anchorYear - 1, 12, 31)
+                                )
+                            }.getOrNull() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+                        } else {
+                            kotlinx.coroutines.flow.flowOf(emptyList())
+                        }
+                    }
+                    else -> kotlinx.coroutines.flow.flowOf(emptyList())
+                }
                 combine(
                     getMonthWorkDays(yearMonth),
-                    getSettings(),
                     workDayRepository.getWorkDaysForYear(year),
                     settingsRepository.getQuotaRules(),
-                    settingsRepository.getWorkTimeRules()
+                    settingsRepository.getWorkTimeRules(),
+                    extraYearsFlow
                 ) { arr ->
                     @Suppress("UNCHECKED_CAST")
                     val monthDays = arr[0] as List<WorkDay>
-                    val settings = arr[1] as Settings
                     @Suppress("UNCHECKED_CAST")
-                    val yearDays = arr[2] as List<WorkDay>
+                    val yearDays = arr[1] as List<WorkDay>
                     @Suppress("UNCHECKED_CAST")
-                    val rules = arr[3] as List<QuotaRule>
+                    val rules = arr[2] as List<QuotaRule>
                     @Suppress("UNCHECKED_CAST")
-                    val workTimeRules = arr[4] as List<WorkTimeRule>
+                    val workTimeRules = arr[3] as List<WorkTimeRule>
+                    @Suppress("UNCHECKED_CAST")
+                    val extraDays = arr[4] as List<WorkDay>
+                    val extraByYear = extraDays.groupBy { it.date.year }
+                    val effectiveSettings = yearContextResolver.resolveSettingsForYear(
+                        targetYear = year,
+                        settings = settings,
+                        closingsByYear = closingsByYear,
+                        workDaysLookup = { y -> if (y == year) yearDays else extraByYear[y].orEmpty() },
+                        workTimeRules = workTimeRules,
+                        includeForwardBalances = true
+                    )
 
                     val rule = settingsRepository.getQuotaRuleForMonth(yearMonth, rules)
                     val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
@@ -164,7 +218,7 @@ class DashboardViewModel @Inject constructor(
 
                     // Cumulative flextime from all year's actual data
                     val actualYearDays = yearDays.filter { !it.isPlanned }
-                    val flextime = calculateFlextime(actualYearDays, settings, yearMonth, workTimeRules)
+                    val flextime = calculateFlextime(actualYearDays, effectiveSettings, yearMonth, workTimeRules)
 
                     // Fixed monthly target, reduced by neutral days
                     val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
@@ -219,7 +273,7 @@ class DashboardViewModel @Inject constructor(
 
                     val monthFlextime = calculateAnalytics(
                         workDays = monthDays,
-                        settings = settings,
+                        settings = effectiveSettings,
                         timeRange = TimeRange.Month(yearMonth),
                         workTimeRules = workTimeRules,
                         priorWorkDays = yearDays.filter { it.date.isBefore(yearMonth.atDay(1)) && !it.isPlanned }
@@ -227,7 +281,7 @@ class DashboardViewModel @Inject constructor(
 
                     val yearFlextime = calculateAnalytics(
                         workDays = yearDays,
-                        settings = settings,
+                        settings = effectiveSettings,
                         timeRange = TimeRange.Year(year),
                         workTimeRules = workTimeRules
                     ).flextimeSeries
@@ -239,14 +293,15 @@ class DashboardViewModel @Inject constructor(
                         projectedQuotaStatus = projectedQuota,
                         flextimeBalance = flextime,
                         vacationInfo = VacationInfo(
-                            annualDays = settings.annualVacationDays,
+                            annualDays = effectiveSettings.annualVacationDays,
                             usedVacationDays = usedVacation,
-                            carryOverDays = settings.carryOverVacationDays,
-                            specialDays = settings.specialVacationDays,
+                            carryOverDays = effectiveSettings.carryOverVacationDays,
+                            specialDays = effectiveSettings.specialVacationDays,
                             usedSpecialDays = usedSpecial,
                             plannedVacationDays = plannedVacation,
                             plannedSpecialDays = plannedSpecial,
-                            isSpecialPaidOut = settings.specialVacationPaidOut
+                            isSpecialPaidOut = effectiveSettings.specialVacationPaidOut,
+                            canModifySpecialVacationPayout = (year == settings.settingsYear)
                         ),
                         settings = settings,
                         effectiveQuotaPercent = qPercent,
@@ -324,6 +379,7 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             val currentSettings = getSettings().first()
             val year = _dateSelection.value.year
+            if (year != currentSettings.settingsYear) return@launch
             val yearDays = workDayRepository.getWorkDaysForYear(year).first()
             val usedSpecial = yearDays.count { it.dayType == DayType.SPECIAL_VACATION && !it.isPlanned }
             if (usedSpecial > 0) return@launch
@@ -338,6 +394,7 @@ class DashboardViewModel @Inject constructor(
     fun revertSpecialVacationPayout() {
         viewModelScope.launch {
             val currentSettings = getSettings().first()
+            if (_dateSelection.value.year != currentSettings.settingsYear) return@launch
             settingsRepository.saveSettings(currentSettings.copy(specialVacationPaidOut = false))
         }
     }

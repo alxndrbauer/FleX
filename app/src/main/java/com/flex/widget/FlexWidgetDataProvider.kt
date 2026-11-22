@@ -14,9 +14,11 @@ import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateProjectedEndTimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import java.time.Clock
 import java.time.LocalDate
@@ -38,18 +40,28 @@ class FlexWidgetDataProvider @Inject constructor(
     private val clock: Clock = Clock.systemDefaultZone()
 ) {
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun getWidgetStateFlow(): Flow<WidgetState> {
         val today = LocalDate.now(clock)
         val pauseFlow = pausePreferences?.isPausedFlow ?: flowOf(false)
 
-        return combine(
-            workDayRepository.getWorkDay(today),
-            settingsRepository.getSettings(),
-            settingsRepository.getWorkTimeRules(),
-            workDayRepository.getWorkDaysForYear(today.year),
-            pauseFlow
-        ) { workDay, settings, workTimeRules, yearDays, isPausedFromFlow ->
-            calculateState(today, workDay, settings, workTimeRules, yearDays, isPausedFromFlow)
+        return settingsRepository.getSettings().flatMapLatest { settings ->
+            val yearDaysFlow = if (today.year > settings.settingsYear) {
+                workDayRepository.getWorkDaysInRange(
+                    LocalDate.of(settings.settingsYear, 1, 1),
+                    LocalDate.of(today.year, 12, 31)
+                )
+            } else {
+                workDayRepository.getWorkDaysForYear(today.year)
+            }
+            combine(
+                workDayRepository.getWorkDay(today),
+                settingsRepository.getWorkTimeRules(),
+                yearDaysFlow,
+                pauseFlow
+            ) { workDay, workTimeRules, yearDays, isPausedFromFlow ->
+                calculateState(today, workDay, settings, workTimeRules, yearDays, isPausedFromFlow)
+            }
         }
     }
 
@@ -58,7 +70,14 @@ class FlexWidgetDataProvider @Inject constructor(
         val workDay = workDayRepository.getWorkDay(today).first()
         val settings = settingsRepository.getSettings().first()
         val workTimeRules = settingsRepository.getWorkTimeRules().first()
-        val yearDays = workDayRepository.getWorkDaysForYear(today.year).first()
+        val yearDays = if (today.year > settings.settingsYear) {
+            workDayRepository.getWorkDaysInRange(
+                LocalDate.of(settings.settingsYear, 1, 1),
+                LocalDate.of(today.year, 12, 31)
+            ).first()
+        } else {
+            workDayRepository.getWorkDaysForYear(today.year).first()
+        }
         val isPaused = pausePreferences?.isPaused ?: false
         return calculateState(today, workDay, settings, workTimeRules, yearDays, isPaused)
     }

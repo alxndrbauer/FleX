@@ -17,6 +17,7 @@ import com.flex.domain.model.getRuleForMonth
 import com.flex.domain.model.hasDailyWorkTarget
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
+import com.flex.domain.repository.observeYearClosingsOrEmpty
 import com.flex.domain.events.UndoEvent
 import com.flex.domain.usecase.BuildPrognosisDaysUseCase
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
@@ -25,6 +26,8 @@ import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
 import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.usecase.SyncPlannedDaysWithWorkTimeRuleUseCase
+import com.flex.domain.usecase.YearContextResolver
+import com.flex.domain.model.YearClosing
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -101,7 +104,8 @@ data class PlanningUiState(
     val canSyncPlannedDays: Boolean = false,
     val hasOvertimeAvailable: Boolean = false,
     val overtimeMinutesAtMonthStart: Long = 0L,
-    val overtimeMinutesAfterDate: Map<LocalDate, Long> = emptyMap()
+    val overtimeMinutesAfterDate: Map<LocalDate, Long> = emptyMap(),
+    val isSpecialVacationPaidOut: Boolean = false
 ) {
     /** Overtime balance available for an overtime day at [date]: balance after the previous day. */
     fun overtimeMinutesBefore(date: LocalDate): Long =
@@ -138,7 +142,8 @@ class PlanningViewModel @Inject constructor(
     private val calculateFlextime: CalculateFlextimeUseCase,
     private val buildPrognosisDays: BuildPrognosisDaysUseCase,
     private val syncPlannedDaysWithWorkTimeRuleUseCase: SyncPlannedDaysWithWorkTimeRuleUseCase,
-    private val clock: Clock = Clock.systemDefaultZone()
+    private val clock: Clock = Clock.systemDefaultZone(),
+    private val yearContextResolver: YearContextResolver = YearContextResolver(calculateFlextime)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlanningUiState())
@@ -161,7 +166,8 @@ private data class PlanningConfig(
     val month: YearMonth,
     val settings: Settings,
     val quotaRules: List<QuotaRule>,
-    val workTimeRules: List<com.flex.domain.model.WorkTimeRule>
+    val workTimeRules: List<com.flex.domain.model.WorkTimeRule>,
+    val closings: List<YearClosing>
 )
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -171,36 +177,75 @@ private data class PlanningConfig(
                 _selectedMonth,
                 getSettings(),
                 settingsRepository.getQuotaRules(),
-                settingsRepository.getWorkTimeRules()
-            ) { month, settings, rules, workTimeRules -> PlanningConfig(month, settings, rules, workTimeRules) }
-                .flatMapLatest { (month, settings, rules, workTimeRules) ->
-                    // In a year after settingsYear the balance includes the previous year's days
-                    // as long as the year change has not moved the balance into settings yet.
-                    val previousYearDaysFlow = if (settings.settingsYear < month.year) {
-                        workDayRepository.getWorkDaysForYear(month.year - 1)
-                    } else {
-                        flowOf(emptyList())
+                settingsRepository.getWorkTimeRules(),
+                settingsRepository.observeYearClosingsOrEmpty()
+            ) { month, settings, rules, workTimeRules, closings ->
+                PlanningConfig(month, settings, rules, workTimeRules, closings)
+            }.flatMapLatest { (month, settings, rules, workTimeRules, closings) ->
+                val closingsByYear = closings.associateBy { it.year }
+                val extraYearsFlow = when {
+                    month.year > settings.settingsYear -> {
+                        if (month.year == settings.settingsYear + 1) {
+                            runCatching { workDayRepository.getWorkDaysForYear(settings.settingsYear) }.getOrNull()
+                                ?: flowOf(emptyList())
+                        } else {
+                            runCatching {
+                                workDayRepository.getWorkDaysInRange(
+                                    LocalDate.of(settings.settingsYear, 1, 1),
+                                    LocalDate.of(month.year - 1, 12, 31)
+                                )
+                            }.getOrNull() ?: flowOf(emptyList())
+                        }
                     }
-                    combine(
-                        getMonthWorkDays(month),
-                        workDayRepository.getWorkDaysForYear(month.year),
-                        previousYearDaysFlow
-                    ) { days, yearDays, previousYearDays ->
-                        arrayOf(month, settings, rules, workTimeRules, days, yearDays + previousYearDays)
+                    month.year < settings.settingsYear && closingsByYear[month.year] == null -> {
+                        val anchorYear = closingsByYear.keys
+                            .filter { it > month.year && it < settings.settingsYear }
+                            .minOrNull() ?: settings.settingsYear
+                        if (anchorYear > month.year + 1) {
+                            runCatching {
+                                workDayRepository.getWorkDaysInRange(
+                                    LocalDate.of(month.year + 1, 1, 1),
+                                    LocalDate.of(anchorYear - 1, 12, 31)
+                                )
+                            }.getOrNull() ?: flowOf(emptyList())
+                        } else {
+                            flowOf(emptyList())
+                        }
                     }
+                    else -> flowOf(emptyList())
                 }
-                .collect { arr ->
-                    @Suppress("UNCHECKED_CAST")
-                    val month = arr[0] as YearMonth
-                    val settings = arr[1] as Settings
-                    @Suppress("UNCHECKED_CAST")
-                    val rules = arr[2] as List<QuotaRule>
-                    @Suppress("UNCHECKED_CAST")
-                    val workTimeRules = arr[3] as List<com.flex.domain.model.WorkTimeRule>
-                    @Suppress("UNCHECKED_CAST")
-                    val days = arr[4] as List<WorkDay>
-                    @Suppress("UNCHECKED_CAST")
-                    val yearDays = arr[5] as List<WorkDay>
+                combine(
+                    getMonthWorkDays(month),
+                    workDayRepository.getWorkDaysForYear(month.year),
+                    extraYearsFlow
+                ) { days, targetYearDays, extraDays ->
+                    arrayOf(month, settings, rules, workTimeRules, closingsByYear, days, targetYearDays, extraDays)
+                }
+            }.collect { arr ->
+                @Suppress("UNCHECKED_CAST")
+                val month = arr[0] as YearMonth
+                val settings = arr[1] as Settings
+                @Suppress("UNCHECKED_CAST")
+                val rules = arr[2] as List<QuotaRule>
+                @Suppress("UNCHECKED_CAST")
+                val workTimeRules = arr[3] as List<com.flex.domain.model.WorkTimeRule>
+                @Suppress("UNCHECKED_CAST")
+                val closingsByYear = arr[4] as Map<Int, YearClosing>
+                @Suppress("UNCHECKED_CAST")
+                val days = arr[5] as List<WorkDay>
+                @Suppress("UNCHECKED_CAST")
+                val targetYearDays = arr[6] as List<WorkDay>
+                @Suppress("UNCHECKED_CAST")
+                val extraDays = arr[7] as List<WorkDay>
+                val extraByYear = extraDays.groupBy { it.date.year }
+                val (effectiveSettings, yearDays) = yearContextResolver.buildFlextimeInputForYear(
+                    targetYear = month.year,
+                    settings = settings,
+                    closingsByYear = closingsByYear,
+                    targetYearWorkDays = targetYearDays,
+                    otherYearsWorkDaysLookup = { y -> extraByYear[y].orEmpty() },
+                    workTimeRules = workTimeRules
+                )
 
                     val rule = settingsRepository.getQuotaRuleForMonth(month, rules)
                     val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
@@ -213,16 +258,16 @@ private data class PlanningConfig(
                         YearMonth.from(it.date).isBefore(month) && !it.isPlanned
                     }
                     val flextimeDays = previousMonthsDays + prognosisDays
-                    val flextime = calculateFlextime(flextimeDays, settings, month, workTimeRules)
+                    val flextime = calculateFlextime(flextimeDays, effectiveSettings, month, workTimeRules)
 
                     // Overtime balance before each prognosis day, used to gate overtime days
-                    val monthStartOvertime = calculateFlextime(previousMonthsDays, settings, null, workTimeRules).overtimeMinutes
+                    val monthStartOvertime = calculateFlextime(previousMonthsDays, effectiveSettings, null, workTimeRules).overtimeMinutes
                     val overtimeAfterByDate = mutableMapOf<LocalDate, Long>()
                     var runningOvertime = monthStartOvertime
                     for (day in prognosisDays.sortedBy { it.date }) {
                         runningOvertime = calculateFlextime(
                             listOf(day),
-                            settings.copy(initialFlextimeMinutes = 0, initialOvertimeMinutes = runningOvertime.toInt()),
+                            effectiveSettings.copy(initialFlextimeMinutes = 0, initialOvertimeMinutes = runningOvertime.toInt()),
                             null,
                             workTimeRules
                         ).overtimeMinutes
@@ -230,12 +275,12 @@ private data class PlanningConfig(
                     }
 
                     val actualRecordedDays = previousMonthsDays + days.filter { !it.isPlanned }
-                    val actualFlextime = calculateFlextime(actualRecordedDays, settings, null, workTimeRules)
+                    val actualFlextime = calculateFlextime(actualRecordedDays, effectiveSettings, null, workTimeRules)
                     val actualMinutes = actualFlextime.totalMinutes
                     val plannedContribution = flextime.totalMinutes - actualMinutes
 
                     val officeHours = calculateOfficeHours(prognosisDays, qPercent, settings, workTimeRules, month)
-                    val isSpecialVacationBlocked = settings.specialVacationPaidOut && settings.settingsYear == month.year
+                    val isSpecialVacationBlocked = effectiveSettings.specialVacationPaidOut
                     val hasOvertimeAvailable = monthStartOvertime > 0 || overtimeAfterByDate.values.any { it > 0 }
                     val currentSelectedType = _uiState.value.selectedPlanType
                     val selectedType = when {
@@ -258,7 +303,8 @@ private data class PlanningConfig(
                         canSyncPlannedDays = canSync,
                         hasOvertimeAvailable = hasOvertimeAvailable,
                         overtimeMinutesAtMonthStart = monthStartOvertime,
-                        overtimeMinutesAfterDate = overtimeAfterByDate
+                        overtimeMinutesAfterDate = overtimeAfterByDate,
+                        isSpecialVacationPaidOut = effectiveSettings.specialVacationPaidOut
                     )
                     refreshMonthSummaries(settings, rules, workTimeRules)
                 }
@@ -384,7 +430,7 @@ private data class PlanningConfig(
 
     fun setSelectedPlanType(type: PlanType) {
         val state = _uiState.value
-        if (type == PlanType.SPECIAL_VACATION && state.settings.specialVacationPaidOut && state.settings.settingsYear == state.yearMonth.year) {
+        if (type == PlanType.SPECIAL_VACATION && state.isSpecialVacationPaidOut) {
             return
         }
         if (type == PlanType.OVERTIME_DAY && !state.hasOvertimeAvailable) {
@@ -398,7 +444,7 @@ private data class PlanningConfig(
         viewModelScope.launch {
             val state = _uiState.value
             val planType = state.selectedPlanType
-            if (planType == PlanType.SPECIAL_VACATION && state.settings.specialVacationPaidOut && state.settings.settingsYear == date.year) {
+            if (planType == PlanType.SPECIAL_VACATION && state.isSpecialVacationPaidOut) {
                 return@launch
             }
 

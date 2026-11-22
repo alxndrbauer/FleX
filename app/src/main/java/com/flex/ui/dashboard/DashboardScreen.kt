@@ -983,7 +983,7 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        val canRevert = !today.isAfter(LocalDate.of(state.selectedYear, 10, 31))
+                        val canRevert = v.canModifySpecialVacationPayout && !today.isAfter(LocalDate.of(state.selectedYear, 10, 31))
                         if (canRevert) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Button(

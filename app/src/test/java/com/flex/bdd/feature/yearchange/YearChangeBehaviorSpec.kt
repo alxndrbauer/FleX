@@ -78,8 +78,11 @@ class YearChangeBehaviorSpec : BehaviorSpec({
             earnedOvertimeMinutes = 120
         )
 
+        val savedClosingSlot = slot<com.flex.domain.model.YearClosing>()
         val savedSettingsSlot = slot<Settings>()
-        coEvery { settingsRepository.saveSettings(capture(savedSettingsSlot)) } returns Unit
+        coEvery {
+            settingsRepository.applyYearClosing(capture(savedClosingSlot), capture(savedSettingsSlot))
+        } returns Unit
 
         val viewModel = YearChangeViewModel(
             workDayRepository,
@@ -128,6 +131,26 @@ class YearChangeBehaviorSpec : BehaviorSpec({
                 val captured = savedSettingsSlot.captured
                 captured.initialOvertimeMinutes shouldBe 150
             }
+
+            Then("wird ein YearClosing-Snapshot für 2025 mit carryOverToNextYearManual = false gespeichert") {
+                val closing = savedClosingSlot.captured
+                closing.year shouldBe 2025
+                closing.startFlextimeMinutes shouldBe 60
+                closing.endFlextimeMinutes shouldBe 360
+                closing.startOvertimeMinutes shouldBe 30
+                closing.endOvertimeMinutes shouldBe 150
+                closing.usedVacationDays shouldBe 26
+                closing.carryOverToNextYearManual shouldBe false
+            }
+        }
+
+        When("der Jahreswechsel mit manuell abweichendem Urlaubsübertrag (5 statt 8) übernommen wird") {
+            viewModel.applyYearChange(carryOverDays = 5, annualDays = 30)
+
+            Then("wird carryOverToNextYearManual = true im YearClosing-Snapshot gesetzt") {
+                savedClosingSlot.captured.carryOverToNextYearManual shouldBe true
+                savedSettingsSlot.captured.carryOverVacationDays shouldBe 5
+            }
         }
     }
 
@@ -157,8 +180,11 @@ class YearChangeBehaviorSpec : BehaviorSpec({
             earnedOvertimeMinutes = 0
         )
 
+        val savedClosingSlot = slot<com.flex.domain.model.YearClosing>()
         val savedSettingsSlot = slot<Settings>()
-        coEvery { settingsRepository.saveSettings(capture(savedSettingsSlot)) } returns Unit
+        coEvery {
+            settingsRepository.applyYearClosing(capture(savedClosingSlot), capture(savedSettingsSlot))
+        } returns Unit
 
         val viewModel = YearChangeViewModel(
             workDayRepository,

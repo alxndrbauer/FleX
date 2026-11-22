@@ -53,6 +53,7 @@ class WorkDayRepositoryImplTest : BaseUnitTest() {
     override fun setUp() {
         super.setUp()
         whenever(settingsRepository.getSettings()).thenReturn(flowOf(Settings()))
+        whenever(settingsRepository.getYearClosings()).thenReturn(flowOf(emptyList()))
         repository = WorkDayRepositoryImpl(workDayDao, timeBlockDao, calendarSyncService, settingsRepository)
     }
 
@@ -472,7 +473,7 @@ class WorkDayRepositoryImplTest : BaseUnitTest() {
 
         whenever(workDayDao.getWorkDaysBetween("2025-02-01", "2025-02-28"))
             .thenReturn(flowOf(workDayEntities))
-        whenever(timeBlockDao.getAllTimeBlocksFlow())
+        whenever(timeBlockDao.getTimeBlocksForDaysFlow(listOf(1L, 2L)))
             .thenReturn(flowOf(emptyList()))
 
         // When: Getting work days for February 2025
@@ -480,6 +481,8 @@ class WorkDayRepositoryImplTest : BaseUnitTest() {
 
         // Then: Should query correct date range
         verify(workDayDao).getWorkDaysBetween("2025-02-01", "2025-02-28")
+        verify(timeBlockDao).getTimeBlocksForDaysFlow(listOf(1L, 2L))
+        verify(timeBlockDao, never()).getAllTimeBlocksFlow()
         assertThat(result).hasSize(2)
     }
 
@@ -513,13 +516,15 @@ class WorkDayRepositoryImplTest : BaseUnitTest() {
 
         whenever(workDayDao.getWorkDaysBetween("2025-02-01", "2025-02-28"))
             .thenReturn(flowOf(workDayEntities))
-        whenever(timeBlockDao.getAllTimeBlocksFlow())
+        whenever(timeBlockDao.getTimeBlocksForDaysFlow(listOf(1L, 2L)))
             .thenReturn(flowOf(timeBlockEntities))
 
         // When: Getting work days
         val result = repository.getWorkDaysForMonth(yearMonth).first()
 
         // Then: TimeBlocks should be correctly associated
+        verify(timeBlockDao).getTimeBlocksForDaysFlow(listOf(1L, 2L))
+        verify(timeBlockDao, never()).getAllTimeBlocksFlow()
         assertThat(result).hasSize(2)
         assertThat(result[0].id).isEqualTo(1L)
         assertThat(result[0].timeBlocks).hasSize(2) // WorkDay 1 has 2 blocks
@@ -756,5 +761,160 @@ class WorkDayRepositoryImplTest : BaseUnitTest() {
 
         verify(calendarSyncService).deleteCalendarEvent(any(), any())
         verify(calendarSyncService, never()).deleteGroupEventForWorkDay(any())
+    }
+
+    // ========== getWorkDaysForYear & Scoped TimeBlock Queries ==========
+
+    @Test
+    fun `getWorkDaysForYear uses getTimeBlocksForDaysFlow instead of getAllTimeBlocksFlow`() = runTest {
+        val workDayEntities = listOf(
+            WorkDayEntity(id = 10L, date = "2025-01-15", location = "OFFICE", dayType = "WORK"),
+            WorkDayEntity(id = 20L, date = "2025-06-20", location = "HOME_OFFICE", dayType = "WORK")
+        )
+        val blocks = listOf(
+            TimeBlockEntity(id = 1L, workDayId = 10L, startTime = "08:00", endTime = "16:00", isDuration = false)
+        )
+        whenever(workDayDao.getWorkDaysBetween("2025-01-01", "2025-12-31"))
+            .thenReturn(flowOf(workDayEntities))
+        whenever(timeBlockDao.getTimeBlocksForDaysFlow(listOf(10L, 20L)))
+            .thenReturn(flowOf(blocks))
+
+        val result = repository.getWorkDaysForYear(2025).first()
+
+        verify(timeBlockDao).getTimeBlocksForDaysFlow(listOf(10L, 20L))
+        verify(timeBlockDao, never()).getAllTimeBlocksFlow()
+        assertThat(result).hasSize(2)
+        assertThat(result[0].timeBlocks).hasSize(1)
+        assertThat(result[1].timeBlocks).isEmpty()
+    }
+
+    // ========== auto_cascade Tests ==========
+
+    @Test
+    fun `saveWorkDay in closed year cascades YearClosing and next year settings`() = runTest {
+        val settings2026 = Settings(
+            dailyWorkMinutes = 420,
+            settingsYear = 2026,
+            initialFlextimeMinutes = 360,
+            initialOvertimeMinutes = 0,
+            annualVacationDays = 30,
+            carryOverVacationDays = 5
+        )
+        val closing2025 = com.flex.domain.model.YearClosing(
+            year = 2025,
+            annualVacationDays = 30,
+            carryOverVacationDays = 2,
+            specialVacationDays = 5,
+            specialVacationPaidOut = false,
+            startFlextimeMinutes = 60,
+            startOvertimeMinutes = 0,
+            endFlextimeMinutes = 360,
+            endOvertimeMinutes = 0,
+            usedVacationDays = 27,
+            carryOverToNextYearManual = false
+        )
+        whenever(settingsRepository.getSettings()).thenReturn(flowOf(settings2026))
+        whenever(settingsRepository.getYearClosings()).thenReturn(flowOf(listOf(closing2025)))
+        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
+
+        val newVacation = WorkDay(
+            id = 0L,
+            date = LocalDate.of(2025, 12, 22),
+            location = WorkLocation.OFFICE,
+            dayType = DayType.VACATION,
+            isPlanned = false
+        )
+        whenever(workDayDao.insert(any())).thenReturn(99L)
+        // Simulate 28 vacation days + 1 business trip (+300 min flex) in 2025
+        val days2025 = (1..28).map { d ->
+            WorkDayEntity(id = d.toLong(), date = "2025-07-${d.toString().padStart(2, '0')}", location = "OFFICE", dayType = "VACATION", isPlanned = false)
+        } + listOf(
+            WorkDayEntity(id = 50L, date = "2025-08-04", location = "OFFICE", dayType = "BUSINESS_TRIP", isPlanned = false)
+        )
+        whenever(workDayDao.getWorkDaysBetweenSync("2025-01-01", "2025-12-31")).thenReturn(days2025)
+        whenever(timeBlockDao.getTimeBlocksForDays(any())).thenReturn(
+            listOf(TimeBlockEntity(id = 1L, workDayId = 50L, startTime = "08:00", endTime = "20:00", isDuration = true)) // 720 - 420 = +300 min
+        )
+
+        repository.saveWorkDay(newVacation)
+
+        val closingCaptor = argumentCaptor<com.flex.domain.model.YearClosing>()
+        verify(settingsRepository).saveYearClosing(closingCaptor.capture())
+        assertThat(closingCaptor.firstValue.year).isEqualTo(2025)
+        assertThat(closingCaptor.firstValue.usedVacationDays).isEqualTo(28)
+        assertThat(closingCaptor.firstValue.endFlextimeMinutes).isEqualTo(360)
+
+        val settingsCaptor = argumentCaptor<Settings>()
+        verify(settingsRepository).saveSettings(settingsCaptor.capture())
+        assertThat(settingsCaptor.firstValue.initialFlextimeMinutes).isEqualTo(360)
+        // 30 + 2 - 28 = 4 remaining
+        assertThat(settingsCaptor.firstValue.carryOverVacationDays).isEqualTo(4)
+    }
+
+    @Test
+    fun `cascade preserves manual carryOverVacationDays when carryOverToNextYearManual is true`() = runTest {
+        val settings2026 = Settings(
+            dailyWorkMinutes = 420,
+            settingsYear = 2026,
+            initialFlextimeMinutes = 360,
+            initialOvertimeMinutes = 0,
+            annualVacationDays = 30,
+            carryOverVacationDays = 2
+        )
+        val closing2025 = com.flex.domain.model.YearClosing(
+            year = 2025,
+            annualVacationDays = 30,
+            carryOverVacationDays = 2,
+            specialVacationDays = 5,
+            specialVacationPaidOut = false,
+            startFlextimeMinutes = 60,
+            startOvertimeMinutes = 0,
+            endFlextimeMinutes = 360,
+            endOvertimeMinutes = 0,
+            usedVacationDays = 27,
+            carryOverToNextYearManual = true
+        )
+        whenever(settingsRepository.getSettings()).thenReturn(flowOf(settings2026))
+        whenever(settingsRepository.getYearClosings()).thenReturn(flowOf(listOf(closing2025)))
+        whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
+        whenever(workDayDao.insert(any())).thenReturn(99L)
+        whenever(workDayDao.getWorkDaysBetweenSync("2025-01-01", "2025-12-31")).thenReturn(
+            listOf(WorkDayEntity(id = 50L, date = "2025-08-04", location = "OFFICE", dayType = "BUSINESS_TRIP", isPlanned = false))
+        )
+        whenever(timeBlockDao.getTimeBlocksForDays(any())).thenReturn(
+            listOf(TimeBlockEntity(id = 1L, workDayId = 50L, startTime = "08:00", endTime = "16:00", isDuration = true)) // 480 - 420 = +60 min
+        )
+
+        repository.saveWorkDay(WorkDay(date = LocalDate.of(2025, 8, 4), dayType = DayType.BUSINESS_TRIP))
+
+        val settingsCaptor = argumentCaptor<Settings>()
+        verify(settingsRepository).saveSettings(settingsCaptor.capture())
+        assertThat(settingsCaptor.firstValue.initialFlextimeMinutes).isEqualTo(120) // 60 + 60
+        assertThat(settingsCaptor.firstValue.carryOverVacationDays).isEqualTo(2) // manual preserved!
+    }
+
+    @Test
+    fun `saveWorkDay in current settingsYear does not trigger cascade`() = runTest {
+        val settings2026 = Settings(settingsYear = 2026)
+        whenever(settingsRepository.getSettings()).thenReturn(flowOf(settings2026))
+        whenever(workDayDao.insert(any())).thenReturn(1L)
+
+        repository.saveWorkDay(WorkDay(date = LocalDate.of(2026, 3, 10), dayType = DayType.WORK))
+
+        verify(settingsRepository, never()).getYearClosings()
+        verify(settingsRepository, never()).saveYearClosing(any())
+    }
+
+    @Test
+    fun `confirmPlannedDaysUpTo only cascades when earliest planned day is before settingsYear`() = runTest {
+        val settings2026 = Settings(settingsYear = 2026)
+        whenever(settingsRepository.getSettings()).thenReturn(flowOf(settings2026))
+        whenever(workDayDao.getEarliestPlannedDateUpTo("2026-02-15")).thenReturn("2026-02-10")
+        whenever(workDayDao.confirmPlannedDaysUpTo("2026-02-15")).thenReturn(2)
+
+        val count = repository.confirmPlannedDaysUpTo(LocalDate.of(2026, 2, 15))
+
+        assertThat(count).isEqualTo(2)
+        verify(settingsRepository, never()).getYearClosings()
     }
 }

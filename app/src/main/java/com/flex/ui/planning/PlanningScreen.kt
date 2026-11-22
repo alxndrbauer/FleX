@@ -262,7 +262,7 @@ fun PlanningScreen(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                val isSpecialVacationBlocked = state.settings.specialVacationPaidOut && state.settings.settingsYear == state.yearMonth.year
+                val isSpecialVacationBlocked = state.isSpecialVacationPaidOut
                 PlanType.entries.forEach { type ->
                     val chipColor = when (type) {
                         PlanType.OFFICE -> OfficeColor

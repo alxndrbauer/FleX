@@ -801,4 +801,87 @@ class HomeViewModelBehaviorSpec : BehaviorSpec({
             }
         }
     }
+
+    Given("ein HomeViewModel beim Navigieren in ein abgeschlossenes Vorjahr mit YearClosing-Snapshot") {
+        val realCalc = CalculateFlextimeUseCase(CalculateDayWorkTimeUseCase())
+        val settings2026 = Settings(
+            dailyWorkMinutes = 420,
+            settingsYear = 2026,
+            initialFlextimeMinutes = 360,
+            specialVacationPaidOut = false
+        )
+        val closing2025 = com.flex.domain.model.YearClosing(
+            year = 2025,
+            annualVacationDays = 30,
+            carryOverVacationDays = 4,
+            specialVacationDays = 5,
+            specialVacationPaidOut = true,
+            startFlextimeMinutes = 60,
+            startOvertimeMinutes = 0,
+            endFlextimeMinutes = 360,
+            endOvertimeMinutes = 0,
+            usedVacationDays = 20
+        )
+        val day2025 = WorkDay(
+            id = 1L,
+            date = LocalDate.of(2025, 3, 3),
+            dayType = DayType.BUSINESS_TRIP,
+            location = WorkLocation.OFFICE,
+            isPlanned = false,
+            timeBlocks = listOf(
+                TimeBlock(
+                    workDayId = 1L,
+                    startTime = LocalTime.of(8, 0),
+                    endTime = LocalTime.of(20, 0),
+                    isDuration = true
+                )
+            )
+        )
+
+        val context = mockk<Context>(relaxed = true)
+        val repo = mockk<WorkDayRepository>(relaxed = true)
+        val settingsRepo = mockk<SettingsRepository>(relaxed = true)
+        val getMonthWorkDays = mockk<GetMonthWorkDaysUseCase>(relaxed = true)
+        val getSettings = mockk<GetSettingsUseCase>(relaxed = true)
+        val calculateDayWorkTime = CalculateDayWorkTimeUseCase()
+        val calculateQuota = mockk<CalculateQuotaUseCase>(relaxed = true)
+        val dataChangeEventBus = mockk<DataChangeEventBus>(relaxed = true)
+        val checkBreakViolation = mockk<CheckBreakViolationUseCase>(relaxed = true)
+        val breakWarningScheduler = mockk<BreakWarningScheduler>(relaxed = true)
+        val whatsNewPreferences = mockk<WhatsNewPreferences>(relaxed = true)
+        val backupPreferences = mockk<BackupPreferences>(relaxed = true)
+        val autoBookPlannedDays = mockk<AutoBookPlannedDaysUseCase>(relaxed = true)
+
+        every { getSettings() } returns flowOf(settings2026)
+        every { settingsRepo.getYearClosings() } returns flowOf(listOf(closing2025))
+        every { settingsRepo.getQuotaRules() } returns flowOf(emptyList())
+        every { settingsRepo.getWorkTimeRules() } returns flowOf(emptyList())
+        every { getMonthWorkDays(any()) } returns flowOf(emptyList())
+        every { repo.getWorkDaysForYear(2025) } returns flowOf(listOf(day2025))
+        every { repo.getWorkDaysForYear(match { it != 2025 }) } returns flowOf(emptyList())
+        coEvery { repo.getWorkDay(any()) } returns flowOf(null)
+        every { calculateQuota(any(), any(), any(), any(), any(), any()) } returns QuotaStatus()
+        every { dataChangeEventBus.events } returns MutableSharedFlow()
+        every { checkBreakViolation(any(), any()) } returns BreakCheckResult(emptyList(), skipped = false)
+        every { whatsNewPreferences.getLastSeenVersionCode() } returns 0
+        every { backupPreferences.isAutoBackupEnabled } returns false
+
+        val vm = HomeViewModel(
+            context, repo, settingsRepo, getMonthWorkDays,
+            getSettings, calculateDayWorkTime, realCalc, calculateQuota,
+            dataChangeEventBus, checkBreakViolation, breakWarningScheduler,
+            whatsNewPreferences, backupPreferences, autoBookPlannedDays,
+            CheckTimeBlockOverlapUseCase(),
+            clock = fixedClock()
+        )
+
+        When("ein Datum im abgeschlossenen Jahr 2025 ausgewählt wird") {
+            vm.navigateToDate(LocalDate.of(2025, 3, 3))
+
+            Then("beträgt der Gleitzeitsaldo Ende des Tages 360 Min ohne Doppelzählung und isSpecialVacationPaidOut ist true") {
+                vm.uiState.value.selectedDateFlextimeBalance.totalMinutes shouldBe 360L
+                vm.uiState.value.isSpecialVacationPaidOut shouldBe true
+            }
+        }
+    }
 })

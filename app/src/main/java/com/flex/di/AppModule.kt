@@ -13,6 +13,7 @@ import com.flex.data.local.dao.SettingsDao
 import com.flex.data.local.dao.TimeBlockDao
 import com.flex.data.local.dao.WorkDayDao
 import com.flex.data.local.dao.WorkTimeRuleDao
+import com.flex.data.local.dao.YearClosingDao
 import com.flex.calendar.CalendarSyncService
 import com.flex.data.repository.HolidayRepositoryImpl
 import com.flex.data.repository.SettingsRepositoryImpl
@@ -162,7 +163,7 @@ object AppModule {
             context,
             FlexDatabase::class.java,
             "flex_database"
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, FlexDatabase.MIGRATION_15_16, FlexDatabase.MIGRATION_16_17, FlexDatabase.MIGRATION_17_18, FlexDatabase.MIGRATION_18_19, FlexDatabase.MIGRATION_19_20).build()
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, FlexDatabase.MIGRATION_15_16, FlexDatabase.MIGRATION_16_17, FlexDatabase.MIGRATION_17_18, FlexDatabase.MIGRATION_18_19, FlexDatabase.MIGRATION_19_20, FlexDatabase.MIGRATION_20_21).build()
     }
 
     @Provides
@@ -187,6 +188,9 @@ object AppModule {
     fun provideHolidayCacheDao(database: FlexDatabase): HolidayCacheDao = database.holidayCacheDao()
 
     @Provides
+    fun provideYearClosingDao(database: FlexDatabase): YearClosingDao = database.yearClosingDao()
+
+    @Provides
     @Singleton
     fun provideWorkDayRepository(
         workDayDao: WorkDayDao,
@@ -200,8 +204,10 @@ object AppModule {
     fun provideSettingsRepository(
         settingsDao: SettingsDao,
         quotaRuleDao: QuotaRuleDao,
-        workTimeRuleDao: WorkTimeRuleDao
-    ): SettingsRepository = SettingsRepositoryImpl(settingsDao, quotaRuleDao, workTimeRuleDao)
+        workTimeRuleDao: WorkTimeRuleDao,
+        yearClosingDao: YearClosingDao,
+        database: FlexDatabase
+    ): SettingsRepository = SettingsRepositoryImpl(settingsDao, quotaRuleDao, workTimeRuleDao, yearClosingDao, database)
 
     @Provides
     @Singleton

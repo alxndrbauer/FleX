@@ -900,7 +900,7 @@ fun MonthScreen(
             workDay = editDay,
             dailyWorkMinutes = activeDailyTarget,
             defaultStartTime = state.settings.defaultStartTime,
-            isSpecialVacationBlocked = state.settings.specialVacationPaidOut && state.settings.settingsYear == editDay.date.year,
+            isSpecialVacationBlocked = state.isSpecialVacationPaidOut,
             availableOvertimeMinutes = state.overtimeMinutesBefore(editDay.date),
             hasDailyTarget = state.hasDailyTarget(editDay.date),
             onDismiss = { viewModel.clearEditing() },

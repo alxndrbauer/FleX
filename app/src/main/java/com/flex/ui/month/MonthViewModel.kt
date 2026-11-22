@@ -22,6 +22,7 @@ import com.flex.domain.model.getRuleForMonth
 import com.flex.domain.model.hasDailyWorkTarget
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
+import com.flex.domain.repository.observeYearClosingsOrEmpty
 import com.flex.domain.usecase.BuildPrognosisDaysUseCase
 import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.CalculateFlextimeUseCase
@@ -31,6 +32,8 @@ import com.flex.domain.usecase.GetSettingsUseCase
 import com.flex.domain.usecase.CheckBreakViolationUseCase
 import com.flex.domain.usecase.CheckTimeBlockOverlapUseCase
 import com.flex.domain.usecase.PrepareExportDataUseCase
+import com.flex.domain.usecase.YearContextResolver
+import com.flex.domain.model.YearClosing
 import com.flex.notification.ExportNotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -83,7 +86,8 @@ data class MonthUiState(
     val breakViolationDates: Set<LocalDate> = emptySet(),
     val overlappingDates: Set<LocalDate> = emptySet(),
     val overtimeMinutesAtMonthStart: Long = 0L,
-    val overtimeMinutesAfterDate: Map<LocalDate, Long> = emptyMap()
+    val overtimeMinutesAfterDate: Map<LocalDate, Long> = emptyMap(),
+    val isSpecialVacationPaidOut: Boolean = false
 ) {
     /** Overtime balance available for an overtime day at [date]: balance after the previous day. */
     fun overtimeMinutesBefore(date: LocalDate): Long =
@@ -114,7 +118,8 @@ class MonthViewModel @Inject constructor(
     private val buildPrognosisDays: BuildPrognosisDaysUseCase,
     private val checkTimeBlockOverlap: CheckTimeBlockOverlapUseCase = CheckTimeBlockOverlapUseCase(),
     private val exportNotificationHelper: ExportNotificationHelper? = null,
-    private val clock: Clock = Clock.systemDefaultZone()
+    private val clock: Clock = Clock.systemDefaultZone(),
+    private val yearContextResolver: YearContextResolver = YearContextResolver(calculateFlextime)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MonthUiState())
@@ -133,7 +138,8 @@ private data class MonthConfig(
     val month: YearMonth,
     val settings: Settings,
     val quotaRules: List<com.flex.domain.model.QuotaRule>,
-    val workTimeRules: List<com.flex.domain.model.WorkTimeRule>
+    val workTimeRules: List<com.flex.domain.model.WorkTimeRule>,
+    val closings: List<YearClosing>
 )
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -143,23 +149,49 @@ private data class MonthConfig(
                 _selectedMonth,
                 getSettings(),
                 settingsRepository.getQuotaRules(),
-                settingsRepository.getWorkTimeRules()
-            ) { month, settings, rules, workTimeRules ->
-                MonthConfig(month, settings, rules, workTimeRules)
-            }.flatMapLatest { (month, settings, rules, workTimeRules) ->
-                // In a year after settingsYear the balance includes the previous year's days
-                // as long as the year change has not moved the balance into settings yet.
-                val previousYearDaysFlow = if (settings.settingsYear < month.year) {
-                    workDayRepository.getWorkDaysForYear(month.year - 1)
-                } else {
-                    flowOf(emptyList())
+                settingsRepository.getWorkTimeRules(),
+                settingsRepository.observeYearClosingsOrEmpty()
+            ) { month, settings, rules, workTimeRules, closings ->
+                MonthConfig(month, settings, rules, workTimeRules, closings)
+            }.flatMapLatest { (month, settings, rules, workTimeRules, closings) ->
+                val closingsByYear = closings.associateBy { it.year }
+                val extraYearsFlow = when {
+                    month.year > settings.settingsYear -> {
+                        if (month.year == settings.settingsYear + 1) {
+                            runCatching { workDayRepository.getWorkDaysForYear(settings.settingsYear) }.getOrNull()
+                                ?: flowOf(emptyList())
+                        } else {
+                            runCatching {
+                                workDayRepository.getWorkDaysInRange(
+                                    LocalDate.of(settings.settingsYear, 1, 1),
+                                    LocalDate.of(month.year - 1, 12, 31)
+                                )
+                            }.getOrNull() ?: flowOf(emptyList())
+                        }
+                    }
+                    month.year < settings.settingsYear && closingsByYear[month.year] == null -> {
+                        val anchorYear = closingsByYear.keys
+                            .filter { it > month.year && it < settings.settingsYear }
+                            .minOrNull() ?: settings.settingsYear
+                        if (anchorYear > month.year + 1) {
+                            runCatching {
+                                workDayRepository.getWorkDaysInRange(
+                                    LocalDate.of(month.year + 1, 1, 1),
+                                    LocalDate.of(anchorYear - 1, 12, 31)
+                                )
+                            }.getOrNull() ?: flowOf(emptyList())
+                        } else {
+                            flowOf(emptyList())
+                        }
+                    }
+                    else -> flowOf(emptyList())
                 }
                 combine(
                     getMonthWorkDays(month),
                     workDayRepository.getWorkDaysForYear(month.year),
-                    previousYearDaysFlow
-                ) { days, yearDays, previousYearDays ->
-                    arrayOf(month, settings, rules, workTimeRules, days, yearDays + previousYearDays)
+                    extraYearsFlow
+                ) { days, targetYearDays, extraDays ->
+                    arrayOf(month, settings, rules, workTimeRules, closingsByYear, days, targetYearDays, extraDays)
                 }
             }.collect { arr ->
                 @Suppress("UNCHECKED_CAST")
@@ -170,9 +202,22 @@ private data class MonthConfig(
                 @Suppress("UNCHECKED_CAST")
                 val workTimeRules = arr[3] as List<com.flex.domain.model.WorkTimeRule>
                 @Suppress("UNCHECKED_CAST")
-                val days = arr[4] as List<WorkDay>
+                val closingsByYear = arr[4] as Map<Int, YearClosing>
                 @Suppress("UNCHECKED_CAST")
-                val yearDays = arr[5] as List<WorkDay>
+                val days = arr[5] as List<WorkDay>
+                @Suppress("UNCHECKED_CAST")
+                val targetYearDays = arr[6] as List<WorkDay>
+                @Suppress("UNCHECKED_CAST")
+                val extraDays = arr[7] as List<WorkDay>
+                val extraByYear = extraDays.groupBy { it.date.year }
+                val (effectiveSettings, yearDays) = yearContextResolver.buildFlextimeInputForYear(
+                    targetYear = month.year,
+                    settings = settings,
+                    closingsByYear = closingsByYear,
+                    targetYearWorkDays = targetYearDays,
+                    otherYearsWorkDaysLookup = { y -> extraByYear[y].orEmpty() },
+                    workTimeRules = workTimeRules
+                )
 
                 val rule = settingsRepository.getQuotaRuleForMonth(month, rules)
                 val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
@@ -202,7 +247,7 @@ private data class MonthConfig(
                     YearMonth.from(it.date).isBefore(month) && !it.isPlanned
                 }
                 val flextimeDays = previousMonthsDays + prognosisDays
-                val flextime = calculateFlextime(flextimeDays, settings, month, workTimeRules)
+                val flextime = calculateFlextime(flextimeDays, effectiveSettings, month, workTimeRules)
 
                 // Fixed monthly target, reduced by neutral days (vacation, flex, etc.)
                 // Use workTimeRule-aware daily/monthly targets (same logic as HomeViewModel)
@@ -243,14 +288,14 @@ private data class MonthConfig(
 
                 val flexByDate = mutableMapOf<LocalDate, Long>()
                 val dailyFlexByDate = mutableMapOf<LocalDate, Long>()
-                val baseFlex = calculateFlextime(previousMonthsDays, settings, null, workTimeRules)
+                val baseFlex = calculateFlextime(previousMonthsDays, effectiveSettings, null, workTimeRules)
                 val baseFlextimeMinutes = baseFlex.totalMinutes
                 val monthStartOvertime = baseFlex.overtimeMinutes
                 var currentFlex = baseFlextimeMinutes
                 var runningOvertime = monthStartOvertime
                 val overtimeAfterByDate = mutableMapOf<LocalDate, Long>()
                 for (day in prognosisDays.sortedBy { it.date }) {
-                    val step = calculateFlextime(listOf(day), settings.copy(initialFlextimeMinutes = 0, initialOvertimeMinutes = runningOvertime.toInt()), null, workTimeRules)
+                    val step = calculateFlextime(listOf(day), effectiveSettings.copy(initialFlextimeMinutes = 0, initialOvertimeMinutes = runningOvertime.toInt()), null, workTimeRules)
                     val singleDayEarned = step.totalMinutes
                     runningOvertime = step.overtimeMinutes
                     overtimeAfterByDate[day.date] = runningOvertime
@@ -329,7 +374,7 @@ private data class MonthConfig(
                 }
 
                 // Monthly flextime earned in this month (initialFlextime = 0, overtime = balance at month start)
-                val monthlyFlextime = calculateFlextime(daysForCalc, settings.copy(initialFlextimeMinutes = 0, initialOvertimeMinutes = monthStartOvertime.toInt()), month, workTimeRules)
+                val monthlyFlextime = calculateFlextime(daysForCalc, effectiveSettings.copy(initialFlextimeMinutes = 0, initialOvertimeMinutes = monthStartOvertime.toInt()), month, workTimeRules)
                 val differenceMinutesMonth = monthlyFlextime.totalMinutes
 
                 _uiState.value = _uiState.value.copy(
@@ -357,7 +402,8 @@ private data class MonthConfig(
                     breakViolationDates = violationDates,
                     overlappingDates = overlappingDates,
                     overtimeMinutesAtMonthStart = monthStartOvertime,
-                    overtimeMinutesAfterDate = overtimeAfterByDate
+                    overtimeMinutesAfterDate = overtimeAfterByDate,
+                    isSpecialVacationPaidOut = effectiveSettings.specialVacationPaidOut
                 )
             }
         }
@@ -444,7 +490,7 @@ private data class MonthConfig(
     ) {
         viewModelScope.launch {
             val state = _uiState.value
-            if (dayType == DayType.SPECIAL_VACATION && state.settings.specialVacationPaidOut && state.settings.settingsYear == date.year) {
+            if (dayType == DayType.SPECIAL_VACATION && state.isSpecialVacationPaidOut) {
                 return@launch
             }
             val existingDay = state.editingDay

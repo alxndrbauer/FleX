@@ -306,4 +306,70 @@ class DashboardViewModelTest : BaseUnitTest() {
         assertThat(currentWeek).isNotNull()
         assertThat(currentWeek?.targetMinutes).isEqualTo(5 * 324L)
     }
+
+    @Test
+    fun `navigating to closed past year uses YearClosing snapshot without double counting and blocks payout modification`() = runTest {
+        val realCalc = CalculateFlextimeUseCase(com.flex.domain.usecase.CalculateDayWorkTimeUseCase())
+        val settings2026 = Settings(
+            dailyWorkMinutes = 420,
+            settingsYear = 2026,
+            initialFlextimeMinutes = 360,
+            initialOvertimeMinutes = 0,
+            annualVacationDays = 30,
+            carryOverVacationDays = 2,
+            specialVacationDays = 0,
+            specialVacationPaidOut = false
+        )
+        val closing2025 = com.flex.domain.model.YearClosing(
+            year = 2025,
+            annualVacationDays = 28,
+            carryOverVacationDays = 4,
+            specialVacationDays = 5,
+            specialVacationPaidOut = true,
+            startFlextimeMinutes = 60,
+            startOvertimeMinutes = 0,
+            endFlextimeMinutes = 360,
+            endOvertimeMinutes = 0,
+            usedVacationDays = 20
+        )
+        val day2025 = WorkDay(
+            id = 1L,
+            date = LocalDate.of(2025, 3, 3),
+            dayType = DayType.BUSINESS_TRIP,
+            location = com.flex.domain.model.WorkLocation.OFFICE,
+            isPlanned = false,
+            timeBlocks = listOf(
+                com.flex.domain.model.TimeBlock(
+                    workDayId = 1L,
+                    startTime = java.time.LocalTime.of(8, 0),
+                    endTime = java.time.LocalTime.of(20, 0),
+                    isDuration = true
+                )
+            )
+        )
+        whenever(getSettings()).thenReturn(flowOf(settings2026))
+        whenever(settingsRepository.getYearClosings()).thenReturn(flowOf(listOf(closing2025)))
+        whenever(workDayRepository.getWorkDaysForYear(2025)).thenReturn(flowOf(listOf(day2025)))
+        whenever(calculateFlextime.invoke(any(), any(), any(), any())).thenAnswer { inv ->
+            realCalc(
+                inv.getArgument(0),
+                inv.getArgument(1),
+                inv.getArgument(2),
+                inv.getArgument(3)
+            )
+        }
+
+        viewModel = createViewModel()
+        viewModel.selectYear(2025)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertThat(state.flextimeBalance.totalMinutes).isEqualTo(360L)
+        assertThat(state.vacationInfo.annualDays).isEqualTo(28)
+        assertThat(state.vacationInfo.carryOverDays).isEqualTo(4)
+        assertThat(state.vacationInfo.specialDays).isEqualTo(5)
+        assertThat(state.vacationInfo.isSpecialPaidOut).isTrue()
+        assertThat(state.vacationInfo.canModifySpecialVacationPayout).isFalse()
+        assertThat(state.vacationInfo.canPayoutSpecialDays).isFalse()
+    }
 }

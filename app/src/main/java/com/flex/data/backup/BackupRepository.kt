@@ -11,6 +11,7 @@ import com.flex.data.local.dao.SettingsDao
 import com.flex.data.local.dao.TimeBlockDao
 import com.flex.data.local.dao.WorkDayDao
 import com.flex.data.local.dao.WorkTimeRuleDao
+import com.flex.data.local.dao.YearClosingDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -26,7 +27,8 @@ class BackupRepository @Inject constructor(
     private val timeBlockDao: TimeBlockDao,
     private val settingsDao: SettingsDao,
     private val quotaRuleDao: QuotaRuleDao,
-    private val workTimeRuleDao: WorkTimeRuleDao
+    private val workTimeRuleDao: WorkTimeRuleDao,
+    private val yearClosingDao: YearClosingDao
 ) {
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
 
@@ -36,6 +38,7 @@ class BackupRepository @Inject constructor(
         val settings = settingsDao.getSettingsSync()
         val quotaRules = quotaRuleDao.getAllRulesSync()
         val workTimeRules = workTimeRuleDao.getAllRulesSync()
+        val yearClosings = yearClosingDao.getAllClosingsSync()
 
         val backupFile = BackupFile(
             version = 1,
@@ -47,7 +50,8 @@ class BackupRepository @Inject constructor(
                 timeBlocks = timeBlocks,
                 settings = settings,
                 quotaRules = quotaRules,
-                workTimeRules = workTimeRules
+                workTimeRules = workTimeRules,
+                yearClosings = yearClosings
             )
         )
 
@@ -75,12 +79,14 @@ class BackupRepository @Inject constructor(
                     workDayDao.deleteAll()
                     quotaRuleDao.deleteAll()
                     workTimeRuleDao.deleteAll()
+                    yearClosingDao.deleteAll()
 
                     workDayDao.insertAll(backupFile.data.workDays)
                     timeBlockDao.insertAll(backupFile.data.timeBlocks)
                     backupFile.data.settings?.let { settingsDao.insert(it) }
                     quotaRuleDao.insertAll(backupFile.data.quotaRules)
                     workTimeRuleDao.insertAll(backupFile.data.workTimeRules)
+                    backupFile.data.yearClosings?.let { yearClosingDao.insertAll(it) }
                 }
                 ImportMode.MERGE -> {
                     workDayDao.insertAll(backupFile.data.workDays)
@@ -88,6 +94,7 @@ class BackupRepository @Inject constructor(
                     backupFile.data.settings?.let { settingsDao.insert(it) }
                     quotaRuleDao.insertAll(backupFile.data.quotaRules)
                     workTimeRuleDao.insertAll(backupFile.data.workTimeRules)
+                    backupFile.data.yearClosings?.let { yearClosingDao.insertAll(it) }
                 }
             }
         }
