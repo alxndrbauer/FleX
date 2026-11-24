@@ -6,6 +6,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import com.flex.domain.model.AutoClockInPlannedDaySnapshot
 import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkLocation
+import com.google.android.gms.location.Geofence
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +26,21 @@ data class GeofenceEventInfo(
     val atEpochMs: Long? = null
 )
 
+enum class GeofenceLogType {
+    ENTER,
+    DWELL,
+    EXIT,
+    ERROR,
+    REGISTERED,
+    REGISTER_FAILED
+}
+
+data class GeofenceLogEntry(
+    val type: GeofenceLogType,
+    val atEpochMs: Long,
+    val detail: String = ""
+)
+
 @Singleton
 class GeofencePreferences @Inject constructor(
     @ApplicationContext context: Context
@@ -38,13 +54,32 @@ class GeofencePreferences @Inject constructor(
     private val _lastEvent = MutableStateFlow(loadLastEvent())
     val lastEvent: StateFlow<GeofenceEventInfo> = _lastEvent.asStateFlow()
 
-    fun recordEvent(transition: Int?, errorCode: Int?, atEpochMs: Long) {
+    private val _eventHistory = MutableStateFlow(loadEventHistory())
+    val eventHistory: StateFlow<List<GeofenceLogEntry>> = _eventHistory.asStateFlow()
+
+    fun recordEvent(transition: Int?, errorCode: Int?, atEpochMs: Long, detail: String = "") {
         prefs.edit().apply {
             if (transition == null) remove(KEY_EVENT_TRANSITION) else putInt(KEY_EVENT_TRANSITION, transition)
             if (errorCode == null) remove(KEY_EVENT_ERROR) else putInt(KEY_EVENT_ERROR, errorCode)
             putLong(KEY_EVENT_AT, atEpochMs)
         }.apply()
         _lastEvent.value = GeofenceEventInfo(transition, errorCode, atEpochMs)
+
+        when {
+            errorCode != null -> {
+                val errorDetail = detail.ifBlank { "Code $errorCode" }
+                appendLog(GeofenceLogType.ERROR, atEpochMs, errorDetail)
+            }
+            transition == Geofence.GEOFENCE_TRANSITION_ENTER -> {
+                appendLog(GeofenceLogType.ENTER, atEpochMs, detail)
+            }
+            transition == Geofence.GEOFENCE_TRANSITION_DWELL -> {
+                appendLog(GeofenceLogType.DWELL, atEpochMs, detail)
+            }
+            transition == Geofence.GEOFENCE_TRANSITION_EXIT -> {
+                appendLog(GeofenceLogType.EXIT, atEpochMs, detail)
+            }
+        }
     }
 
     private fun loadLastEvent(): GeofenceEventInfo {
@@ -64,11 +99,64 @@ class GeofencePreferences @Inject constructor(
 
     fun markRegistrationPending() = persistRegistration(null, null)
 
-    fun markRegistrationSuccess(atEpochMs: Long) = persistRegistration(true, atEpochMs)
+    fun markRegistrationSuccess(atEpochMs: Long, source: String = "") {
+        persistRegistration(true, atEpochMs)
+        appendLog(GeofenceLogType.REGISTERED, atEpochMs, source)
+    }
 
-    fun markRegistrationFailure(atEpochMs: Long) = persistRegistration(false, atEpochMs)
+    fun markRegistrationFailure(atEpochMs: Long, source: String = "", errorMessage: String? = null) {
+        persistRegistration(false, atEpochMs)
+        val detail = listOfNotNull(
+            source.takeIf { it.isNotBlank() },
+            errorMessage?.takeIf { it.isNotBlank() }
+        ).joinToString(": ")
+        appendLog(GeofenceLogType.REGISTER_FAILED, atEpochMs, detail)
+    }
 
     fun clearRegistration() = persistRegistration(null, null)
+
+    fun appendLog(type: GeofenceLogType, atEpochMs: Long, detail: String = "") {
+        val sanitizedDetail = detail.replace('|', ' ').replace('\n', ' ').replace('\r', ' ').trim()
+        val updated = (listOf(GeofenceLogEntry(type, atEpochMs, sanitizedDetail)) + _eventHistory.value)
+            .take(MAX_HISTORY_ENTRIES)
+        persistEventHistory(updated)
+    }
+
+    fun clearEventHistory() {
+        prefs.edit().remove(KEY_EVENT_HISTORY).apply()
+        _eventHistory.value = emptyList()
+    }
+
+    private fun persistEventHistory(entries: List<GeofenceLogEntry>) {
+        val encoded = if (entries.isEmpty()) {
+            ""
+        } else {
+            val lines = entries.map { "${it.type.name}|${it.atEpochMs}|${it.detail}" }
+            (listOf(HISTORY_VERSION) + lines).joinToString("\n")
+        }
+        prefs.edit().apply {
+            if (encoded.isEmpty()) remove(KEY_EVENT_HISTORY) else putString(KEY_EVENT_HISTORY, encoded)
+        }.apply()
+        _eventHistory.value = entries
+    }
+
+    private fun loadEventHistory(): List<GeofenceLogEntry> {
+        val raw = prefs.getString(KEY_EVENT_HISTORY, null) ?: return emptyList()
+        val lines = raw.split('\n')
+        if (lines.isEmpty() || lines[0] != HISTORY_VERSION) return emptyList()
+        return lines.drop(1).mapNotNull { line ->
+            if (line.isBlank()) return@mapNotNull null
+            val parts = line.split('|', limit = 3)
+            if (parts.size < 2) return@mapNotNull null
+            runCatching {
+                GeofenceLogEntry(
+                    type = GeofenceLogType.valueOf(parts[0]),
+                    atEpochMs = parts[1].toLong(),
+                    detail = parts.getOrNull(2).orEmpty()
+                )
+            }.getOrNull()
+        }.take(MAX_HISTORY_ENTRIES)
+    }
 
     private fun loadRegistration(): GeofenceRegistrationInfo {
         val success = if (prefs.contains(KEY_REGISTRATION_SUCCESS)) {
@@ -167,6 +255,9 @@ class GeofencePreferences @Inject constructor(
         const val KEY_EVENT_TRANSITION = "geofence_event_transition"
         const val KEY_EVENT_ERROR = "geofence_event_error"
         const val KEY_EVENT_AT = "geofence_event_at"
+        const val KEY_EVENT_HISTORY = "geofence_event_history"
+        const val HISTORY_VERSION = "1"
+        const val MAX_HISTORY_ENTRIES = 20
         const val SNAPSHOT_VERSION = "1"
         const val SNAPSHOT_HEADER_PARTS = 5
     }

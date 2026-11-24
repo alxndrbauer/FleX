@@ -7,7 +7,6 @@ import androidx.work.Configuration
 import com.flex.automation.AutomationRestorer
 import com.flex.data.holidays.HolidaySyncService
 import com.flex.data.local.AppIconPreferences
-import com.google.android.gms.location.GeofencingRequest
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,12 +38,9 @@ class FlexApplication : Application(), Configuration.Provider {
         observeDataChanges()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // If the app process starts while the device is already inside the office
-                // fence (e.g. update/reboot/process kill), synthesize a DWELL after the
-                // configured loitering delay instead of silently missing the clock-in.
-                automationRestorer.restore(
-                    initialGeofenceTrigger = GeofencingRequest.INITIAL_TRIGGER_DWELL
-                )
+                // Restore WiFi and re-register the office geofence, synthesizing ENTER only if
+                // no clocked block exists yet today.
+                automationRestorer.restoreSmart(source = "App-Start")
             } catch (e: Exception) {
                 Log.e("FlexApplication", "Failed to restore automation: ${e.message}")
             }

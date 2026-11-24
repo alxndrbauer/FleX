@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import android.content.Intent
+import com.flex.automation.AutomationRestorer
 import com.flex.data.local.BetaPreferences
 import com.flex.data.local.OnboardingPreferences
 import com.flex.data.local.ThemePreferences
@@ -50,6 +51,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var clockInUseCase: ClockInUseCase
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var autoBookPlannedDays: com.flex.domain.usecase.AutoBookPlannedDaysUseCase
+    @Inject lateinit var automationRestorer: AutomationRestorer
 
     private val initialRouteState = mutableStateOf<String?>(null)
 
@@ -162,6 +164,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         lifecycleScope.launch {
             autoBookPlannedDays()
+            runCatching { automationRestorer.healGeofenceIfStale() }
         }
     }
 

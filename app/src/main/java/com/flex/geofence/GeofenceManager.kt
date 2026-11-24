@@ -11,6 +11,7 @@ import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Clock
+import java.time.LocalTime
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,6 +19,7 @@ import javax.inject.Singleton
 class GeofenceManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val geofencePreferences: GeofencePreferences,
+    private val keepAliveScheduler: GeofenceKeepAliveScheduler,
     private val clock: Clock
 ) {
     private val client = LocationServices.getGeofencingClient(context)
@@ -36,6 +38,7 @@ class GeofenceManager @Inject constructor(
         lon: Double,
         radiusMeters: Float,
         initialTrigger: Int = 0,
+        source: String = "",
         onSuccess: () -> Unit = {},
         onFailure: (Exception) -> Unit = {}
     ) {
@@ -57,24 +60,30 @@ class GeofenceManager @Inject constructor(
             .build()
 
         geofencePreferences.markRegistrationPending()
+        keepAliveScheduler.schedule()
 
         // Adding a geofence with an existing request ID replaces it atomically. Removing it
         // first would leave a window without any fence if the process dies in between
         // (app update, swiped away right after launch).
         client.addGeofences(request, pendingIntent)
             .addOnSuccessListener {
-                Log.d("GeofenceManager", "Geofence registered: radius=$radiusMeters")
-                geofencePreferences.markRegistrationSuccess(clock.millis())
+                Log.d("GeofenceManager", "Geofence registered: radius=$radiusMeters, source=$source")
+                geofencePreferences.markRegistrationSuccess(clock.millis(), source)
                 onSuccess()
             }
             .addOnFailureListener { e ->
                 Log.e("GeofenceManager", "Failed to register geofence: ${e.message}")
-                geofencePreferences.markRegistrationFailure(clock.millis())
+                geofencePreferences.markRegistrationFailure(clock.millis(), source, e.message)
                 onFailure(e)
             }
     }
 
+    fun scheduleMorningCheck(defaultStartTime: LocalTime) {
+        keepAliveScheduler.scheduleMorningCheck(defaultStartTime)
+    }
+
     fun removeGeofence() {
+        keepAliveScheduler.cancel()
         client.removeGeofences(pendingIntent)
             .addOnSuccessListener { geofencePreferences.clearRegistration() }
     }

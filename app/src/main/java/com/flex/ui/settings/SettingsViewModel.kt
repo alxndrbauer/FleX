@@ -11,6 +11,7 @@ import com.flex.calendar.CalendarSyncService
 import com.flex.data.local.AppIconPreferences
 import com.flex.data.local.BetaPreferences
 import com.flex.data.local.GeofenceEventInfo
+import com.flex.data.local.GeofenceLogEntry
 import com.flex.data.local.GeofencePreferences
 import com.flex.data.local.GeofenceRegistrationInfo
 import com.flex.data.local.ThemePreferences
@@ -89,6 +90,7 @@ class SettingsViewModel @Inject constructor(
     val geofenceStatus: StateFlow<GeofenceStatus> = _geofenceStatus.asStateFlow()
     val geofenceRegistration: StateFlow<GeofenceRegistrationInfo> = geofencePreferences.registration
     val geofenceLastEvent: StateFlow<GeofenceEventInfo> = geofencePreferences.lastEvent
+    val geofenceEventHistory: StateFlow<List<GeofenceLogEntry>> = geofencePreferences.eventHistory
 
     val themeMode: StateFlow<ThemeMode> = themePreferences.themeModeFlow
     val gaugeColorScheme: StateFlow<GaugeColorScheme> = themePreferences.gaugeColorSchemeFlow
@@ -128,6 +130,9 @@ class SettingsViewModel @Inject constructor(
     fun updateSettings(settings: Settings) {
         viewModelScope.launch {
             settingsRepository.saveSettings(settings)
+            if (settings.geofenceEnabled && settings.geofenceLat != 0.0 && settings.geofenceLon != 0.0) {
+                geofenceManager.scheduleMorningCheck(settings.defaultStartTime)
+            }
         }
     }
 
@@ -346,6 +351,10 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun clearGeofenceEventHistory() {
+        geofencePreferences.clearEventHistory()
+    }
+
     fun saveGeofenceSettings(enabled: Boolean, lat: Double, lon: Double, radius: Float, address: String = "") {
         Log.d("GeoDebug", "saveGeofenceSettings called: enabled=$enabled, radius=$radius")
         viewModelScope.launch {
@@ -359,11 +368,13 @@ class SettingsViewModel @Inject constructor(
                 )
             )
             if (enabled && lat != 0.0 && lon != 0.0) {
+                geofenceManager.scheduleMorningCheck(_settings.value.defaultStartTime)
                 geofenceManager.registerGeofence(
                     lat = lat,
                     lon = lon,
                     radiusMeters = radius,
                     initialTrigger = GeofencingRequest.INITIAL_TRIGGER_ENTER,
+                    source = "Speichern",
                     onSuccess = {
                         Log.d("GeoDebug", "registerGeofence SUCCESS → REGISTERED")
                         _geofenceStatus.value = GeofenceStatus.REGISTERED

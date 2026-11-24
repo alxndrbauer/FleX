@@ -92,6 +92,7 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
         every { appIconPreferences.variantFlow } returns MutableStateFlow(AppIconVariant.CLASSIC)
         every { geofencePreferences.registration } returns MutableStateFlow(geofenceRegistration)
         every { geofencePreferences.lastEvent } returns MutableStateFlow(geofenceLastEvent)
+        every { geofencePreferences.eventHistory } returns MutableStateFlow(emptyList())
 
         return SettingsViewModel(
             context = context,
@@ -406,9 +407,9 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
 
         When("Geofencing erfolgreich aktiviert und registriert wird") {
             every {
-                geofenceManager.registerGeofence(any(), any(), any(), any(), any(), any())
+                geofenceManager.registerGeofence(any(), any(), any(), any(), any(), any(), any())
             } answers {
-                val onSuccess = invocation.args[4] as () -> Unit
+                val onSuccess = invocation.args[5] as () -> Unit
                 onSuccess()
             }
 
@@ -442,6 +443,7 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
                         9.9937,
                         120f,
                         GeofencingRequest.INITIAL_TRIGGER_ENTER,
+                        "Speichern",
                         any(),
                         any()
                     )
@@ -455,9 +457,9 @@ class SettingsViewModelBehaviorSpec : BehaviorSpec({
 
         When("die Geofence-Registrierung fehlschlägt") {
             every {
-                geofenceManager.registerGeofence(any(), any(), any(), any(), any(), any())
+                geofenceManager.registerGeofence(any(), any(), any(), any(), any(), any(), any())
             } answers {
-                val onFailure = invocation.args[5] as (Exception) -> Unit
+                val onFailure = invocation.args[6] as (Exception) -> Unit
                 onFailure(RuntimeException("Play Services unavailable"))
             }
 

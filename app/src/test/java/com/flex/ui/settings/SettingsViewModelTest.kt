@@ -121,6 +121,7 @@ class SettingsViewModelTest : BaseUnitTest() {
         whenever(appIconPreferences.variantFlow).thenReturn(MutableStateFlow(AppIconVariant.CLASSIC))
         whenever(geofencePreferences.registration).thenReturn(MutableStateFlow(GeofenceRegistrationInfo()))
         whenever(geofencePreferences.lastEvent).thenReturn(MutableStateFlow(GeofenceEventInfo()))
+        whenever(geofencePreferences.eventHistory).thenReturn(MutableStateFlow(emptyList()))
     }
 
     // ========== Initial State Tests ==========
@@ -714,5 +715,15 @@ class SettingsViewModelTest : BaseUnitTest() {
         advanceUntilIdle()
 
         assertThat(viewModel.gaugeColorScheme.value).isEqualTo(GaugeColorScheme.CLASSIC_GREEN)
+    }
+
+    @Test
+    fun `clearGeofenceEventHistory delegates to geofencePreferences`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.clearGeofenceEventHistory()
+
+        verify(geofencePreferences).clearEventHistory()
     }
 }

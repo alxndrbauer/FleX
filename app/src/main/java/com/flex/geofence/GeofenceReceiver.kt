@@ -14,6 +14,7 @@ import com.flex.domain.usecase.AutoClockInUseCase
 import com.flex.notification.BreakWarningScheduler
 import com.flex.tile.QuickSettingsTileService
 import com.google.android.gms.location.Geofence
+import com.google.android.gms.location.GeofenceStatusCodes
 import com.google.android.gms.location.GeofencingEvent
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -31,13 +32,19 @@ class GeofenceReceiver : BroadcastReceiver() {
     @Inject lateinit var notificationHelper: GeofenceNotificationHelper
     @Inject lateinit var breakWarningScheduler: BreakWarningScheduler
     @Inject lateinit var geofencePreferences: GeofencePreferences
+    @Inject lateinit var keepAliveScheduler: GeofenceKeepAliveScheduler
     @Inject lateinit var clock: Clock
 
     override fun onReceive(context: Context, intent: Intent) {
         val event = GeofencingEvent.fromIntent(intent)
         if (event == null) {
             Log.e(TAG, "GeofencingEvent.fromIntent returned null")
-            geofencePreferences.recordEvent(transition = null, errorCode = -1, atEpochMs = clock.millis())
+            geofencePreferences.recordEvent(
+                transition = null,
+                errorCode = -1,
+                atEpochMs = clock.millis(),
+                detail = "Leeres Event"
+            )
             return
         }
         if (event.hasError()) {
@@ -47,14 +54,13 @@ class GeofenceReceiver : BroadcastReceiver() {
                 errorCode = event.errorCode,
                 atEpochMs = clock.millis()
             )
+            if (event.errorCode == GeofenceStatusCodes.GEOFENCE_NOT_AVAILABLE) {
+                keepAliveScheduler.scheduleImmediateRetry()
+            }
             return
         }
 
-        geofencePreferences.recordEvent(
-            transition = event.geofenceTransition,
-            errorCode = null,
-            atEpochMs = clock.millis()
-        )
+        val eventMillis = clock.millis()
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -70,6 +76,13 @@ class GeofenceReceiver : BroadcastReceiver() {
                             Log.e(TAG, "Failed to cancel pending clock-out: ${it.message}", it)
                         }
                         val blockId = autoClockIn()
+                        val detail = if (blockId != null) "Eingestempelt" else "Bereits eingestempelt"
+                        geofencePreferences.recordEvent(
+                            transition = event.geofenceTransition,
+                            errorCode = null,
+                            atEpochMs = eventMillis,
+                            detail = detail
+                        )
                         if (blockId != null) {
                             notificationHelper.showClockInNotification()
                             breakWarningScheduler.scheduleWarning(LocalTime.now(clock))
@@ -86,6 +99,12 @@ class GeofenceReceiver : BroadcastReceiver() {
                     }
                     Geofence.GEOFENCE_TRANSITION_EXIT -> {
                         Log.d(TAG, "Geofence transition=EXIT → schedule clock out")
+                        geofencePreferences.recordEvent(
+                            transition = event.geofenceTransition,
+                            errorCode = null,
+                            atEpochMs = eventMillis,
+                            detail = "Ausstempeln geplant (30s)"
+                        )
                         // Schedule delayed clock-out via WorkManager (30s)
                         // BroadcastReceiver goAsync() budget (~10s) is too short for delays
                         val request = OneTimeWorkRequestBuilder<ClockOutWorker>()

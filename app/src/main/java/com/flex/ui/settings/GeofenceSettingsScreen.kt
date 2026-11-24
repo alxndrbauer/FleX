@@ -43,6 +43,8 @@ import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsNotFixed
 import androidx.compose.material.icons.filled.Info
@@ -71,6 +73,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -99,6 +102,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.flex.data.local.GeofenceLogEntry
+import com.flex.data.local.GeofenceLogType
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import kotlinx.coroutines.delay
@@ -117,6 +122,8 @@ fun GeofenceSettingsScreen(
     val geofenceStatus by viewModel.geofenceStatus.collectAsState()
     val geofenceRegistration by viewModel.geofenceRegistration.collectAsState()
     val geofenceLastEvent by viewModel.geofenceLastEvent.collectAsState()
+    val geofenceEventHistory by viewModel.geofenceEventHistory.collectAsState()
+    var historyExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
 
@@ -212,20 +219,10 @@ fun GeofenceSettingsScreen(
         activityManager.isBackgroundRestricted
     }
     val registrationTime = remember(geofenceRegistration.atEpochMs) {
-        geofenceRegistration.atEpochMs?.let { epochMs ->
-            Instant.ofEpochMilli(epochMs)
-                .atZone(ZoneId.systemDefault())
-                .toLocalTime()
-                .format(DateTimeFormatter.ofPattern("HH:mm"))
-        }
+        geofenceRegistration.atEpochMs?.let { formatGeofenceTimestamp(it) }
     }
     val lastEventTime = remember(geofenceLastEvent.atEpochMs) {
-        geofenceLastEvent.atEpochMs?.let { epochMs ->
-            Instant.ofEpochMilli(epochMs)
-                .atZone(ZoneId.systemDefault())
-                .toLocalTime()
-                .format(DateTimeFormatter.ofPattern("HH:mm"))
-        }
+        geofenceLastEvent.atEpochMs?.let { formatGeofenceTimestamp(it) }
     }
 
     Scaffold(
@@ -557,6 +554,63 @@ fun GeofenceSettingsScreen(
                                     context.startActivity(intent)
                                 }
                             )
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                historyExpanded = !historyExpanded
+                            }
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Ereignisprotokoll (${geofenceEventHistory.size})",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Icon(
+                            imageVector = if (historyExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (historyExpanded) "Zuklappen" else "Aufklappen",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    AnimatedVisibility(visible = historyExpanded) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (geofenceEventHistory.isEmpty()) {
+                                Text(
+                                    text = "Noch keine Einträge vorhanden.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                geofenceEventHistory.forEach { entry ->
+                                    GeofenceHistoryRow(entry = entry)
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    TextButton(
+                                        onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            viewModel.clearGeofenceEventHistory()
+                                        }
+                                    ) {
+                                        Text("Protokoll leeren")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -1098,6 +1152,45 @@ private fun GeofenceStatusPill(
                 fontWeight = FontWeight.SemiBold
             )
         }
+    }
+}
+
+private fun formatGeofenceTimestamp(epochMs: Long): String =
+    Instant.ofEpochMilli(epochMs)
+        .atZone(ZoneId.systemDefault())
+        .format(DateTimeFormatter.ofPattern("dd.MM. HH:mm"))
+
+@Composable
+private fun GeofenceHistoryRow(entry: GeofenceLogEntry) {
+    val (dotColor, title) = when (entry.type) {
+        GeofenceLogType.ENTER -> Color(0xFF34A853) to "ENTER"
+        GeofenceLogType.DWELL -> Color(0xFF34A853) to "DWELL"
+        GeofenceLogType.EXIT -> MaterialTheme.colorScheme.primary to "EXIT"
+        GeofenceLogType.REGISTERED -> MaterialTheme.colorScheme.secondary to "Registriert"
+        GeofenceLogType.REGISTER_FAILED -> MaterialTheme.colorScheme.error to "Registrierung fehlgeschlagen"
+        GeofenceLogType.ERROR -> MaterialTheme.colorScheme.error to "Fehler"
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(color = dotColor, shape = CircleShape)
+        )
+        Text(
+            text = formatGeofenceTimestamp(entry.atEpochMs),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = if (entry.detail.isNotBlank()) "$title · ${entry.detail}" else title,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 

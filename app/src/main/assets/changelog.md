@@ -45,6 +45,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/) 
 - Decouple settings widget update from Glance for unit tests
 - Restore geofence stamping after app updates
 - Add event diagnostics and catch-up triggers
+- Add self-healing keep-alive and event history
 
 ## [1.8.2] - 2026-10-08
 

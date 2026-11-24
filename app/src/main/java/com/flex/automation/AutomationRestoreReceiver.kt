@@ -23,13 +23,20 @@ class AutomationRestoreReceiver : BroadcastReceiver() {
             return
         }
 
+        val source = when (intent.action) {
+            Intent.ACTION_BOOT_COMPLETED -> "Neustart"
+            Intent.ACTION_MY_PACKAGE_REPLACED -> "App-Update"
+            else -> "Wiederherstellung"
+        }
+
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // If the device is already inside the fence (e.g. update happened at the
                 // office), synthesize an ENTER so the day is not silently missed.
                 automationRestorer.restore(
-                    initialGeofenceTrigger = GeofencingRequest.INITIAL_TRIGGER_ENTER
+                    initialGeofenceTrigger = GeofencingRequest.INITIAL_TRIGGER_ENTER,
+                    source = source
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to restore automation: ${e.message}", e)
