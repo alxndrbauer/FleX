@@ -12,6 +12,7 @@ import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.repository.SettingsRepository
 import com.flex.domain.repository.WorkDayRepository
+import com.flex.domain.usecase.CalculateDayWorkTimeUseCase
 import com.flex.domain.usecase.CalculateFlextimeUseCase
 import com.flex.domain.usecase.CalculateQuotaUseCase
 import com.flex.domain.usecase.GetMonthWorkDaysUseCase
@@ -71,7 +72,13 @@ class QuotaViewModelTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
         whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(emptyList()))
-        whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
+        val realCalculateQuota = CalculateQuotaUseCase(CalculateDayWorkTimeUseCase(), fixedClock())
+        whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenAnswer { inv ->
+            realCalculateQuota(
+                inv.getArgument(0), inv.getArgument(1), inv.getArgument(2),
+                inv.getArgument(3), inv.getArgument(4), inv.getArgument(5)
+            )
+        }
         whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(FlextimeBalance())
     }
 

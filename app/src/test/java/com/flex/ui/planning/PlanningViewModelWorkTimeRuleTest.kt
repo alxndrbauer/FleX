@@ -8,6 +8,7 @@ import com.flex.domain.model.FlextimeBalance
 import com.flex.domain.model.QuotaRule
 import com.flex.domain.model.QuotaStatus
 import com.flex.domain.model.Settings
+import com.flex.domain.model.TimeBlock
 import com.flex.domain.model.WorkDay
 import com.flex.domain.model.WorkLocation
 import com.flex.domain.model.WorkTimeRule
@@ -36,6 +37,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.whenever
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.YearMonth
 
 /**
@@ -70,7 +72,13 @@ class PlanningViewModelWorkTimeRuleTest : BaseUnitTest() {
         whenever(settingsRepository.getQuotaRules()).thenReturn(flowOf(emptyList()))
         whenever(settingsRepository.getWorkTimeRules()).thenReturn(flowOf(emptyList()))
         whenever(workDayRepository.getWorkDaysForYear(any())).thenReturn(flowOf(emptyList()))
-        whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
+        val realCalculateQuota = CalculateQuotaUseCase(CalculateDayWorkTimeUseCase(), fixedClock())
+        whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenAnswer { inv ->
+            realCalculateQuota(
+                inv.getArgument(0), inv.getArgument(1), inv.getArgument(2),
+                inv.getArgument(3), inv.getArgument(4), inv.getArgument(5)
+            )
+        }
         whenever(calculateFlextime(any(), any(), anyOrNull(), any())).thenReturn(FlextimeBalance())
         whenever(calculateDayWorkTime(any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
         whenever(calculateDayWorkTime(any(), any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
@@ -117,7 +125,17 @@ class PlanningViewModelWorkTimeRuleTest : BaseUnitTest() {
             id = 1,
             date = nextMonth.atDay(1),
             dayType = DayType.WORK,
-            location = WorkLocation.OFFICE
+            location = WorkLocation.OFFICE,
+            timeBlocks = listOf(
+                TimeBlock(
+                    id = 1,
+                    workDayId = 1,
+                    startTime = LocalTime.of(8, 0),
+                    endTime = LocalTime.of(16, 0),
+                    location = WorkLocation.OFFICE,
+                    isDuration = true
+                )
+            )
         )
         whenever(getMonthWorkDays(any())).thenReturn(flowOf(listOf(officeDay)))
         whenever(buildPrognosisDays(any(), any(), any(), any())).thenAnswer { inv -> inv.getArgument(1) }
@@ -280,7 +298,17 @@ class PlanningViewModelWorkTimeRuleTest : BaseUnitTest() {
             id = 1,
             date = nextMonth.atDay(1),
             dayType = DayType.WORK,
-            location = WorkLocation.OFFICE
+            location = WorkLocation.OFFICE,
+            timeBlocks = listOf(
+                TimeBlock(
+                    id = 1,
+                    workDayId = 1,
+                    startTime = LocalTime.of(8, 0),
+                    endTime = LocalTime.of(16, 0),
+                    location = WorkLocation.OFFICE,
+                    isDuration = true
+                )
+            )
         )
 
         val settingsFlow = MutableStateFlow(Settings(officeQuotaPercent = 40, monthlyWorkMinutes = 1000))

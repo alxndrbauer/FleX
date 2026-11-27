@@ -250,7 +250,8 @@ private data class PlanningConfig(
                     val rule = settingsRepository.getQuotaRuleForMonth(month, rules)
                     val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
                     val qDays = rule?.officeQuotaMinDays ?: settings.officeQuotaMinDays
-                    val prognosisDays = buildPrognosisDays(month, days, settings, workTimeRules)
+                    val resolvedDays = resolveRunningBlocks(days)
+                    val prognosisDays = buildPrognosisDays(month, resolvedDays, settings, workTimeRules)
                     val quota = calculateQuota(prognosisDays, settings, month, qPercent, qDays, workTimeRules)
 
                     // Cumulative flextime: previous months' actual data + this month's prognosis
@@ -279,7 +280,7 @@ private data class PlanningConfig(
                     val actualMinutes = actualFlextime.totalMinutes
                     val plannedContribution = flextime.totalMinutes - actualMinutes
 
-                    val officeHours = calculateOfficeHours(prognosisDays, qPercent, settings, workTimeRules, month)
+                    val officeHours = quota.toOfficeHoursDetail()
                     val isSpecialVacationBlocked = effectiveSettings.specialVacationPaidOut
                     val hasOvertimeAvailable = monthStartOvertime > 0 || overtimeAfterByDate.values.any { it > 0 }
                     val currentSelectedType = _uiState.value.selectedPlanType
@@ -338,9 +339,10 @@ private data class PlanningConfig(
             val qPercent = rule?.officeQuotaPercent ?: settings.officeQuotaPercent
             val qDays = rule?.officeQuotaMinDays ?: settings.officeQuotaMinDays
             val days = getMonthWorkDays(month).firstOrNull() ?: emptyList()
-            val prognosisDays = buildPrognosisDays(month, days, settings, workTimeRules)
+            val resolvedDays = resolveRunningBlocks(days)
+            val prognosisDays = buildPrognosisDays(month, resolvedDays, settings, workTimeRules)
             val quota = calculateQuota(prognosisDays, settings, month, qPercent, qDays, workTimeRules)
-            val officeHours = calculateOfficeHours(prognosisDays, qPercent, settings, workTimeRules, month)
+            val officeHours = quota.toOfficeHoursDetail()
 
             val plannedDays = days.count { it.isPlanned }
             val officeDays = days.count { (it.dayType == DayType.WORK && it.location == WorkLocation.OFFICE) || it.dayType == DayType.BUSINESS_TRIP }
@@ -362,56 +364,26 @@ private data class PlanningConfig(
         _uiState.value = _uiState.value.copy(monthSummaries = summaries)
     }
 
-    private fun calculateOfficeHours(
-        prognosisDays: List<WorkDay>,
-        quotaPercent: Int,
-        settings: Settings,
-        workTimeRules: List<com.flex.domain.model.WorkTimeRule>,
-        month: YearMonth
-    ): OfficeHoursDetail {
-        fun getDailyTarget(date: LocalDate): Int {
-            return settingsRepository.getWorkTimeRuleForDate(date, workTimeRules)?.dailyWorkMinutes
-                ?: settings.dailyWorkMinutes
-        }
-        fun getMonthlyTarget(ym: YearMonth): Int {
-            return workTimeRules.getRuleForMonth(ym)?.monthlyWorkMinutes ?: settings.monthlyWorkMinutes
-        }
-
-        // Fixed monthly target, reduced by neutral days
-        val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
-        val neutralDays = prognosisDays.filter { it.dayType in neutralTypes }
-        val neutralDaysDeduction = neutralDays.sumOf { day ->
-            val rule = settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)
-            val isWorkDay = if (rule != null) day.date.dayOfWeek in rule.workDays else true
-            if (isWorkDay) {
-                (rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
-            } else 0L
-        }
-        val baseMonthlyTarget = getMonthlyTarget(month).toLong()
-        val totalMinutes = (baseMonthlyTarget - neutralDaysDeduction).coerceAtLeast(0)
-
-        val workingDays = prognosisDays.filter { it.dayType !in neutralTypes }
-
-        var officeMinutes = 0L
-        var plannedTotalMinutes = 0L
-        for (day in workingDays) {
-            val isBusinessTrip = day.dayType == DayType.BUSINESS_TRIP
-            val result = if (isBusinessTrip) calculateDayWorkTime(day.timeBlocks, isBusinessTrip = true) else calculateDayWorkTime(day.timeBlocks)
-            plannedTotalMinutes += result.netMinutes
-            if (day.location == WorkLocation.OFFICE || isBusinessTrip) {
-                officeMinutes += result.netMinutes
+    private fun resolveRunningBlocks(days: List<WorkDay>): List<WorkDay> {
+        val today = LocalDate.now(clock)
+        val now = LocalTime.now(clock).withSecond(0).withNano(0)
+        return days.map { day ->
+            if (day.date == today && day.timeBlocks.any { it.endTime == null }) {
+                day.copy(timeBlocks = day.timeBlocks.map { block ->
+                    if (block.endTime == null) block.copy(endTime = now) else block
+                })
+            } else {
+                day
             }
         }
-
-        val requiredOfficeMinutes = (totalMinutes * quotaPercent / 100.0).toLong()
-
-        return OfficeHoursDetail(
-            requiredOfficeMinutes = requiredOfficeMinutes,
-            plannedOfficeMinutes = officeMinutes,
-            plannedTotalMinutes = plannedTotalMinutes,
-            targetMonthlyMinutes = baseMonthlyTarget
-        )
     }
+
+    private fun QuotaStatus.toOfficeHoursDetail(): OfficeHoursDetail = OfficeHoursDetail(
+        requiredOfficeMinutes = requiredOfficeMinutes,
+        plannedOfficeMinutes = officeMinutes,
+        plannedTotalMinutes = totalWorkedMinutes,
+        targetMonthlyMinutes = baseMonthlyTargetMinutes
+    )
 
     fun previousMonth() {
         val min = YearMonth.now(clock)

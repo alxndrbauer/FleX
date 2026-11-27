@@ -366,5 +366,200 @@ class PlanningViewModelTest : BaseUnitTest() {
         assertThat(state.actualFlextimeMinutes).isEqualTo(120L)
         assertThat(state.plannedContributionMinutes).isEqualTo(-60L)
     }
+
+    private fun createViewModelWithRealDayCalc(): PlanningViewModel {
+        val realDayCalc = CalculateDayWorkTimeUseCase()
+        val realQuotaCalc = CalculateQuotaUseCase(realDayCalc, fixedClock())
+        return PlanningViewModel(
+            getMonthWorkDays, getSettings, workDayRepository, settingsRepository,
+            realDayCalc, realQuotaCalc, calculateFlextime, buildPrognosisDays,
+            syncPlannedDaysWithWorkTimeRuleUseCase,
+            clock = fixedClock()
+        )
+    }
+
+    @Test
+    fun `calculateOfficeHours counts only office blocks on mixed day with OFFICE day location`() = runTest {
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
+        val mixedDay = WorkDay(
+            id = 1L,
+            date = nextMonth.atDay(2),
+            location = WorkLocation.OFFICE,
+            dayType = DayType.WORK,
+            isPlanned = true,
+            timeBlocks = listOf(
+                TimeBlock(
+                    id = 1L,
+                    workDayId = 1L,
+                    startTime = LocalTime.of(8, 0),
+                    endTime = LocalTime.of(11, 0),
+                    location = WorkLocation.HOME_OFFICE,
+                    isDuration = true
+                ),
+                TimeBlock(
+                    id = 2L,
+                    workDayId = 1L,
+                    startTime = LocalTime.of(11, 30),
+                    endTime = LocalTime.of(16, 30),
+                    location = WorkLocation.OFFICE,
+                    isDuration = true
+                )
+            )
+        )
+        whenever(getMonthWorkDays(nextMonth)).thenReturn(flowOf(listOf(mixedDay)))
+
+        viewModel = createViewModelWithRealDayCalc()
+        advanceUntilIdle()
+
+        val oh = viewModel.uiState.value.officeHours
+        assertThat(oh.plannedOfficeMinutes).isEqualTo(300L)
+        assertThat(oh.plannedTotalMinutes).isEqualTo(480L)
+    }
+
+    @Test
+    fun `calculateOfficeHours counts office blocks on mixed day with HOME_OFFICE day location`() = runTest {
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
+        val mixedDay = WorkDay(
+            id = 1L,
+            date = nextMonth.atDay(2),
+            location = WorkLocation.HOME_OFFICE,
+            dayType = DayType.WORK,
+            isPlanned = true,
+            timeBlocks = listOf(
+                TimeBlock(
+                    id = 1L,
+                    workDayId = 1L,
+                    startTime = LocalTime.of(8, 0),
+                    endTime = LocalTime.of(13, 0),
+                    location = WorkLocation.HOME_OFFICE,
+                    isDuration = true
+                ),
+                TimeBlock(
+                    id = 2L,
+                    workDayId = 1L,
+                    startTime = LocalTime.of(13, 30),
+                    endTime = LocalTime.of(16, 30),
+                    location = WorkLocation.OFFICE,
+                    isDuration = true
+                )
+            )
+        )
+        whenever(getMonthWorkDays(nextMonth)).thenReturn(flowOf(listOf(mixedDay)))
+
+        viewModel = createViewModelWithRealDayCalc()
+        advanceUntilIdle()
+
+        val oh = viewModel.uiState.value.officeHours
+        assertThat(oh.plannedOfficeMinutes).isEqualTo(180L)
+        assertThat(oh.plannedTotalMinutes).isEqualTo(480L)
+    }
+
+    @Test
+    fun `calculateOfficeHours reduces requiredOfficeMinutes for planned OVERTIME_DAY`() = runTest {
+        val nextMonth = YearMonth.from(TestDates.FRIDAY).plusMonths(1)
+        val settings = Settings(
+            dailyWorkMinutes = 400,
+            monthlyWorkMinutes = 8000,
+            officeQuotaPercent = 50
+        )
+        val overtimeDay = WorkDay(
+            id = 1L,
+            date = nextMonth.atDay(2),
+            location = WorkLocation.HOME_OFFICE,
+            dayType = DayType.OVERTIME_DAY,
+            isPlanned = true
+        )
+        whenever(getSettings()).thenReturn(flowOf(settings))
+        whenever(getMonthWorkDays(nextMonth)).thenReturn(flowOf(listOf(overtimeDay)))
+
+        viewModel = createViewModelWithRealDayCalc()
+        advanceUntilIdle()
+
+        // Base 8000 - 400 (overtime day) = 7600; 50% = 3800
+        assertThat(viewModel.uiState.value.officeHours.requiredOfficeMinutes).isEqualTo(3800L)
+    }
+
+    @Test
+    fun `calculateOfficeHours includes planned OFFICE days in current and next month`() = runTest {
+        val currentMonth = YearMonth.from(TestDates.FRIDAY)
+        val nextMonth = currentMonth.plusMonths(1)
+
+        val currentPlannedDay = WorkDay(
+            id = 1L,
+            date = currentMonth.atDay(20),
+            location = WorkLocation.OFFICE,
+            dayType = DayType.WORK,
+            isPlanned = true,
+            timeBlocks = listOf(
+                TimeBlock(
+                    id = 1L,
+                    workDayId = 1L,
+                    startTime = LocalTime.of(8, 0),
+                    endTime = LocalTime.of(15, 6),
+                    location = WorkLocation.OFFICE,
+                    isDuration = true
+                )
+            )
+        )
+        val nextPlannedDay = WorkDay(
+            id = 2L,
+            date = nextMonth.atDay(3),
+            location = WorkLocation.OFFICE,
+            dayType = DayType.WORK,
+            isPlanned = true,
+            timeBlocks = listOf(
+                TimeBlock(
+                    id = 2L,
+                    workDayId = 2L,
+                    startTime = LocalTime.of(8, 0),
+                    endTime = LocalTime.of(15, 6),
+                    location = WorkLocation.OFFICE,
+                    isDuration = true
+                )
+            )
+        )
+        whenever(getMonthWorkDays(currentMonth)).thenReturn(flowOf(listOf(currentPlannedDay)))
+        whenever(getMonthWorkDays(nextMonth)).thenReturn(flowOf(listOf(nextPlannedDay)))
+
+        viewModel = createViewModelWithRealDayCalc()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.officeHours.plannedOfficeMinutes).isEqualTo(426L)
+
+        viewModel.navigateToMonth(currentMonth)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.officeHours.plannedOfficeMinutes).isEqualTo(426L)
+    }
+
+    @Test
+    fun `calculateOfficeHours resolves running office block on today in current month`() = runTest {
+        val currentMonth = YearMonth.from(TestDates.FRIDAY)
+        val now = LocalTime.now(fixedClock()).withSecond(0).withNano(0)
+        val runningDay = WorkDay(
+            id = 1L,
+            date = TestDates.FRIDAY,
+            location = WorkLocation.OFFICE,
+            dayType = DayType.WORK,
+            isPlanned = false,
+            timeBlocks = listOf(
+                TimeBlock(
+                    id = 1L,
+                    workDayId = 1L,
+                    startTime = now.minusHours(2),
+                    endTime = null,
+                    location = WorkLocation.OFFICE,
+                    isDuration = false
+                )
+            )
+        )
+        whenever(getMonthWorkDays(currentMonth)).thenReturn(flowOf(listOf(runningDay)))
+
+        viewModel = createViewModelWithRealDayCalc()
+        viewModel.navigateToMonth(currentMonth)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.officeHours.plannedOfficeMinutes).isEqualTo(120L)
+    }
 }
 

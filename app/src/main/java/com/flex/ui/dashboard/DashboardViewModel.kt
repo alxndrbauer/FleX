@@ -220,20 +220,8 @@ class DashboardViewModel @Inject constructor(
                     val actualYearDays = yearDays.filter { !it.isPlanned }
                     val flextime = calculateFlextime(actualYearDays, effectiveSettings, yearMonth, workTimeRules)
 
-                    // Fixed monthly target, reduced by neutral days
-                    val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
-                    val neutralDays = monthDays.filter { it.dayType in neutralTypes }
-                    val neutralDaysDeduction = neutralDays.sumOf { day ->
-                        val rule = settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)
-                        val isWorkDay = if (rule != null) day.date.dayOfWeek in rule.workDays else true
-                        if (isWorkDay) {
-                            (rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
-                        } else 0L
-                    }
-                    val baseMonthlyTarget = (workTimeRules.getRuleForMonth(yearMonth)?.monthlyWorkMinutes
-                        ?: settings.monthlyWorkMinutes).toLong()
-                    val totalMin = (baseMonthlyTarget - neutralDaysDeduction).coerceAtLeast(0)
-                    val requiredMin = (totalMin * qPercent / 100.0).toLong()
+                    val totalMin = projectedQuota.adjustedMonthlyTargetMinutes
+                    val requiredMin = projectedQuota.requiredOfficeMinutes
 
                     val usedVacation = yearDays.count {
                         it.dayType == DayType.VACATION && !it.isPlanned

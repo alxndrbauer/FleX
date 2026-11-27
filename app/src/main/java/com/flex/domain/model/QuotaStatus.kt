@@ -9,7 +9,11 @@ data class QuotaStatus(
     val percentQuotaMet: Boolean = false,
     val daysQuotaMet: Boolean = false,
     val remainingWorkDays: Int = 0,
-    val requiredOfficeDaysForQuota: Int = 0
+    val requiredOfficeDaysForQuota: Int = 0,
+    val requiredOfficeMinutes: Long = 0,
+    val baseMonthlyTargetMinutes: Long = 0,
+    val adjustedMonthlyTargetMinutes: Long = 0,
+    val totalWorkedMinutes: Long = 0
 ) {
     val quotaMet: Boolean get() = percentQuotaMet || daysQuotaMet
 }

@@ -458,18 +458,8 @@ class HomeViewModel @Inject constructor(
                         }
 
                         val quota = calculateQuota(actualMonthDays, settings, yearMonth, qPercent, qDays, workTimeRules)
-
-                        val baseMonthlyTarget = (settingsRepository.getWorkTimeRuleForDate(yearMonth.atEndOfMonth(), workTimeRules)?.monthlyWorkMinutes ?: settings.monthlyWorkMinutes).toLong()
-                        val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
-                        val neutralDaysDeduction = actualMonthDays.filter { it.dayType in neutralTypes }.sumOf { day ->
-                            val rule = settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)
-                            val isWorkDay = if (rule != null) day.date.dayOfWeek in rule.workDays else true
-                            if (isWorkDay) {
-                                (rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
-                            } else 0L
-                        }
-                        val totalMin = (baseMonthlyTarget - neutralDaysDeduction).coerceAtLeast(0)
-                        val requiredMin = (totalMin * qPercent / 100.0).toLong()
+                        val officeMin = quota.officeMinutes
+                        val requiredMin = quota.requiredOfficeMinutes
 
                         val ruleForDate = settingsRepository.getWorkTimeRuleForDate(date, workTimeRules)
                         val dailyTarget = getDailyWorkTargetMinutes(
@@ -478,27 +468,6 @@ class HomeViewModel @Inject constructor(
                             settings.dailyWorkMinutes,
                             ruleForDate
                         )
-
-                        val workingDays = actualMonthDays.filter { it.dayType !in neutralTypes }
-                        var officeMin = 0L
-                        for (day in workingDays) {
-                            val isDayBusinessTrip = day.dayType == DayType.BUSINESS_TRIP
-                            val adjustedBlocks = if (isDayBusinessTrip) {
-                                day.timeBlocks.sortedBy { it.startTime }
-                            } else {
-                                CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
-                            }
-                            val dayResult = if (isDayBusinessTrip) calculateDayWorkTime(day.timeBlocks, isBusinessTrip = true) else calculateDayWorkTime(day.timeBlocks)
-                            val totalGross = dayResult.grossMinutes
-                            if (totalGross == 0L) continue
-                            var dayOfficeGross = 0L
-                            for (block in adjustedBlocks) {
-                                val blockEnd = block.endTime ?: continue
-                                val blockMin = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
-                                if (blockMin > 0 && (block.location == WorkLocation.OFFICE || isDayBusinessTrip)) dayOfficeGross += blockMin
-                            }
-                            officeMin += dayOfficeGross * dayResult.netMinutes / totalGross
-                        }
 
                         Pair(
                             HomeUiState(

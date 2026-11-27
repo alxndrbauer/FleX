@@ -84,7 +84,13 @@ class HomeViewModelWorkTimeRuleTest : BaseUnitTest() {
         whenever(calculateDayWorkTime(any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
         whenever(calculateDayWorkTime(any(), any())).thenReturn(DayWorkTimeResult(0, 0, 0, false))
         whenever(calculateFlextime(any(), any(), any(), any())).thenReturn(FlextimeBalance())
-        whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenReturn(QuotaStatus())
+        val realCalculateQuota = CalculateQuotaUseCase(CalculateDayWorkTimeUseCase(), fixedClock())
+        whenever(calculateQuota(any(), any(), any(), any(), any(), any())).thenAnswer { inv ->
+            realCalculateQuota(
+                inv.getArgument(0), inv.getArgument(1), inv.getArgument(2),
+                inv.getArgument(3), inv.getArgument(4), inv.getArgument(5)
+            )
+        }
         whenever(dataChangeEventBus.events).thenReturn(MutableSharedFlow())
         whenever(checkBreakViolation(any(), any())).thenReturn(BreakCheckResult(emptyList(), skipped = false))
         whenever(checkBreakViolation(any(), any(), any())).thenReturn(BreakCheckResult(emptyList(), skipped = false))

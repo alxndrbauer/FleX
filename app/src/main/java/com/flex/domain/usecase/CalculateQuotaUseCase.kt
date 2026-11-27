@@ -20,6 +20,16 @@ class CalculateQuotaUseCase @Inject constructor(
     private val clock: Clock = Clock.systemDefaultZone()
 ) {
 
+    companion object {
+        val NEUTRAL_DAY_TYPES = setOf(
+            DayType.VACATION,
+            DayType.SPECIAL_VACATION,
+            DayType.FLEX_DAY,
+            DayType.SICK_DAY,
+            DayType.OVERTIME_DAY
+        )
+    }
+
     operator fun invoke(
         workDays: List<WorkDay>,
         settings: Settings,
@@ -28,11 +38,12 @@ class CalculateQuotaUseCase @Inject constructor(
         quotaMinDays: Int = settings.officeQuotaMinDays,
         workTimeRules: List<WorkTimeRule> = emptyList()
     ): QuotaStatus {
-        val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
+        val neutralTypes = NEUTRAL_DAY_TYPES
         val workingDays = workDays.filter { it.dayType !in neutralTypes }
 
         var officeMinutes = 0L
         var homeOfficeMinutes = 0L
+        var totalWorkedMinutes = 0L
         var officeDays = 0
         var homeOfficeDays = 0
 
@@ -49,6 +60,7 @@ class CalculateQuotaUseCase @Inject constructor(
                 calculateDayWorkTime(day.timeBlocks)
             }
             val totalGross = dayResult.grossMinutes
+            totalWorkedMinutes += dayResult.netMinutes
 
             var dayOfficeGross = 0L
             var dayHomeOfficeGross = 0L
@@ -114,6 +126,7 @@ class CalculateQuotaUseCase @Inject constructor(
         } else 0
 
         val requiredOfficeDays = (quotaMinDays - officeDays).coerceAtLeast(0)
+        val requiredOfficeMinutes = (fixedTarget * quotaPercent / 100.0).toLong()
 
         return QuotaStatus(
             officeMinutes = officeMinutes,
@@ -124,7 +137,11 @@ class CalculateQuotaUseCase @Inject constructor(
             percentQuotaMet = percentQuotaMet,
             daysQuotaMet = daysQuotaMet,
             remainingWorkDays = remainingWorkDays,
-            requiredOfficeDaysForQuota = requiredOfficeDays
+            requiredOfficeDaysForQuota = requiredOfficeDays,
+            requiredOfficeMinutes = requiredOfficeMinutes,
+            baseMonthlyTargetMinutes = baseMonthlyTarget,
+            adjustedMonthlyTargetMinutes = fixedTarget,
+            totalWorkedMinutes = totalWorkedMinutes
         )
     }
 }

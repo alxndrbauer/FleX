@@ -252,5 +252,38 @@ class OfficeQuotaBehaviorSpec : BehaviorSpec({
                 status.percentQuotaMet.shouldBeTrue()
             }
         }
+
+        When("ein Überstundentag (DayType.OVERTIME_DAY) genommen wird") {
+            // 2 Überstundentage à 426 min Abzug = 852 min -> Bereinigtes Soll = 8520 - 852 = 7668 min
+            // 8 Bürotage à 426 min = 3408 min -> 3408 / 7668 = 44.44%
+            val overtimeDays = listOf(
+                createNeutralDay(LocalDate.of(2026, 9, 1), DayType.OVERTIME_DAY),
+                createNeutralDay(LocalDate.of(2026, 9, 2), DayType.OVERTIME_DAY)
+            )
+            val officeDays = (3..10).map { day ->
+                createFullDay(LocalDate.of(2026, 9, day), WorkLocation.OFFICE, 426)
+            }
+
+            val status = calculateQuota(
+                workDays = overtimeDays + officeDays,
+                settings = settings,
+                yearMonth = testMonth
+            )
+
+            Then("reduziert der Überstundentag die Sollbasis genau wie ein Gleittag") {
+                status.officeMinutes shouldBe 3408L
+                status.officePercent shouldBe (44.44 plusOrMinus 0.05)
+                status.percentQuotaMet.shouldBeTrue()
+                status.baseMonthlyTargetMinutes shouldBe 8520L
+                status.adjustedMonthlyTargetMinutes shouldBe 7668L
+                status.requiredOfficeMinutes shouldBe 3067L
+                status.totalWorkedMinutes shouldBe 3408L
+            }
+
+            Then("zählen Überstundentage weder als Büro- noch als Home-Office-Tage") {
+                status.officeDays shouldBe 8
+                status.homeOfficeDays shouldBe 0
+            }
+        }
     }
 })

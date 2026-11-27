@@ -248,43 +248,9 @@ private data class MonthConfig(
                 }
                 val flextimeDays = previousMonthsDays + prognosisDays
                 val flextime = calculateFlextime(flextimeDays, effectiveSettings, month, workTimeRules)
-
-                // Fixed monthly target, reduced by neutral days (vacation, flex, etc.)
-                // Use workTimeRule-aware daily/monthly targets (same logic as HomeViewModel)
-                val neutralTypes = setOf(DayType.VACATION, DayType.SPECIAL_VACATION, DayType.FLEX_DAY, DayType.SICK_DAY)
-                val neutralDays = prognosisDays.filter { it.dayType in neutralTypes }
-                val neutralDaysDeduction = neutralDays.sumOf { day ->
-                    val rule = settingsRepository.getWorkTimeRuleForDate(day.date, workTimeRules)
-                    val isWorkDay = if (rule != null) day.date.dayOfWeek in rule.workDays else true
-                    if (isWorkDay) {
-                        (rule?.dailyWorkMinutes ?: settings.dailyWorkMinutes).toLong()
-                    } else 0L
-                }
-                val baseMonthlyTarget = (workTimeRules.getRuleForMonth(month)?.monthlyWorkMinutes
-                    ?: settings.monthlyWorkMinutes).toLong()
-                val totalMin = (baseMonthlyTarget - neutralDaysDeduction).coerceAtLeast(0)
-                val requiredMin = (totalMin * qPercent / 100.0).toLong()
-
-                val workingDays = prognosisDays.filter { it.dayType !in neutralTypes }
-                var officeMin = 0L
-                for (day in workingDays) {
-                    val isDayBusinessTrip = day.dayType == DayType.BUSINESS_TRIP
-                    val adjustedBlocks = if (isDayBusinessTrip) {
-                        day.timeBlocks.sortedBy { it.startTime }
-                    } else {
-                        CalculateDayWorkTimeUseCase.adjustTimeBlocks(day.timeBlocks)
-                    }
-                    val dayResult = if (isDayBusinessTrip) calculateDayWorkTime(day.timeBlocks, isBusinessTrip = true) else calculateDayWorkTime(day.timeBlocks)
-                    val totalGross = dayResult.grossMinutes
-                    if (totalGross == 0L) continue
-                    var dayOfficeGross = 0L
-                    for (block in adjustedBlocks) {
-                        val blockEnd = block.endTime ?: continue
-                        val blockMin = java.time.Duration.between(block.startTime, blockEnd).toMinutes()
-                        if (blockMin > 0 && (block.location == WorkLocation.OFFICE || isDayBusinessTrip)) dayOfficeGross += blockMin
-                    }
-                    officeMin += dayOfficeGross * dayResult.netMinutes / totalGross
-                }
+                val officeMin = quota.officeMinutes
+                val requiredMin = quota.requiredOfficeMinutes
+                val totalMin = quota.adjustedMonthlyTargetMinutes
 
                 val flexByDate = mutableMapOf<LocalDate, Long>()
                 val dailyFlexByDate = mutableMapOf<LocalDate, Long>()
